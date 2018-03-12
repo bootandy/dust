@@ -1,0 +1,8 @@
+[package]
+name = "dus"
+version = "0.1.0"
+authors = ["bootandy <bootandy@gmail.com>"]
+
+[dependencies]
+ansi_term = "0.11"
+clap = "2.31"
