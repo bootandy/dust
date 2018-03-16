@@ -8,8 +8,6 @@ extern crate ansi_term;
 #[macro_use]
 extern crate clap;
 
-use std::str::Split;
-use std::collections::HashMap;
 use std::collections::HashSet;
 
 use ansi_term::Colour::Fixed;
@@ -85,7 +83,12 @@ fn main() {
         .arg(Arg::with_name("inputs").multiple(true))
         .get_matches();
 
-    let filenames: Vec<&str> = options.values_of("inputs").unwrap().collect();
+    let filenames = {
+        match options.values_of("inputs") {
+            None => vec!["."],
+            Some(r) => r.collect(),
+        }
+    };
     let number_of_lines = value_t!(options.value_of("number_of_lines"), usize).unwrap();
 
     let mut permissions = true;
@@ -285,9 +288,6 @@ fn display_node<S: Into<String>>(
             if node.dir.name.matches("/").count() == printable_node_slashes + 1 {
                 num_sibblings -= 1;
                 let tree_chars = {
-                    /*if num_sibblings == 0 {
-                        "   "
-                    } else*/
                     if num_sibblings == 0 {
                         "└──"
                     } else {
