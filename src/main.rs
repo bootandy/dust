@@ -91,6 +91,12 @@ fn main() {
     };
     let number_of_lines = value_t!(options.value_of("number_of_lines"), usize).unwrap();
 
+    let (permissions, results) = get_dir_tree(filenames);
+    let slice_it = find_big_ones(&results, number_of_lines);
+    display(permissions, slice_it);
+}
+
+fn get_dir_tree(filenames: Vec<&str>) -> (bool, Vec<Node>) {
     let mut permissions = true;
     let mut results = vec![];
     for b in filenames {
@@ -102,8 +108,7 @@ fn main() {
         permissions = permissions && hp;
         results.push(data);
     }
-    let slice_it = find_big_ones(&results, number_of_lines);
-    display(permissions, slice_it);
+    (permissions, results)
 }
 
 fn examine_dir_str(loc: String) -> (bool, Node) {
@@ -250,22 +255,19 @@ fn display(permissions: bool, to_display: Vec<&Node>) -> () {
     if !permissions {
         eprintln!("Did not have permissions for all directories");
     }
-    let big_size = to_display[0].dir.size;
-    let max_space = format!("{}", big_size).len() as usize;
 
-    display_node(to_display[0], max_space, &to_display, true, 1, "")
+    display_node(to_display[0], &to_display, true, 1, "")
 }
 
 fn display_node<S: Into<String>>(
     node_to_print: &Node,
-    big_size_space: usize,
     to_display: &Vec<&Node>,
     is_first: bool,
     depth: u8,
     indentation_str: S,
 ) {
     let mut is = indentation_str.into();
-    print_this_node(node_to_print, big_size_space, is_first, depth, is.as_ref());
+    print_this_node(node_to_print, is_first, depth, is.as_ref());
 
     is = is.replace("└──", "   ");
     is = is.replace("├──", "│  ");
@@ -296,7 +298,6 @@ fn display_node<S: Into<String>>(
                 };
                 display_node(
                     &node,
-                    big_size_space,
                     to_display,
                     is_biggest,
                     depth + 1,
@@ -308,14 +309,8 @@ fn display_node<S: Into<String>>(
     }
 }
 
-fn print_this_node(
-    node_to_print: &Node,
-    big_size_space: usize,
-    is_biggest: bool,
-    depth: u8,
-    indentation_str: &str,
-) {
-    let padded_size = format!("{:>width$}", node_to_print.dir.size, width = big_size_space);
+fn print_this_node(node_to_print: &Node, is_biggest: bool, depth: u8, indentation_str: &str) {
+    let padded_size = format!("{:>5}", human_readable_number(node_to_print.dir.size),);
     println!(
         "{} {} {}",
         if is_biggest {
@@ -330,98 +325,36 @@ fn print_this_node(
     );
 }
 
-// currently storing dir paths not the nodes in the tree_view map
-    /*let mut tree_biggest: HashMap<String, &Node> = HashMap::new();
-    let mut tree_view: HashMap<String, u64> = HashMap::new();
+fn human_readable_number(size: u64) -> (String) {
+    let units = vec!["T", "G", "M", "K"]; //make static
 
-    for n in sorted_display.iter() {
-        tree_view.insert(n.dir.name.to_string(), 0);
-        for n2 in sorted_display.iter() {
-            for nc in &n.children {
-                if nc.dir.name == n2.dir.name {
-                    let i = tree_view.entry(n.dir.name.to_string()).or_insert(0);
-                    *i += 1;
-                    let nc_ref = tree_biggest.get(&n.dir.name.to_string()).map(|&c| c);
-                    match nc_ref {
-                        None => {
-                            tree_biggest.insert(n.dir.name.to_string(), &nc);
-                        }
-                        Some(node) => {
-                            if node.dir.size < nc.dir.size {
-                                tree_biggest.insert(n.dir.name.to_string(), &nc);
-                            }
-                        }
-                    }
-                    break;
-                }
+    for (i, u) in units.iter().enumerate() {
+        let marker = 1024u64.pow((units.len() - i) as u32);
+        if size >= marker {
+            if size / marker < 10 {
+                return format!("{:.1}{}", (size as f32 / marker as f32), u);
+            } else {
+                return format!("{}{}", (size / marker), u);
             }
         }
-    }*/
-/*
-    let mut padding = 0;
-
-    let mut indentation_str = String::from("");
-    let mut next_str = "   ";
-
-    for node in sorted_display {
-        let dir = &node.dir;
-        let padded_size = format!("{:>width$}", dir.size, width = big_size_space);
-
-        let mut hacky_parent_name: Vec<&str> = dir.name.split("/").collect();
-        let parent_str = hacky_parent_name[0..(hacky_parent_name.len() - 1)].join("/");
-
-        {
-            let i = tree_view.entry(parent_str.to_string()).or_insert(1);
-            *i -= 1;
-
-            let previous_padding = padding;
-            padding = dir.name.matches("/").count() - base_slashes;
-
-            if padding == 0 {
-                indentation_str = String::from("");
-            } else if padding > previous_padding {
-                indentation_str += next_str;
-            } else if previous_padding > padding {
-                indentation_str = indentation_str.chars().take(padding * 2).collect();
-            }
-            next_str = {
-                if *i != 0 {
-                    "│ "
-                } else {
-                    "  "
-                }
-            };
-        }
-
-        let my_char = {
-            // if sorted_display.next() has less padding
-            if tree_view.get(&dir.name.to_string()) == Some(&0) {
-                "├─"
-            } else {
-                "├─"
-            }
-        };
-
-        let big_node = tree_biggest.get(&parent_str);
-        let is_big = {
-            match big_node {
-                None => false,
-                Some(bn) => bn.dir.name == node.dir.name,
-            }
-        };
-        println!(
-            "{} {}{} {}",
-            if is_big {
-                Fixed(196).paint(padded_size)
-            } else {
-                Fixed(7).paint(padded_size)
-            },
-            indentation_str,
-            my_char,
-            Fixed(7)
-                .on(Fixed(cmp::min(8, (padding) as u8) + 232))
-                .paint(dir.name.to_string())
-        );
-        //Fixed(248 + cmp::min(padding as u8, 7)).paint(dir.name.to_string())
     }
-}*/
+    return format!("{}B", size);
+}
+
+mod tests {
+    use super::human_readable_number;
+
+    #[test]
+    fn test_human_readable_number() {
+        assert_eq!(human_readable_number(1), "1B");
+        assert_eq!(human_readable_number(956), "956B");
+        assert_eq!(human_readable_number(1004), "1004B");
+        assert_eq!(human_readable_number(1024), "1.0K");
+        assert_eq!(human_readable_number(1536), "1.5K");
+        assert_eq!(human_readable_number(1024 * 512), "512K");
+        assert_eq!(human_readable_number(1024 * 1024), "1.0M");
+        assert_eq!(human_readable_number(1024 * 1024 * 1024 - 1), "1023M");
+        assert_eq!(human_readable_number(1024 * 1024 * 1024 * 20), "20G");
+        assert_eq!(human_readable_number(1024 * 1024 * 1024 * 1024), "1.0T");
+    }
+}
