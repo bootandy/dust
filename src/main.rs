@@ -133,7 +133,7 @@ fn examine_dir_str(loc: String) -> (bool, Node) {
 fn get_metadata_blocks_and_inode(d: &std::fs::DirEntry) -> Option<(u64, u64)> {
     use std::os::linux::fs::MetadataExt;
     match d.metadata().ok() {
-        Some(md) => Some((md.st_blocks(), md.st_ino())),
+        Some(md) => Some((md.len(), md.st_ino())),
         None => None,
     }
 }
@@ -142,7 +142,7 @@ fn get_metadata_blocks_and_inode(d: &std::fs::DirEntry) -> Option<(u64, u64)> {
 fn get_metadata_blocks_and_inode(d: &std::fs::DirEntry) -> Option<(u64, u64)> {
     use std::os::unix::fs::MetadataExt;
     match d.metadata().ok() {
-        Some(md) => Some((md.blocks(), md.ino())),
+        Some(md) => Some((md.len(), md.ino())),
         None => None,
     }
 }
@@ -151,15 +151,17 @@ fn get_metadata_blocks_and_inode(d: &std::fs::DirEntry) -> Option<(u64, u64)> {
 fn get_metadata_blocks_and_inode(d: &std::fs::DirEntry) -> Option<(u64, u64)> {
     use std::os::macos::fs::MetadataExt;
     match d.metadata().ok() {
-        Some(md) => Some((md.st_blocks(), md.st_ino())),
+        Some(md) => Some((md.len(), md.st_ino())),
         None => None,
     }
 }
 
 #[cfg(not(any(target_os = "linux", target_os = "unix", target_os = "macos")))]
 fn get_metadata_blocks_and_inode(_d: &std::fs::DirEntry) -> Option<(u64, u64)> {
-    println!("NOOOOOOOOOO");
-    None
+    match d.metadata().ok() {
+        Some(md) => Some((md.len(), 0)), //move to option not 0
+        None => None,
+    }
 }
 
 fn examine_dir(a_dir: io::Result<ReadDir>, inodes: &mut HashSet<u64>) -> (bool, Vec<Node>) {
@@ -172,9 +174,9 @@ fn examine_dir(a_dir: io::Result<ReadDir>, inodes: &mut HashSet<u64>) -> (bool, 
             match dd {
                 Ok(d) => {
                     let file_type = d.file_type().ok();
-                    let maybe_block_and_inode = get_metadata_blocks_and_inode(&d);
+                    let maybe_size_and_inode = get_metadata_blocks_and_inode(&d);
 
-                    match (file_type, maybe_block_and_inode) {
+                    match (file_type, maybe_size_and_inode) {
                         (Some(file_type), Some((size, inode))) => {
                             let s = d.path().to_string_lossy().to_string();
                             if inodes.contains(&inode) {
@@ -326,27 +328,21 @@ fn print_this_node(node_to_print: &Node, is_biggest: bool, depth: u8, indentatio
 }
 
 fn human_readable_number(size: u64) -> (String) {
-    // we need the block size of the OS here
-    //
     let units = vec!["T", "G", "M", "K"]; //make static
-    let bytes_per_block = 512;
+
     //return format!("{}B", size);
 
     for (i, u) in units.iter().enumerate() {
         let marker = 1024u64.pow((units.len() - i) as u32);
-        if size * bytes_per_block >= marker {
-            if size * bytes_per_block / marker < 10 {
-                return format!(
-                    "{:.1}{}",
-                    ((size * bytes_per_block) as f32 / marker as f32),
-                    u
-                );
+        if size >= marker {
+            if size / marker < 10 {
+                return format!("{:.1}{}", (size as f32 / marker as f32), u);
             } else {
-                return format!("{}{}", (size * bytes_per_block / marker), u);
+                return format!("{}{}", (size / marker), u);
             }
         }
     }
-    return format!("{}B", size * bytes_per_block);
+    return format!("{}B", size);
 }
 
 mod tests {
