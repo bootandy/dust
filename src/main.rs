@@ -326,23 +326,31 @@ fn print_this_node(node_to_print: &Node, is_biggest: bool, depth: u8, indentatio
 }
 
 fn human_readable_number(size: u64) -> (String) {
+    // we need the block size of the OS here
+    //
     let units = vec!["T", "G", "M", "K"]; //make static
+    let bytes_per_block = 512;
+    //return format!("{}B", size);
 
     for (i, u) in units.iter().enumerate() {
         let marker = 1024u64.pow((units.len() - i) as u32);
-        if size >= marker {
-            if size / marker < 10 {
-                return format!("{:.1}{}", (size as f32 / marker as f32), u);
+        if size * bytes_per_block >= marker {
+            if size * bytes_per_block / marker < 10 {
+                return format!(
+                    "{:.1}{}",
+                    ((size * bytes_per_block) as f32 / marker as f32),
+                    u
+                );
             } else {
-                return format!("{}{}", (size / marker), u);
+                return format!("{}{}", (size * bytes_per_block / marker), u);
             }
         }
     }
-    return format!("{}B", size);
+    return format!("{}B", size * bytes_per_block);
 }
 
 mod tests {
-    use super::human_readable_number;
+    use super::*;
 
     #[test]
     fn test_human_readable_number() {
