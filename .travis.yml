@@ -8,6 +8,7 @@ language: rust
 rust:
   - stable
 matrix:
+  fast_finish: true
     - os: osx
       env: TARGET=i686-apple-darwin
     - os: linux
@@ -17,4 +18,25 @@ matrix:
     - os: linux
       env: TARGET=x86_64-unknown-linux-gnu
 cache: cargo
+
+before_install:
+   - export PATH="$PATH:$HOME/.cargo/bin"
+
+script:
+    - cargo build --release --target $TARGET
+    - cargo test --target $TARGET
+
+deploy:
+  provider: releases
+  api_key:
+     secure: "osa6xr6VGDSKUFGPVSElFl2ItJQ0vzTuc+xcBYtEO663sFf5bsCXnBmzdNB4dSfiV1KdVXZQaN7S2rIO9GoWVY02hz8OLYWh5wDXkdQQ8hSEl9FXnSB8I1zWTB4dYsnAZPkjbkH4p+HmmlH6COH1FRKWcEtJMWbZBr0kVc3hxWQue2U5Lo0FhWgNo9oOfs8b6lvF9N/bSQaaeE0OEBVyc3iOBG+03UrcPwhuO3vUNYPkiqxdwGctYyjBEbc4OTKLPazvgFaDmiACtIM1iPIly5WXR+A/3hMxgDKlpqi9F8bO/I8C+kXpP7ZBlqkejo8MwjZ8UHXzX7uXsq/5Upp8tPDTr0ko4dDvDrQMu+mnGwsEU3T8HPGE2c1DZl858tMt/NhUjtEXJDY5Fadia3I7Th5dUGR8O3ylnXf8rkSxFcqDAJ6u9KFH2SUAR5nEU4hRSSx8KjSTadQsQGQS6Iyvf8HV0GwPPkJStEZq/ZHE1hEQHXZBREBHnjgCkjj/LItyFFMs0qZbfTUBurKokQnQElkOddpzLsfb6G6+8rV6+WNmsuqUVx04YKTfjb5X/tV0Bjgx1YOMMBhWXrRi+XO04l9fsoU8zYfb29bqEzC7Rx38/A4Bncp/eI1JqUxv7EIbpEadIVq1LrVJg54O7Kx0LA6AsCRwTdmFGdSFbz3oujI="
+  file: ${PROJECT_NAME}-${TRAVIS_TAG}-${TARGET}.tar.gz
+  skip_cleanup: true
+  on:
+    repo: bootandy/dust
+    tags: true
+
+notifications:
+  email:
+    on_success: never
 
