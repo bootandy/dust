@@ -19,10 +19,6 @@ matrix:
       env: TARGET=x86_64-unknown-linux-gnu
 cache: cargo
 
-script:
-    - cargo build --release --target $TARGET
-    - cargo test --target $TARGET
-
 deploy:
   provider: releases
   api_key:
@@ -32,8 +28,3 @@ deploy:
   on:
     repo: bootandy/dust
     tags: true
-
-notifications:
-  email:
-    on_success: never
-
