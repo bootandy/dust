@@ -1,3 +1,6 @@
+[![Build Status](https://travis-ci.org/bootandy/dust.svg?branch=master)](https://travis-ci.org/bootandy/dust)
+
+
 # Dust
 du + rust = dust. A rust alternative to du
 
