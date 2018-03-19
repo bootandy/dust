@@ -8,7 +8,6 @@ language: rust
 rust:
   - stable
 matrix:
-  fast_finish: true
     - os: osx
       env: TARGET=i686-apple-darwin
     - os: linux
