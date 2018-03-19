@@ -19,9 +19,6 @@ matrix:
       env: TARGET=x86_64-unknown-linux-gnu
 cache: cargo
 
-before_install:
-   - export PATH="$PATH:$HOME/.cargo/bin"
-
 script:
     - cargo build --release --target $TARGET
     - cargo test --target $TARGET
