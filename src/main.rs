@@ -158,7 +158,7 @@ fn get_metadata_blocks_and_inode(d: &std::fs::DirEntry) -> Option<(u64, u64)> {
 
 #[cfg(not(any(target_os = "linux", target_os = "unix", target_os = "macos")))]
 fn get_metadata_blocks_and_inode(_d: &std::fs::DirEntry) -> Option<(u64, u64)> {
-    match d.metadata().ok() {
+    match _d.metadata().ok() {
         Some(md) => Some((md.len(), 0)), //move to option not 0
         None => None,
     }
