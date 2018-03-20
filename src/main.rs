@@ -71,7 +71,7 @@ struct Dir {
 static DEFAULT_NUMBER_OF_LINES: &'static str = "15";
 
 fn main() {
-    let options = App::new("Trailing args example")
+    let options = App::new("Dust")
         .setting(AppSettings::TrailingVarArg)
         .arg(
             Arg::with_name("number_of_lines")
