@@ -1,8 +1,8 @@
 [package]
 name = "dust"
-version = "0.1.0"
-authors = ["bootandy <bootandy@gmail.com>"]
+version = "0.1.1"
+authors = ["bootandy <bootandy@gmail.com>", "nebkor <code@ardent.nebcorp.com>"]
 
 [dependencies]
-ansi_term = "0.11"
+ansi_term = "*"
 clap = "2.31"
