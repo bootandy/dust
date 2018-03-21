@@ -1,8 +1,8 @@
 extern crate dust;
-use dust::*;
 
-extern crate ansi_term;
-use ansi_term::Colour::Fixed;
+mod utils;
+use utils::{display, find_big_ones, get_dir_tree};
+
 #[macro_use]
 extern crate clap;
 use clap::{App, AppSettings, Arg};
