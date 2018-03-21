@@ -13,34 +13,25 @@ use self::ansi_term::Colour::Fixed;
 pub fn get_dir_tree(filenames: &Vec<&str>) -> (bool, Vec<Node>) {
     let mut permissions = true;
     let mut results = vec![];
-    for b in filenames {
-        let mut new_name = String::from(*b);
+    for &b in filenames {
+        let mut new_name = String::from(b);
         while new_name.chars().last() == Some('/') && new_name.len() != 1 {
             new_name.pop();
         }
-        let (hp, data) = examine_dir_str(new_name);
+        let (hp, data) = examine_dir_str(&new_name);
         permissions = permissions && hp;
         results.push(data);
     }
     (permissions, results)
 }
 
-fn examine_dir_str(loc: String) -> (bool, Node) {
+fn examine_dir_str(loc: &str) -> (bool, Node) {
     let mut inodes: HashSet<u64> = HashSet::new();
-    let (hp, result) = examine_dir(fs::read_dir(&loc), &mut inodes);
+    let (hp, result) = examine_dir(fs::read_dir(loc), &mut inodes);
 
     // This needs to be folded into the below recursive call somehow
-    let new_size = result.iter().fold(0, |a, b| a + b.dir.size);
-    (
-        hp,
-        Node {
-            dir: DirEnt {
-                name: loc,
-                size: new_size,
-            },
-            children: result,
-        },
-    )
+    let new_size = result.iter().fold(0, |a, b| a + b.entry().size());
+    (hp, Node::new(DirEnt::new(loc, new_size), result))
 }
 
 #[cfg(target_os = "linux")]
@@ -101,22 +92,11 @@ fn examine_dir(a_dir: io::Result<ReadDir>, inodes: &mut HashSet<u64>) -> (bool, 
                             if d.path().is_dir() && !file_type.is_symlink() {
                                 let (hp, recursive) = examine_dir(fs::read_dir(d.path()), inodes);
                                 have_permission = have_permission && hp;
-                                let new_size = recursive.iter().fold(size, |a, b| a + b.dir.size);
-                                result.push(Node {
-                                    dir: DirEnt {
-                                        name: s,
-                                        size: new_size,
-                                    },
-                                    children: recursive,
-                                })
+                                let new_size =
+                                    recursive.iter().fold(size, |a, b| a + b.entry().size());
+                                result.push(Node::new(DirEnt::new(&s, new_size), recursive))
                             } else {
-                                result.push(Node {
-                                    dir: DirEnt {
-                                        name: s,
-                                        size: size,
-                                    },
-                                    children: vec![],
-                                })
+                                result.push(Node::new(DirEnt::new(&s, size), vec![]))
                             }
                         }
                         (_, None) => have_permission = false,
@@ -146,7 +126,7 @@ pub fn find_big_ones<'a>(l: &'a Vec<Node>, max_to_show: usize) -> Vec<&Node> {
         // Must be a list of pointers into new_l otherwise b_list will go out of scope
         // when it is deallocated
         let mut b_list: Vec<&Node> = new_l[processed_pointer]
-            .children
+            .children()
             .iter()
             .map(|a| a)
             .collect();
@@ -184,11 +164,11 @@ fn display_node<S: Into<String>>(
     is = is.replace("├──", "│ ");
     is = is.replace("├─┬", "│ ");
 
-    let printable_node_slashes = node_to_print.dir.name.matches('/').count();
+    let printable_node_slashes = node_to_print.entry().name().matches('/').count();
 
     let mut num_siblings = to_display.iter().fold(0, |a, b| {
-        if node_to_print.children.contains(b)
-            && b.dir.name.matches('/').count() == printable_node_slashes + 1
+        if node_to_print.children().contains(b)
+            && b.entry().name().matches('/').count() == printable_node_slashes + 1
         {
             a + 1
         } else {
@@ -199,11 +179,11 @@ fn display_node<S: Into<String>>(
     let mut is_biggest = true;
     let mut has_display_children = false;
     for node in to_display {
-        if node_to_print.children.contains(node) {
-            let has_children = node.children.len() > 0;
-            if node.dir.name.matches("/").count() == printable_node_slashes + 1 {
+        if node_to_print.children().contains(node) {
+            let has_children = node.children().len() > 0;
+            if node.entry().name().matches("/").count() == printable_node_slashes + 1 {
                 num_siblings -= 1;
-                for ref n in node.children.iter() {
+                for ref n in node.children().iter() {
                     has_display_children = has_display_children || to_display.contains(n);
                 }
                 let has_children = has_children && has_display_children;
@@ -236,7 +216,7 @@ fn display_node<S: Into<String>>(
 }
 
 fn print_this_node(node_to_print: &Node, is_biggest: bool, depth: u8, indentation_str: &str) {
-    let padded_size = format!("{:>5}", human_readable_number(node_to_print.dir.size),);
+    let padded_size = format!("{:>5}", human_readable_number(node_to_print.entry().size()),);
     println!(
         "{} {} {}",
         if is_biggest {
@@ -247,7 +227,7 @@ fn print_this_node(node_to_print: &Node, is_biggest: bool, depth: u8, indentatio
         indentation_str,
         Fixed(7)
             .on(Fixed(cmp::min(8, (depth) as u8) + 231))
-            .paint(node_to_print.dir.name.to_string())
+            .paint(node_to_print.entry().name().to_string())
     );
 }
 
