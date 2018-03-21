@@ -271,8 +271,10 @@ fn display_node<S: Into<String>>(
     let mut is = indentation_str.into();
     print_this_node(node_to_print, is_first, depth, is.as_ref());
 
-    is = is.replace("└──", "   ");
-    is = is.replace("├──", "│  ");
+    is = is.replace("└─┬", "  ");
+    is = is.replace("└──", "  ");
+    is = is.replace("├──", "│ ");
+    is = is.replace("├─┬", "│ ");
 
     let printable_node_slashes = node_to_print.dir.name.matches('/').count();
 
@@ -287,15 +289,29 @@ fn display_node<S: Into<String>>(
     });
 
     let mut is_biggest = true;
+    let mut has_display_children = false;
     for node in to_display {
         if node_to_print.children.contains(node) {
+            let has_children = node.children.len() > 0;
             if node.dir.name.matches("/").count() == printable_node_slashes + 1 {
                 num_sibblings -= 1;
+                for ref n in node.children.iter() {
+                    has_display_children = has_display_children || to_display.contains(n);
+                }
+                let has_children = has_children && has_display_children;
                 let tree_chars = {
                     if num_sibblings == 0 {
-                        "└──"
+                        if has_children {
+                            "└─┬"
+                        } else {
+                            "└──"
+                        }
                     } else {
-                        "├──"
+                        if has_children {
+                            "├─┬"
+                        } else {
+                            "├──"
+                        }
                     }
                 };
                 display_node(
