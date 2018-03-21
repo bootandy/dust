@@ -80,6 +80,11 @@ fn main() {
                 .takes_value(true)
                 .default_value(DEFAULT_NUMBER_OF_LINES),
         )
+        .arg(
+            Arg::with_name("use_apparent_size")
+                .short("s")
+                .help("If set will use file length. Otherwise we use blocks"),
+        )
         .arg(Arg::with_name("inputs").multiple(true))
         .get_matches();
 
@@ -90,13 +95,14 @@ fn main() {
         }
     };
     let number_of_lines = value_t!(options.value_of("number_of_lines"), usize).unwrap();
+    let use_apparent_size = options.is_present("use_apparent_size");
 
-    let (permissions, results) = get_dir_tree(&filenames);
+    let (permissions, results) = get_dir_tree(&filenames, use_apparent_size);
     let slice_it = find_big_ones(&results, number_of_lines);
     display(permissions, &slice_it);
 }
 
-fn get_dir_tree(filenames: &Vec<&str>) -> (bool, Vec<Node>) {
+fn get_dir_tree(filenames: &Vec<&str>, apparent_size: bool) -> (bool, Vec<Node>) {
     let mut permissions = true;
     let mut results = vec![];
     for b in filenames {
@@ -104,16 +110,16 @@ fn get_dir_tree(filenames: &Vec<&str>) -> (bool, Vec<Node>) {
         while new_name.chars().last() == Some('/') && new_name.len() != 1 {
             new_name.pop();
         }
-        let (hp, data) = examine_dir_str(new_name);
+        let (hp, data) = examine_dir_str(new_name, apparent_size);
         permissions = permissions && hp;
         results.push(data);
     }
     (permissions, results)
 }
 
-fn examine_dir_str(loc: String) -> (bool, Node) {
-    let mut inodes: HashSet<u64> = HashSet::new();
-    let (hp, result) = examine_dir(fs::read_dir(&loc), &mut inodes);
+fn examine_dir_str(loc: String, apparent_size: bool) -> (bool, Node) {
+    let mut inodes: HashSet<(u64, u64)> = HashSet::new();
+    let (hp, result) = examine_dir(fs::read_dir(&loc), apparent_size, &mut inodes);
 
     // This needs to be folded into the below recursive call somehow
     let new_size = result.iter().fold(0, |a, b| a + b.dir.size);
@@ -129,42 +135,77 @@ fn examine_dir_str(loc: String) -> (bool, Node) {
     )
 }
 
+#[cfg(not(target_os = "macos"))]
+fn get_block_size() -> u64 {
+    1024
+}
+
+#[cfg(target_os = "macos")]
+fn get_block_size() -> u64 {
+    512
+}
+
 #[cfg(target_os = "linux")]
-fn get_metadata_blocks_and_inode(d: &std::fs::DirEntry) -> Option<(u64, u64)> {
+fn get_metadata(d: &std::fs::DirEntry, s: bool) -> Option<(u64, Option<(u64, u64)>)> {
     use std::os::linux::fs::MetadataExt;
     match d.metadata().ok() {
-        Some(md) => Some((md.len(), md.st_ino())),
+        Some(md) => {
+            let inode = Some((md.ino(), md.dev()));
+            if s {
+                Some((md.len(), inode))
+            } else {
+                Some((md.st_blocks() * get_block_size(), inode))
+            }
+        }
         None => None,
     }
 }
 
 #[cfg(target_os = "unix")]
-fn get_metadata_blocks_and_inode(d: &std::fs::DirEntry) -> Option<(u64, u64)> {
+fn get_metadata(d: &std::fs::DirEntry, s: bool) -> Option<(u64, Option<(u64, u64)>)> {
     use std::os::unix::fs::MetadataExt;
     match d.metadata().ok() {
-        Some(md) => Some((md.len(), md.ino())),
+        Some(md) => {
+            let inode = Some((md.ino(), md.dev()));
+            if s {
+                Some((md.len(), inode))
+            } else {
+                Some((md.blocks() * get_block_size(), inode))
+            }
+        }
         None => None,
     }
 }
 
 #[cfg(target_os = "macos")]
-fn get_metadata_blocks_and_inode(d: &std::fs::DirEntry) -> Option<(u64, u64)> {
+fn get_metadata(d: &std::fs::DirEntry, s: bool) -> Option<(u64, Option<(u64, u64)>)> {
     use std::os::macos::fs::MetadataExt;
     match d.metadata().ok() {
-        Some(md) => Some((md.len(), md.st_ino())),
+        Some(md) => {
+            let inode = Some((md.st_ino(), md.st_dev()));
+            if s {
+                Some((md.len(), inode))
+            } else {
+                Some((md.st_blocks() * get_block_size(), inode))
+            }
+        }
         None => None,
     }
 }
 
 #[cfg(not(any(target_os = "linux", target_os = "unix", target_os = "macos")))]
-fn get_metadata_blocks_and_inode(_d: &std::fs::DirEntry) -> Option<(u64, u64)> {
-    match _d.metadata().ok() {
-        Some(md) => Some((md.len(), 0)), //move to option not 0
+fn get_metadata(d: &std::fs::DirEntry, _apparent: bool) -> Option<(u64, Option<(u64, u64)>)> {
+    match d.metadata().ok() {
+        Some(md) => Some((md.len(), None)),
         None => None,
     }
 }
 
-fn examine_dir(a_dir: io::Result<ReadDir>, inodes: &mut HashSet<u64>) -> (bool, Vec<Node>) {
+fn examine_dir(
+    a_dir: io::Result<ReadDir>,
+    apparent_size: bool,
+    inodes: &mut HashSet<(u64, u64)>,
+) -> (bool, Vec<Node>) {
     let mut result = vec![];
     let mut have_permission = true;
 
@@ -174,18 +215,21 @@ fn examine_dir(a_dir: io::Result<ReadDir>, inodes: &mut HashSet<u64>) -> (bool, 
             match dd {
                 Ok(d) => {
                     let file_type = d.file_type().ok();
-                    let maybe_size_and_inode = get_metadata_blocks_and_inode(&d);
+                    let maybe_size_and_inode = get_metadata(&d, apparent_size);
 
                     match (file_type, maybe_size_and_inode) {
                         (Some(file_type), Some((size, inode))) => {
                             let s = d.path().to_string_lossy().to_string();
-                            if inodes.contains(&inode) {
-                                continue;
+                            if let Some(inode_dev_pair) = inode {
+                                if inodes.contains(&inode_dev_pair) {
+                                    continue;
+                                }
+                                inodes.insert(inode_dev_pair);
                             }
-                            inodes.insert(inode);
 
                             if d.path().is_dir() && !file_type.is_symlink() {
-                                let (hp, recursive) = examine_dir(fs::read_dir(d.path()), inodes);
+                                let (hp, recursive) =
+                                    examine_dir(fs::read_dir(d.path()), apparent_size, inodes);
                                 have_permission = have_permission && hp;
                                 let new_size = recursive.iter().fold(size, |a, b| a + b.dir.size);
                                 result.push(Node {
