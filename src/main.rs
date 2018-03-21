@@ -278,7 +278,7 @@ fn display_node<S: Into<String>>(
 
     let printable_node_slashes = node_to_print.dir.name.matches('/').count();
 
-    let mut num_sibblings = to_display.iter().fold(0, |a, b| {
+    let mut num_siblings = to_display.iter().fold(0, |a, b| {
         if node_to_print.children.contains(b)
             && b.dir.name.matches('/').count() == printable_node_slashes + 1
         {
@@ -294,13 +294,13 @@ fn display_node<S: Into<String>>(
         if node_to_print.children.contains(node) {
             let has_children = node.children.len() > 0;
             if node.dir.name.matches("/").count() == printable_node_slashes + 1 {
-                num_sibblings -= 1;
+                num_siblings -= 1;
                 for ref n in node.children.iter() {
                     has_display_children = has_display_children || to_display.contains(n);
                 }
                 let has_children = has_children && has_display_children;
                 let tree_chars = {
-                    if num_sibblings == 0 {
+                    if num_siblings == 0 {
                         if has_children {
                             "└─┬"
                         } else {
