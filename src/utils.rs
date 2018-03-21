@@ -177,16 +177,16 @@ fn display_node<S: Into<String>>(
     });
 
     let mut is_biggest = true;
-    let mut has_display_children = false;
     for node in to_display {
         if node_to_print.children().contains(node) {
-            let has_children = node.children().len() > 0;
-            if node.entry().name().matches("/").count() == printable_node_slashes + 1 {
+            let has_display_children = node.children()
+                .iter()
+                .fold(false, |has_kids, n| has_kids || to_display.contains(&n));
+
+            let has_children = node.children().len() > 0 && has_display_children;
+            if node.entry().name().matches('/').count() == printable_node_slashes + 1 {
                 num_siblings -= 1;
-                for ref n in node.children().iter() {
-                    has_display_children = has_display_children || to_display.contains(n);
-                }
-                let has_children = has_children && has_display_children;
+
                 let tree_chars = {
                     if num_siblings == 0 {
                         if has_children {
