@@ -31,8 +31,8 @@ impl Ord for Node {
         } else if self.dir.size < other.dir.size {
             Ordering::Greater
         } else {
-            let my_slashes = self.dir.name.matches("/").count();
-            let other_slashes = other.dir.name.matches("/").count();
+            let my_slashes = self.dir.name.matches('/').count();
+            let other_slashes = other.dir.name.matches('/').count();
 
             if my_slashes > other_slashes {
                 Ordering::Greater
@@ -68,7 +68,7 @@ struct Dir {
     size: u64,
 }
 
-static DEFAULT_NUMBER_OF_LINES: &'static str = &"15";
+static DEFAULT_NUMBER_OF_LINES: &'static str = "15";
 
 fn main() {
     let options = App::new("Trailing args example")
@@ -91,16 +91,16 @@ fn main() {
     };
     let number_of_lines = value_t!(options.value_of("number_of_lines"), usize).unwrap();
 
-    let (permissions, results) = get_dir_tree(filenames);
+    let (permissions, results) = get_dir_tree(&filenames);
     let slice_it = find_big_ones(&results, number_of_lines);
-    display(permissions, slice_it);
+    display(permissions, &slice_it);
 }
 
-fn get_dir_tree(filenames: Vec<&str>) -> (bool, Vec<Node>) {
+fn get_dir_tree(filenames: &Vec<&str>) -> (bool, Vec<Node>) {
     let mut permissions = true;
     let mut results = vec![];
     for b in filenames {
-        let mut new_name = String::from(b);
+        let mut new_name = String::from(*b);
         while new_name.chars().last() == Some('/') && new_name.len() != 1 {
             new_name.pop();
         }
@@ -274,11 +274,11 @@ fn display_node<S: Into<String>>(
     is = is.replace("└──", "   ");
     is = is.replace("├──", "│  ");
 
-    let printable_node_slashes = node_to_print.dir.name.matches("/").count();
+    let printable_node_slashes = node_to_print.dir.name.matches('/').count();
 
     let mut num_sibblings = to_display.iter().fold(0, |a, b| {
         if node_to_print.children.contains(b)
-            && b.dir.name.matches("/").count() == printable_node_slashes + 1
+            && b.dir.name.matches('/').count() == printable_node_slashes + 1
         {
             a + 1
         } else {
@@ -346,6 +346,7 @@ fn human_readable_number(size: u64) -> (String) {
 }
 
 mod tests {
+    #[allow(unused_imports)]
     use super::*;
 
     #[test]
