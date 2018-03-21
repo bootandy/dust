@@ -253,7 +253,7 @@ fn find_big_ones<'a>(l: &'a Vec<Node>, max_to_show: usize) -> Vec<&Node> {
     }
 }
 
-fn display(permissions: bool, to_display: Vec<&Node>) -> () {
+fn display(permissions: bool, to_display: &Vec<&Node>) -> () {
     if !permissions {
         eprintln!("Did not have permissions for all directories");
     }
