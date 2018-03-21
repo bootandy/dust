@@ -282,13 +282,6 @@ fn find_big_ones<'a>(l: &'a Vec<Node>, max_to_show: usize) -> Vec<&Node> {
             .collect();
         new_l.extend(b_list);
         new_l.sort();
-        /*println!(
-            "{:?} -------------------",
-            new_l
-                .iter()
-                .map(|a| a.dir.size.to_string() + ": " + &a.dir.name)
-                .collect::<Vec<String>>()
-        );*/
     }
     if new_l.len() > max_to_show {
         new_l[0..max_to_show + 1].to_vec()
@@ -389,8 +382,6 @@ fn print_this_node(node_to_print: &Node, is_biggest: bool, depth: u8, indentatio
 
 fn human_readable_number(size: u64) -> (String) {
     let units = vec!["T", "G", "M", "K"]; //make static
-
-    //return format!("{}B", size);
 
     for (i, u) in units.iter().enumerate() {
         let marker = 1024u64.pow((units.len() - i) as u32);
