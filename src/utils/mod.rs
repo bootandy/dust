@@ -56,11 +56,13 @@ fn examine_dir(
                     match (file_type, maybe_size_and_inode) {
                         (Some(file_type), Some((size, inode))) => {
                             let s = d.path().to_string_lossy().to_string();
-                            if let Some(inode_dev_pair) = inode {
-                                if inodes.contains(&inode_dev_pair) {
-                                    continue;
+                            if !apparent_size {
+                                if let Some(inode_dev_pair) = inode {
+                                    if inodes.contains(&inode_dev_pair) {
+                                        continue;
+                                    }
+                                    inodes.insert(inode_dev_pair);
                                 }
-                                inodes.insert(inode_dev_pair);
                             }
 
                             if d.path().is_dir() && !file_type.is_symlink() {
@@ -208,8 +210,6 @@ fn print_this_node(node_to_print: &Node, is_biggest: bool, depth: u8, indentatio
 
 fn human_readable_number(size: u64) -> (String) {
     let units = vec!["T", "G", "M", "K"]; //make static
-
-    //return format!("{}B", size);
 
     for (i, u) in units.iter().enumerate() {
         let marker = 1024u64.pow((units.len() - i) as u32);
