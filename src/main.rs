@@ -1,11 +1,13 @@
-extern crate dust;
-
-mod utils;
-use utils::{display, find_big_ones, get_dir_tree};
-
 #[macro_use]
 extern crate clap;
+extern crate dust;
+
 use clap::{App, AppSettings, Arg};
+use utils::{find_big_ones, get_dir_tree};
+use self::display::*;
+
+mod utils;
+mod display;
 
 static DEFAULT_NUMBER_OF_LINES: &'static str = "15";
 
