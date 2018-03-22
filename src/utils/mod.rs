@@ -209,8 +209,6 @@ fn print_this_node(node_to_print: &Node, is_biggest: bool, depth: u8, indentatio
 fn human_readable_number(size: u64) -> (String) {
     let units = vec!["T", "G", "M", "K"]; //make static
 
-    //return format!("{}B", size);
-
     for (i, u) in units.iter().enumerate() {
         let marker = 1024u64.pow((units.len() - i) as u32);
         if size >= marker {
