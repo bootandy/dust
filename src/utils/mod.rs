@@ -1,11 +1,14 @@
 use std::collections::HashSet;
-use std;
+
 use std::fs::{self, ReadDir};
 use std::io;
 
 use std::cmp;
 
 use dust::{DirEnt, Node};
+
+mod platform;
+use self::platform::*;
 
 extern crate ansi_term;
 use self::ansi_term::Colour::Fixed;
@@ -32,72 +35,6 @@ fn examine_dir_str(loc: &str, apparent_size: bool) -> (bool, Node) {
     // This needs to be folded into the below recursive call somehow
     let new_size = result.iter().fold(0, |a, b| a + b.entry().size());
     (hp, Node::new(DirEnt::new(loc, new_size), result))
-}
-
-#[cfg(not(target_os = "macos"))]
-fn get_block_size() -> u64 {
-    1024
-}
-
-#[cfg(target_os = "macos")]
-fn get_block_size() -> u64 {
-    512
-}
-
-#[cfg(target_os = "linux")]
-fn get_metadata(d: &std::fs::DirEntry, s: bool) -> Option<(u64, Option<(u64, u64)>)> {
-    use std::os::linux::fs::MetadataExt;
-    match d.metadata().ok() {
-        Some(md) => {
-            let inode = Some((md.st_ino(), md.st_dev()));
-            if s {
-                Some((md.len(), inode))
-            } else {
-                Some((md.st_blocks() * get_block_size(), inode))
-            }
-        }
-        None => None,
-    }
-}
-
-#[cfg(target_os = "unix")]
-fn get_metadata(d: &std::fs::DirEntry, s: bool) -> Option<(u64, Option<(u64, u64)>)> {
-    use std::os::unix::fs::MetadataExt;
-    match d.metadata().ok() {
-        Some(md) => {
-            let inode = Some((md.ino(), md.dev()));
-            if s {
-                Some((md.len(), inode))
-            } else {
-                Some((md.blocks() * get_block_size(), inode))
-            }
-        }
-        None => None,
-    }
-}
-
-#[cfg(target_os = "macos")]
-fn get_metadata(d: &std::fs::DirEntry, s: bool) -> Option<(u64, Option<(u64, u64)>)> {
-    use std::os::macos::fs::MetadataExt;
-    match d.metadata().ok() {
-        Some(md) => {
-            let inode = Some((md.st_ino(), md.st_dev()));
-            if s {
-                Some((md.len(), inode))
-            } else {
-                Some((md.st_blocks() * get_block_size(), inode))
-            }
-        }
-        None => None,
-    }
-}
-
-#[cfg(not(any(target_os = "linux", target_os = "unix", target_os = "macos")))]
-fn get_metadata(d: &std::fs::DirEntry, _apparent: bool) -> Option<(u64, Option<(u64, u64)>)> {
-    match d.metadata().ok() {
-        Some(md) => Some((md.len(), None)),
-        None => None,
-    }
 }
 
 fn examine_dir(
