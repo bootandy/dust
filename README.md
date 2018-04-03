@@ -11,6 +11,7 @@ Dust will list the 15 biggest sub directories and will smartly recurse down the 
 
 ```
 Usage: dust <dir>
+Usage: dust <dir> <another_dir> <and_more>
 Usage: dust -s <dir> (apparent-size - shows the length of the file as opposed to the amount of disk space it uses)
 Usage: dust -n 30  <dir>  (Shows 30 directories not 15)
 ```

@@ -6,12 +6,16 @@ use self::ansi_term::Colour::Fixed;
 
 static UNITS: [char; 4] = ['T', 'G', 'M', 'K'];
 
-pub fn display(permissions: bool, to_display: &Vec<&Node>) -> () {
+pub fn draw_it(permissions: bool, heads: &Vec<Node>, to_display: &Vec<&Node>) -> () {
     if !permissions {
         eprintln!("Did not have permissions for all directories");
     }
 
-    display_node(to_display[0], &to_display, true, 1, "")
+    for d in to_display {
+        if heads.contains(d) {
+            display_node(d, &to_display, true, 1, "")
+        }
+    }
 }
 
 fn display_node<S: Into<String>>(

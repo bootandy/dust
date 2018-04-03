@@ -4,7 +4,7 @@ extern crate dust;
 
 use clap::{App, AppSettings, Arg};
 use utils::{find_big_ones, get_dir_tree};
-use self::display::*;
+use self::display::draw_it;
 
 mod utils;
 mod display;
@@ -38,7 +38,7 @@ fn main() {
     let number_of_lines = value_t!(options.value_of("number_of_lines"), usize).unwrap();
     let use_apparent_size = options.is_present("use_apparent_size");
 
-    let (permissions, results) = get_dir_tree(&filenames, use_apparent_size);
-    let slice_it = find_big_ones(&results, number_of_lines);
-    display(permissions, &slice_it);
+    let (permissions, node_per_top_level_dir) = get_dir_tree(&filenames, use_apparent_size);
+    let slice_it = find_big_ones(&node_per_top_level_dir, number_of_lines);
+    draw_it(permissions, &node_per_top_level_dir, &slice_it);
 }
