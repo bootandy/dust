@@ -4,6 +4,8 @@
 # Dust
 du + rust = dust. A rust alternative to du
 
+[Releases](https://github.com/bootandy/dust/releases)
+
 Unlike du, dust is meant to give you an instant overview of which directories are using disk space without requiring sort or head. Dust does not count file system blocks; it uses file sizes instead. Dust will print a maximum of 1 'Did not have permissions message'.
 
 
