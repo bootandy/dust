@@ -4,6 +4,8 @@ use dust::Node;
 use std::cmp;
 use self::ansi_term::Colour::Fixed;
 
+static UNITS: [char; 4] = ['T', 'G', 'M', 'K'];
+
 pub fn display(permissions: bool, to_display: &Vec<&Node>) -> () {
     if !permissions {
         eprintln!("Did not have permissions for all directories");
@@ -95,10 +97,8 @@ fn print_this_node(node_to_print: &Node, is_biggest: bool, depth: u8, indentatio
 }
 
 fn human_readable_number(size: u64) -> (String) {
-    let units = vec!["T", "G", "M", "K"]; //make static
-
-    for (i, u) in units.iter().enumerate() {
-        let marker = 1024u64.pow((units.len() - i) as u32);
+    for (i, u) in UNITS.iter().enumerate() {
+        let marker = 1024u64.pow((UNITS.len() - i) as u32);
         if size >= marker {
             if size / marker < 10 {
                 return format!("{:.1}{}", (size as f32 / marker as f32), u);
