@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use std::fs::{self, ReadDir};
 use std::io;
 
-use dust::{DirEnt, Node};
+use dust::Node;
 
 mod platform;
 use self::platform::*;
@@ -28,8 +28,8 @@ fn examine_dir_str(loc: &str, apparent_size: bool) -> (bool, Node) {
     let (hp, result) = examine_dir(fs::read_dir(loc), apparent_size, &mut inodes);
 
     // This needs to be folded into the below recursive call somehow
-    let new_size = result.iter().fold(0, |a, b| a + b.entry().size());
-    (hp, Node::new(DirEnt::new(loc, new_size), result))
+    let new_size = result.iter().fold(0, |a, b| a + b.size());
+    (hp, Node::new(loc, new_size, result))
 }
 
 fn examine_dir(
@@ -64,11 +64,10 @@ fn examine_dir(
                                 let (hp, recursive) =
                                     examine_dir(fs::read_dir(d.path()), apparent_size, inodes);
                                 have_permission = have_permission && hp;
-                                let new_size =
-                                    recursive.iter().fold(size, |a, b| a + b.entry().size());
-                                result.push(Node::new(DirEnt::new(&s, new_size), recursive))
+                                let new_size = recursive.iter().fold(size, |a, b| a + b.size());
+                                result.push(Node::new(s, new_size, recursive))
                             } else {
-                                result.push(Node::new(DirEnt::new(&s, size), vec![]))
+                                result.push(Node::new(s, size, vec![]))
                             }
                         }
                         (_, None) => have_permission = false,

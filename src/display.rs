@@ -29,11 +29,11 @@ fn display_node<S: Into<String>>(
     is = is.replace("├──", "│ ");
     is = is.replace("├─┬", "│ ");
 
-    let printable_node_slashes = node_to_print.entry().name().matches('/').count();
+    let printable_node_slashes = node_to_print.name().matches('/').count();
 
     let mut num_siblings = to_display.iter().fold(0, |a, b| {
         if node_to_print.children().contains(b)
-            && b.entry().name().matches('/').count() == printable_node_slashes + 1
+            && b.name().matches('/').count() == printable_node_slashes + 1
         {
             a + 1
         } else {
@@ -49,7 +49,7 @@ fn display_node<S: Into<String>>(
                 .fold(false, |has_kids, n| has_kids || to_display.contains(&n));
 
             let has_children = node.children().len() > 0 && has_display_children;
-            if node.entry().name().matches('/').count() == printable_node_slashes + 1 {
+            if node.name().matches('/').count() == printable_node_slashes + 1 {
                 num_siblings -= 1;
 
                 let tree_chars = {
@@ -81,7 +81,7 @@ fn display_node<S: Into<String>>(
 }
 
 fn print_this_node(node_to_print: &Node, is_biggest: bool, depth: u8, indentation_str: &str) {
-    let padded_size = format!("{:>5}", human_readable_number(node_to_print.entry().size()),);
+    let padded_size = format!("{:>5}", human_readable_number(node_to_print.size()),);
     println!(
         "{} {} {}",
         if is_biggest {
@@ -92,7 +92,7 @@ fn print_this_node(node_to_print: &Node, is_biggest: bool, depth: u8, indentatio
         indentation_str,
         Fixed(7)
             .on(Fixed(cmp::min(8, (depth) as u8) + 231))
-            .paint(node_to_print.entry().name().to_string())
+            .paint(node_to_print.name().to_string())
     );
 }
 
