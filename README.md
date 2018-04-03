@@ -11,6 +11,7 @@ Dust will list the 15 biggest sub directories and will smartly recurse down the 
 
 ```
 Usage: dust <dir>
+Usage: dust -s <dir> (apparent-size - shows the length of the file as opposed to the amount of disk space it uses)
 Usage: dust -n 30  <dir>  (Shows 30 directories not 15)
 ```
 
@@ -35,3 +36,5 @@ djin:git/dust> dust
  5.9M     └── ./target/release/dust
 ```
 Performance: dust is currently about 4 times slower than du.
+
+Note: Apparent-size is calculated slightly differently in dust to gdu. In dust each hard link is counted as using file_length space. In gdu only the first entry is counted.
