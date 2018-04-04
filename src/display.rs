@@ -13,7 +13,7 @@ pub fn draw_it(permissions: bool, heads: &Vec<Node>, to_display: &Vec<&Node>) ->
 
     for d in to_display {
         if heads.contains(d) {
-            display_node(d, &to_display, true, 1, "")
+            display_node(d, &to_display, true, "")
         }
     }
 }
@@ -22,11 +22,10 @@ fn display_node<S: Into<String>>(
     node_to_print: &Node,
     to_display: &Vec<&Node>,
     is_first: bool,
-    depth: u8,
     indentation_str: S,
 ) {
     let mut is = indentation_str.into();
-    print_this_node(node_to_print, is_first, depth, is.as_ref());
+    print_this_node(node_to_print, is_first, is.as_ref());
 
     is = is.replace("└─┬", "  ");
     is = is.replace("└──", "  ");
@@ -71,20 +70,14 @@ fn display_node<S: Into<String>>(
                         }
                     }
                 };
-                display_node(
-                    &node,
-                    to_display,
-                    is_biggest,
-                    depth + 1,
-                    is.to_string() + tree_chars,
-                );
+                display_node(&node, to_display, is_biggest, is.to_string() + tree_chars);
                 is_biggest = false;
             }
         }
     }
 }
 
-fn print_this_node(node_to_print: &Node, is_biggest: bool, depth: u8, indentation_str: &str) {
+fn print_this_node(node_to_print: &Node, is_biggest: bool, indentation_str: &str) {
     let padded_size = format!("{:>5}", human_readable_number(node_to_print.size()),);
     println!(
         "{} {} {}",
@@ -94,9 +87,7 @@ fn print_this_node(node_to_print: &Node, is_biggest: bool, depth: u8, indentatio
             Fixed(7).paint(padded_size)
         },
         indentation_str,
-        Fixed(7)
-            .on(Fixed(cmp::min(8, (depth) as u8) + 231))
-            .paint(node_to_print.name().to_string())
+        node_to_print.name()
     );
 }
 
