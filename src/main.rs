@@ -1,13 +1,14 @@
 #[macro_use]
 extern crate clap;
+extern crate assert_cli;
 extern crate dust;
 
+use self::display::draw_it;
 use clap::{App, AppSettings, Arg};
 use utils::{find_big_ones, get_dir_tree};
-use self::display::draw_it;
 
-mod utils;
 mod display;
+mod utils;
 
 static DEFAULT_NUMBER_OF_LINES: &'static str = "15";
 
@@ -42,3 +43,6 @@ fn main() {
     let slice_it = find_big_ones(&node_per_top_level_dir, number_of_lines);
     draw_it(permissions, &node_per_top_level_dir, &slice_it);
 }
+
+#[cfg(test)]
+mod tests;

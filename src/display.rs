@@ -1,8 +1,7 @@
 extern crate ansi_term;
 
-use dust::Node;
-use std::cmp;
 use self::ansi_term::Colour::Fixed;
+use dust::Node;
 
 static UNITS: [char; 4] = ['T', 'G', 'M', 'K'];
 
@@ -77,18 +76,25 @@ fn display_node<S: Into<String>>(
     }
 }
 
-fn print_this_node(node_to_print: &Node, is_biggest: bool, indentation_str: &str) {
-    let padded_size = format!("{:>5}", human_readable_number(node_to_print.size()),);
+fn print_this_node(node: &Node, is_biggest: bool, indentation: &str) {
+    let pretty_size = format!("{:>5}", human_readable_number(node.size()),);
     println!(
+        "{}",
+        format_string(node.name(), is_biggest, pretty_size.as_ref(), indentation)
+    )
+}
+
+pub fn format_string(dir_name: &str, is_biggest: bool, size: &str, indentation: &str) -> String {
+    format!(
         "{} {} {}",
         if is_biggest {
-            Fixed(196).paint(padded_size)
+            Fixed(196).paint(size)
         } else {
-            Fixed(7).paint(padded_size)
+            Fixed(7).paint(size)
         },
-        indentation_str,
-        node_to_print.name()
-    );
+        indentation,
+        dir_name,
+    )
 }
 
 fn human_readable_number(size: u64) -> (String) {
