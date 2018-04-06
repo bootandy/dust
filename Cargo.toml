@@ -7,3 +7,5 @@ authors = ["bootandy <bootandy@gmail.com>", "nebkor <code@ardent.nebcorp.com>"]
 ansi_term = "0.11"
 clap = "2.31"
 assert_cli = "0.5"
+tempfile = "3"
+
