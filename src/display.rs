@@ -97,7 +97,7 @@ pub fn format_string(dir_name: &str, is_biggest: bool, size: &str, indentation: 
     )
 }
 
-fn human_readable_number(size: u64) -> (String) {
+fn human_readable_number(size: u64) -> String {
     for (i, u) in UNITS.iter().enumerate() {
         let marker = 1024u64.pow((UNITS.len() - i) as u32);
         if size >= marker {
