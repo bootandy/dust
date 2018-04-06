@@ -1,6 +1,6 @@
 [package]
 name = "dust"
-version = "0.2.2"
+version = "0.2.3"
 authors = ["bootandy <bootandy@gmail.com>", "nebkor <code@ardent.nebcorp.com>"]
 
 [dependencies]
