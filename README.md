@@ -4,12 +4,13 @@
 # Dust
 du + rust = dust. A rust alternative to du
 
-[Releases](https://github.com/bootandy/dust/releases)
-To install:
+## Install
+
  * Download linux / mac binary from [Releases](https://github.com/bootandy/dust/releases)
  * unzip file: tar -xvf _downloaded_file.tar.gz_
  * move file to executable path: sudo mv dust /usr/local/bin/
 
+## Overview
 Unlike du, dust is meant to give you an instant overview of which directories are using disk space without requiring sort or head. Dust does not count file system blocks; it uses file sizes instead. Dust will print a maximum of 1 'Did not have permissions message'.
 
 
@@ -42,9 +43,10 @@ djin:git/dust> dust
  6.7M     │ └── ./target/release/deps/libclap-87bc2534ea57f044.rlib
  5.9M     └── ./target/release/dust
 ```
-Performance: dust is currently about 4 times slower than du.
+## Performance
+dust is currently about 4 times slower than du.
 
-Alternatives:
+## Alternatives
  * [NCDU](https://dev.yorhel.nl/ncdu)
  * du -d 1 -h | sort -h
 
