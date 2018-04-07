@@ -11,7 +11,16 @@ use std::process::Command;
 
 #[test]
 pub fn test_main() {
-    let r = format!(
+    assert_cli::Assert::main_binary()
+        .with_args(&["src/test_dir"])
+        .stdout()
+        .is(main_output())
+        .unwrap();
+}
+
+#[cfg(target_os = "macos")]
+fn main_output() -> String {
+    format!(
         "{}
 {}
 {}
@@ -20,13 +29,21 @@ pub fn test_main() {
         format_string("src/test_dir/many", true, " 4.0K", "└─┬",),
         format_string("src/test_dir/many/hello_file", true, " 4.0K", "  ├──",),
         format_string("src/test_dir/many/a_file", false, "   0B", "  └──",),
-    );
+    )
+}
 
-    assert_cli::Assert::main_binary()
-        .with_args(&["src/test_dir"])
-        .stdout()
-        .is(r)
-        .unwrap();
+#[cfg(target_os = "linux")]
+fn main_output() -> String {
+    format!(
+        "{}
+{}
+{}
+{}",
+        format_string("src/test_dir", true, " 8.0K", ""),
+        format_string("src/test_dir/many", true, " 8.0K", "└─┬",),
+        format_string("src/test_dir/many/hello_file", true, " 4.0K", "  ├──",),
+        format_string("src/test_dir/many/a_file", false, "   0B", "  └──",),
+    )
 }
 
 #[test]
@@ -66,20 +83,34 @@ pub fn test_soft_sym_link() {
         .output();
     assert!(c.is_ok());
 
-    let r = format!(
-        "{}
-{}
-{}",
-        format_string(dir_s, true, " 8.0K", ""),
-        format_string(file_path_s, true, " 4.0K", "├──",),
-        format_string(link_name_s, false, " 4.0K", "└──",),
-    );
-
     assert_cli::Assert::main_binary()
         .with_args(&[dir_s])
         .stdout()
-        .contains(r)
+        .contains(soft_sym_link_output(dir_s, file_path_s, link_name_s))
         .unwrap();
+}
+
+#[cfg(target_os = "macos")]
+fn soft_sym_link_output(dir: &str, file_path: &str, link_name: &str) -> String {
+    format!(
+        "{}
+{}
+{}",
+        format_string(dir, true, " 8.0K", ""),
+        format_string(file_path, true, " 4.0K", "├──",),
+        format_string(link_name, false, " 4.0K", "└──",),
+    )
+}
+#[cfg(target_os = "linux")]
+fn soft_sym_link_output(dir: &str, file_path: &str, link_name: &str) -> String {
+    format!(
+        "{}
+{}
+{}",
+        format_string(dir, true, " 4.0K", ""),
+        format_string(file_path, true, " 4.0K", "├──",),
+        format_string(link_name, false, "   0B", "└──",),
+    )
 }
 
 // Hard links are ignored as the inode is the same as the file
@@ -121,20 +152,35 @@ pub fn test_recursive_sym_link() {
     let link_name = dir.path().join("the_link");
     let link_name_s = link_name.to_str().unwrap();
 
-    let c = Command::new("cd").arg(dir_s).output();
-    assert!(c.is_ok());
     let c = Command::new("ln")
         .arg("-s")
-        .arg(".")
+        .arg(dir_s)
         .arg(link_name_s)
         .output();
     assert!(c.is_ok());
 
-    let r = format!("{}", format_string(dir_s, true, " 4.0K", ""));
-
     assert_cli::Assert::main_binary()
         .with_args(&[dir_s])
         .stdout()
-        .contains(r)
+        .contains(recursive_sym_link_output(dir_s, link_name_s))
         .unwrap();
+}
+
+#[cfg(target_os = "macos")]
+fn recursive_sym_link_output(dir: &str, link_name: &str) -> String {
+    format!(
+        "{}
+{}",
+        format_string(dir, true, " 4.0K", ""),
+        format_string(link_name, true, " 4.0K", "└──",),
+    )
+}
+#[cfg(target_os = "linux")]
+fn recursive_sym_link_output(dir: &str, link_name: &str) -> String {
+    format!(
+        "{}
+{}",
+        format_string(dir, true, "   0B", ""),
+        format_string(link_name, true, "   0B", "└──",),
+    )
 }
