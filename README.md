@@ -2,7 +2,7 @@
 
 
 # Dust
-du + rust = dust. A rust alternative to du
+du + rust = dust. Like du but more intuitive
 
 ## Install
 
@@ -11,11 +11,11 @@ du + rust = dust. A rust alternative to du
  * move file to executable path: sudo mv dust /usr/local/bin/
 
 ## Overview
-Unlike du, dust is meant to give you an instant overview of which directories are using disk space without requiring sort or head. Dust does not count file system blocks; it uses file sizes instead. Dust will print a maximum of 1 'Did not have permissions message'.
+Dust is meant to give you an instant overview of which directories are using disk space without requiring sort or head. Dust will print a maximum of 1 'Did not have permissions message'.
 
+Dust will list the 15 biggest sub directories or files and will smartly recurse down the tree to find the larger ones. There is no need for a '-d' flag or a '-h' flag. The largest sub directory will have its size shown in <span style="color:red">*red*</span>
 
-Dust will list the 15 biggest sub directories and will smartly recurse down the tree to find the larger ones. There is no need for a '-d' flag or a '-h' flag. The largest sub directory will have its size shown in red
-
+## Usage
 ```
 Usage: dust <dir>
 Usage: dust <dir> <another_dir> <and_more>
