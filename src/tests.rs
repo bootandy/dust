@@ -6,6 +6,7 @@ use super::*;
 use display::format_string;
 use std::fs::File;
 use std::io::Write;
+use std::panic;
 use std::path::PathBuf;
 use std::process::Command;
 
@@ -135,12 +136,30 @@ pub fn test_hard_sym_link() {
         format_string(dir_s, true, " 4.0K", ""),
         format_string(file_path_s, true, " 4.0K", "└──")
     );
+    let r2 = format!(
+        "{}
+{}",
+        format_string(dir_s, true, " 4.0K", ""),
+        format_string(link_name_s, true, " 4.0K", "└──")
+    );
 
-    assert_cli::Assert::main_binary()
-        .with_args(&[dir_s])
-        .stdout()
-        .contains(r)
-        .unwrap();
+    // Because this is a hard link the file and hard link look identicle. Therefore
+    // we cannot guarantee which version will appear first.
+    // TODO: Consider adding predictable itteration order (sort file entries by name?)
+    let result = panic::catch_unwind(|| {
+        assert_cli::Assert::main_binary()
+            .with_args(&[dir_s])
+            .stdout()
+            .contains(r)
+            .unwrap();
+    });
+    if result.is_err() {
+        assert_cli::Assert::main_binary()
+            .with_args(&[dir_s])
+            .stdout()
+            .contains(r2)
+            .unwrap();
+    }
 }
 
 //Check we don't recurse down an infinite symlink tree
