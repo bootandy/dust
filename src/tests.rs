@@ -41,10 +41,19 @@ fn main_output() -> String {
 {}
 {}",
         format_string("src/test_dir", true, " 8.0K", ""),
-        format_string("src/test_dir/many", true, " 8.0K", "└─┬",),
+        format_string("src/test_dir/many", true, " 4.0K", "└─┬",),
         format_string("src/test_dir/many/hello_file", true, " 4.0K", "  ├──",),
         format_string("src/test_dir/many/a_file", false, "   0B", "  └──",),
     )
+}
+
+#[test]
+pub fn test_main_extra_slash() {
+    assert_cli::Assert::main_binary()
+        .with_args(&["src/test_dir/"])
+        .stdout()
+        .is(main_output())
+        .unwrap();
 }
 
 #[test]

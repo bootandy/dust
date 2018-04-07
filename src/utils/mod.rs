@@ -1,86 +1,94 @@
 use std::collections::HashSet;
 
-use std::fs::{self, ReadDir};
-use std::io;
+use std::fs;
 
 use dust::Node;
+use std::path::Path;
 
 mod platform;
 use self::platform::*;
 
 pub fn get_dir_tree(filenames: &Vec<&str>, apparent_size: bool) -> (bool, Vec<Node>) {
     let mut permissions = true;
+    let mut inodes: HashSet<(u64, u64)> = HashSet::new();
     let mut results = vec![];
     for &b in filenames {
-        let mut new_name = String::from(b);
-        while new_name.chars().last() == Some('/') && new_name.len() != 1 {
-            new_name.pop();
-        }
-        let (hp, data) = examine_dir_str(&new_name, apparent_size);
+        let filename = strip_end_slashes(b);
+        let (hp, data) = examine_dir(&Path::new(&filename), apparent_size, &mut inodes);
         permissions = permissions && hp;
-        results.push(data);
+        match data {
+            Some(d) => results.push(d),
+            None => permissions = false,
+        }
     }
     (permissions, results)
 }
 
-fn examine_dir_str(loc: &str, apparent_size: bool) -> (bool, Node) {
-    let mut inodes: HashSet<(u64, u64)> = HashSet::new();
-    let (hp, result) = examine_dir(fs::read_dir(loc), apparent_size, &mut inodes);
-
-    // This needs to be folded into the below recursive call somehow
-    let new_size = result.iter().fold(0, |a, b| a + b.size());
-    (hp, Node::new(loc, new_size, result))
+fn strip_end_slashes(s: &str) -> String {
+    let mut new_name = String::from(s);
+    while new_name.chars().last() == Some('/') && new_name.len() != 1 {
+        new_name.pop();
+    }
+    new_name
 }
 
 fn examine_dir(
-    a_dir: io::Result<ReadDir>,
+    sdir: &Path,
     apparent_size: bool,
     inodes: &mut HashSet<(u64, u64)>,
-) -> (bool, Vec<Node>) {
-    let mut result = vec![];
-    let mut have_permission = true;
+) -> (bool, Option<Node>) {
+    match fs::read_dir(sdir) {
+        Ok(file_iter) => {
+            let mut result = vec![];
+            let mut have_permission = true;
+            let mut total_size = 0;
 
-    if a_dir.is_ok() {
-        let paths = a_dir.unwrap();
-        for dd in paths {
-            match dd {
-                Ok(d) => {
-                    let file_type = d.file_type().ok();
-                    let maybe_size_and_inode = get_metadata(&d, apparent_size);
+            for single_path in file_iter {
+                match single_path {
+                    Ok(d) => {
+                        let file_type = d.file_type().ok();
+                        let maybe_size_and_inode = get_metadata(&d, apparent_size);
 
-                    match (file_type, maybe_size_and_inode) {
-                        (Some(file_type), Some((size, inode))) => {
-                            let s = d.path().to_string_lossy().to_string();
-                            if !apparent_size {
-                                if let Some(inode_dev_pair) = inode {
-                                    if inodes.contains(&inode_dev_pair) {
-                                        continue;
+                        match (file_type, maybe_size_and_inode) {
+                            (Some(file_type), Some((size, maybe_inode))) => {
+                                if !apparent_size {
+                                    if let Some(inode_dev_pair) = maybe_inode {
+                                        if inodes.contains(&inode_dev_pair) {
+                                            continue;
+                                        }
+                                        inodes.insert(inode_dev_pair);
                                     }
-                                    inodes.insert(inode_dev_pair);
+                                }
+                                total_size += size;
+
+                                if d.path().is_dir() && !file_type.is_symlink() {
+                                    let (hp, child) = examine_dir(&d.path(), apparent_size, inodes);
+                                    have_permission = have_permission && hp;
+
+                                    match child {
+                                        Some(c) => {
+                                            total_size += c.size();
+                                            result.push(c);
+                                        }
+                                        None => (),
+                                    }
+                                } else {
+                                    let path_name = d.path().to_string_lossy().to_string();
+                                    result.push(Node::new(path_name, size, vec![]))
                                 }
                             }
-
-                            if d.path().is_dir() && !file_type.is_symlink() {
-                                let (hp, recursive) =
-                                    examine_dir(fs::read_dir(d.path()), apparent_size, inodes);
-                                have_permission = have_permission && hp;
-                                let new_size = recursive.iter().fold(size, |a, b| a + b.size());
-                                result.push(Node::new(s, new_size, recursive))
-                            } else {
-                                result.push(Node::new(s, size, vec![]))
-                            }
+                            (_, None) => have_permission = false,
+                            (_, _) => (),
                         }
-                        (_, None) => have_permission = false,
-                        (_, _) => (),
                     }
+                    Err(_) => (),
                 }
-                Err(_) => (),
             }
+            let n = Node::new(sdir.to_string_lossy().to_string(), total_size, result);
+            (have_permission, Some(n))
         }
-    } else {
-        have_permission = false;
+        Err(_) => (false, None),
     }
-    (have_permission, result)
 }
 
 // We start with a list of root directories - these must be the biggest folders
