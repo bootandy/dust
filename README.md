@@ -13,7 +13,12 @@ du + rust = dust. Like du but more intuitive
 ## Overview
 Dust is meant to give you an instant overview of which directories are using disk space without requiring sort or head. Dust will print a maximum of 1 'Did not have permissions message'.
 
-Dust will list the 15 biggest sub directories or files and will smartly recurse down the tree to find the larger ones. There is no need for a '-d' flag or a '-h' flag. The largest sub directory will have its size shown in <span style="color:red">*red*</span>
+Dust will list the 15 biggest sub directories or files and will smartly recurse down the tree to find the larger ones. There is no need for a '-d' flag or a '-h' flag. The largest sub directory will have its size shown in *red*
+
+## Why?
+du has a number of ways of showing you what it finds, in terms of disk consumption, but really, there are only one or two ways you invoke it: with -h for “human readable” units, like 100G or 89k, or with -b for “bytes”. The former is generally used for a quick survey of a directory with a small number of things in it, and the latter for when you have a bunch and need to sort the output numerically, and you’re obligated to either further pass it into something like awk to turn bytes into the appropriate human-friendly unit like mega or gigabytes, or you just do some rough math in your head and use the ordering to sanity check. Then once you have the top offenders, you recurse down into the largest one and repeat the process until you’ve found your cruft or gems and can move on.
+
+Dust assumes that’s what you wanted to do in the first place, and takes care of tracking the largest offenders in terms of actual size, and showing them to you with human-friendly units and in-context within the filetree. 
 
 ## Usage
 ```
