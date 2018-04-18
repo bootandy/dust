@@ -1,7 +1,8 @@
 extern crate ansi_term;
 
 use self::ansi_term::Colour::Fixed;
-use dust::Node;
+
+use lib::Node;
 
 static UNITS: [char; 4] = ['T', 'G', 'M', 'K'];
 

@@ -2,9 +2,9 @@ use std::collections::HashSet;
 
 use std::fs;
 
-use dust::Node;
 use std::path::Path;
 
+use lib::Node;
 mod platform;
 use self::platform::*;
 
