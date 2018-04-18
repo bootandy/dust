@@ -5,7 +5,10 @@
 du + rust = dust. Like du but more intuitive
 
 ## Install
+### Cargo:
+ *  cargo install du-dust                                                                                                                                                                                 
 
+### Download:
  * Download linux / mac binary from [Releases](https://github.com/bootandy/dust/releases)
  * unzip file: tar -xvf _downloaded_file.tar.gz_
  * move file to executable path: sudo mv dust /usr/local/bin/
