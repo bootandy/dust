@@ -2,86 +2,107 @@ extern crate ansi_term;
 
 use self::ansi_term::Colour::Fixed;
 
-use lib::Node;
-
 static UNITS: [char; 4] = ['T', 'G', 'M', 'K'];
 
-pub fn draw_it(permissions: bool, heads: &Vec<Node>, to_display: &Vec<&Node>) -> () {
+pub fn draw_it(permissions: bool, base_dirs: Vec<&str>, to_display: Vec<(String, u64)>) -> () {
     if !permissions {
         eprintln!("Did not have permissions for all directories");
     }
 
-    for d in to_display {
-        if heads.contains(d) {
-            display_node(d, &to_display, true, "")
-        }
+    for f in base_dirs {
+        display_node(f, &to_display, true, "")
     }
 }
 
+fn get_size(nodes: &Vec<(String, u64)>, node_to_print: String) -> Option<u64> {
+    for &(ref k, ref v) in nodes.iter() {
+        if *k == node_to_print {
+            return Some(*v);
+        }
+    }
+    None
+}
+
 fn display_node<S: Into<String>>(
-    node_to_print: &Node,
-    to_display: &Vec<&Node>,
-    is_first: bool,
+    node_to_print: &str,
+    to_display: &Vec<(String, u64)>,
+    is_biggest: bool,
     indentation_str: S,
 ) {
     let mut is = indentation_str.into();
-    print_this_node(node_to_print, is_first, is.as_ref());
+    let size = get_size(to_display, node_to_print.to_string());
+    match size {
+        None => println!("Can not find path: {}", node_to_print),
+        Some(size) => {
+            print_this_node(node_to_print, size, is_biggest, is.as_ref());
 
-    is = is.replace("└─┬", "  ");
-    is = is.replace("└──", "  ");
-    is = is.replace("├──", "│ ");
-    is = is.replace("├─┬", "│ ");
+            is = is.replace("└─┬", "  ");
+            is = is.replace("└──", "  ");
+            is = is.replace("├──", "│ ");
+            is = is.replace("├─┬", "│ ");
 
-    let printable_node_slashes = node_to_print.name().matches('/').count();
+            let printable_node_slashes = node_to_print.matches('/').count();
 
-    let mut num_siblings = to_display.iter().fold(0, |a, b| {
-        if node_to_print.children().contains(b)
-            && b.name().matches('/').count() == printable_node_slashes + 1
-        {
-            a + 1
-        } else {
-            a
-        }
-    });
+            let mut num_siblings = to_display.iter().fold(0, |a, b| {
+                if b.0.starts_with(node_to_print)
+                    && b.0.matches('/').count() == printable_node_slashes + 1
+                {
+                    a + 1
+                } else {
+                    a
+                }
+            });
 
-    let mut is_biggest = true;
-    for node in to_display {
-        if node_to_print.children().contains(node) {
-            let has_display_children = node.children()
-                .iter()
-                .fold(false, |has_kids, n| has_kids || to_display.contains(&n));
+            let mut is_biggest = true;
+            for &(ref k, _) in to_display.iter() {
+                if k.starts_with(node_to_print)
+                    && k.matches('/').count() == printable_node_slashes + 1
+                {
+                    num_siblings -= 1;
 
-            let has_children = node.children().len() > 0 && has_display_children;
-            if node.name().matches('/').count() == printable_node_slashes + 1 {
-                num_siblings -= 1;
-
-                let tree_chars = {
-                    if num_siblings == 0 {
-                        if has_children {
-                            "└─┬"
-                        } else {
-                            "└──"
-                        }
-                    } else {
-                        if has_children {
-                            "├─┬"
-                        } else {
-                            "├──"
+                    let mut has_children = false;
+                    for &(ref k2, _) in to_display.iter() {
+                        let kk :&str = k.as_ref();
+                        if k2.starts_with(kk)
+                            && k2.matches('/').count() == printable_node_slashes + 2
+                        {
+                            has_children = true;
                         }
                     }
-                };
-                display_node(&node, to_display, is_biggest, is.to_string() + tree_chars);
-                is_biggest = false;
+
+                    display_node(
+                        &k,
+                        to_display,
+                        is_biggest,
+                        is.to_string() + get_tree_chars(num_siblings, has_children),
+                    );
+                    is_biggest = false;
+                }
             }
         }
     }
 }
 
-fn print_this_node(node: &Node, is_biggest: bool, indentation: &str) {
-    let pretty_size = format!("{:>5}", human_readable_number(node.size()),);
+fn get_tree_chars(num_siblings: u64, has_children: bool) -> &'static str {
+    if num_siblings == 0 {
+        if has_children {
+            "└─┬"
+        } else {
+            "└──"
+        }
+    } else {
+        if has_children {
+            "├─┬"
+        } else {
+            "├──"
+        }
+    }
+}
+fn print_this_node(node_name: &str, size: u64, is_biggest: bool, indentation: &str) {
+    let pretty_size = format!("{:>5}", human_readable_number(size),);
     println!(
         "{}",
-        format_string(node.name(), is_biggest, pretty_size.as_ref(), indentation)
+        format_string(node_name, is_biggest, pretty_size.as_ref(), indentation)
     )
 }
 

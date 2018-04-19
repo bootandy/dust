@@ -40,20 +40,11 @@ fn main_output() -> String {
 {}
 {}
 {}",
-        format_string("src/test_dir", true, " 8.0K", ""),
-        format_string("src/test_dir/many", true, " 4.0K", "└─┬",),
+        format_string("src/test_dir", true, "  12K", ""),
+        format_string("src/test_dir/many", true, " 8.0K", "└─┬",),
         format_string("src/test_dir/many/hello_file", true, " 4.0K", "  ├──",),
         format_string("src/test_dir/many/a_file", false, "   0B", "  └──",),
     )
-}
-
-#[test]
-pub fn test_main_extra_slash() {
-    assert_cli::Assert::main_binary()
-        .with_args(&["src/test_dir/"])
-        .stdout()
-        .is(main_output())
-        .unwrap();
 }
 
 #[test]
@@ -117,7 +108,7 @@ fn soft_sym_link_output(dir: &str, file_path: &str, link_name: &str) -> String {
         "{}
 {}
 {}",
-        format_string(dir, true, " 4.0K", ""),
+        format_string(dir, true, " 8.0K", ""),
         format_string(file_path, true, " 4.0K", "├──",),
         format_string(link_name, false, "   0B", "└──",),
     )
@@ -139,18 +130,7 @@ pub fn test_hard_sym_link() {
         .output();
     assert!(c.is_ok());
 
-    let r = format!(
-        "{}
-{}",
-        format_string(dir_s, true, " 4.0K", ""),
-        format_string(file_path_s, true, " 4.0K", "└──")
-    );
-    let r2 = format!(
-        "{}
-{}",
-        format_string(dir_s, true, " 4.0K", ""),
-        format_string(link_name_s, true, " 4.0K", "└──")
-    );
+    let (r, r2) = hard_link_output(dir_s, file_path_s, link_name_s);
 
     // Because this is a hard link the file and hard link look identicle. Therefore
     // we cannot guarantee which version will appear first.
@@ -169,6 +149,41 @@ pub fn test_hard_sym_link() {
             .contains(r2)
             .unwrap();
     }
+}
+
+#[cfg(target_os = "macos")]
+fn hard_link_output(dir_s: &str, file_path_s: &str, link_name_s: &str) -> (String, String) {
+    let r = format!(
+        "{}
+{}",
+        format_string(dir_s, true, " 4.0K", ""),
+        format_string(file_path_s, true, " 4.0K", "└──")
+    );
+    let r2 = format!(
+        "{}
+{}",
+        format_string(dir_s, true, " 4.0K", ""),
+        format_string(link_name_s, true, " 4.0K", "└──")
+    );
+    (r, r2)
+}
+
+#[cfg(target_os = "linux")]
+fn hard_link_output(dir_s: &str, file_path_s: &str, link_name_s: &str) -> (String, String) {
+    let r = format!(
+        "{}
+{}",
+
+        format_string(dir_s, true, " 8.0K", ""),
+        format_string(file_path_s, true, " 4.0K", "└──")
+    );
+    let r2 = format!(
+        "{}
+{}",
+        format_string(dir_s, true, true, " 8.0K", ""),
+        format_string(link_name_s, true, true, " 4.0K", "└──")
+    );
+    (r, r2)
 }
 
 //Check we don't recurse down an infinite symlink tree
@@ -208,7 +223,10 @@ fn recursive_sym_link_output(dir: &str, link_name: &str) -> String {
     format!(
         "{}
 {}",
-        format_string(dir, true, "   0B", ""),
+        format_string(dir, true, " 4.0K", ""),
         format_string(link_name, true, "   0B", "└──",),
     )
 }
+
+
+// TODO: add test for bad path
