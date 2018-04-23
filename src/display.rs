@@ -4,13 +4,18 @@ use self::ansi_term::Colour::Fixed;
 
 static UNITS: [char; 4] = ['T', 'G', 'M', 'K'];
 
-pub fn draw_it(permissions: bool, base_dirs: Vec<&str>, to_display: Vec<(String, u64)>) -> () {
+pub fn draw_it(
+    permissions: bool,
+    short_paths: bool,
+    base_dirs: Vec<&str>,
+    to_display: Vec<(String, u64)>,
+) -> () {
     if !permissions {
         eprintln!("Did not have permissions for all directories");
     }
 
     for f in base_dirs {
-        display_node(f, &to_display, true, "")
+        display_node(f, &to_display, true, short_paths, "")
     }
 }
 
@@ -27,6 +32,7 @@ fn display_node<S: Into<String>>(
     node_to_print: &str,
     to_display: &Vec<(String, u64)>,
     is_biggest: bool,
+    short_paths: bool,
     indentation_str: S,
 ) {
     let mut is = indentation_str.into();
@@ -34,7 +40,7 @@ fn display_node<S: Into<String>>(
     match size {
         None => println!("Can not find path: {}", node_to_print),
         Some(size) => {
-            print_this_node(node_to_print, size, is_biggest, is.as_ref());
+            print_this_node(node_to_print, size, is_biggest, short_paths, is.as_ref());
 
             is = is.replace("└─┬", "  ");
             is = is.replace("└──", "  ");
@@ -74,6 +80,7 @@ fn display_node<S: Into<String>>(
                         &k,
                         to_display,
                         is_biggest,
+                        short_paths,
                         is.to_string() + get_tree_chars(num_siblings, has_children),
                     );
                     is_biggest = false;
@@ -98,15 +105,41 @@ fn get_tree_chars(num_siblings: u64, has_children: bool) -> &'static str {
         }
     }
 }
-fn print_this_node(node_name: &str, size: u64, is_biggest: bool, indentation: &str) {
+
+fn print_this_node(
+    node_name: &str,
+    size: u64,
+    is_biggest: bool,
+    short_paths: bool,
+    indentation: &str,
+) {
     let pretty_size = format!("{:>5}", human_readable_number(size),);
     println!(
         "{}",
-        format_string(node_name, is_biggest, pretty_size.as_ref(), indentation)
+        format_string(
+            node_name,
+            is_biggest,
+            short_paths,
+            pretty_size.as_ref(),
+            indentation
+        )
     )
 }
 
-pub fn format_string(dir_name: &str, is_biggest: bool, size: &str, indentation: &str) -> String {
+pub fn format_string(
+    dir_name: &str,
+    is_biggest: bool,
+    short_paths: bool,
+    size: &str,
+    indentation: &str,
+) -> String {
+    let printable_name = {
+        if short_paths && dir_name.contains('/') {
+            dir_name.split('/').last().unwrap()
+        } else {
+            dir_name
+        }
+    };
     format!(
         "{} {} {}",
         if is_biggest {
@@ -115,7 +148,7 @@ pub fn format_string(dir_name: &str, is_biggest: bool, size: &str, indentation: 
             Fixed(7).paint(size)
         },
         indentation,
-        dir_name,
+        printable_name,
     )
 }
 

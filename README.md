@@ -34,28 +34,29 @@ Dust assumes that’s what you wanted to do in the first place, and takes care o
 ```
 Usage: dust <dir>
 Usage: dust <dir> <another_dir> <and_more>
+Usage: dust -p <dir> (full-path - does not shorten the path of the subdirectories)
 Usage: dust -s <dir> (apparent-size - shows the length of the file as opposed to the amount of disk space it uses)
 Usage: dust -n 30  <dir>  (Shows 30 directories not 15)
 ```
 
 ```
 djin:git/dust> dust
-  65M  .
-  65M └─┬ ./target
-  49M   ├─┬ ./target/debug
-  26M   │ ├─┬ ./target/debug/deps
-  21M   │ │ └── ./target/debug/deps/libclap-9e6625ac8ff074ad.rlib
-  13M   │ ├── ./target/debug/dust
- 8.9M   │ └─┬ ./target/debug/incremental
- 6.7M   │   ├─┬ ./target/debug/incremental/dust-2748eiei2tcnp
- 6.7M   │   │ └─┬ ./target/debug/incremental/dust-2748eiei2tcnp/s-ezd6jnik5u-163pyem-1aab9ncf5glum
- 3.0M   │   │   └── ./target/debug/incremental/dust-2748eiei2tcnp/s-ezd6jnik5u-163pyem-1aab9ncf5glum/dep-graph.bin
- 2.2M   │   └─┬ ./target/debug/incremental/dust-1dlon65p8m3vl
- 2.2M   │     └── ./target/debug/incremental/dust-1dlon65p8m3vl/s-ezd6jncecv-1xsnfd0-4dw9l1r2th2t
-  15M   └─┬ ./target/release
- 9.2M     ├─┬ ./target/release/deps
- 6.7M     │ └── ./target/release/deps/libclap-87bc2534ea57f044.rlib
- 5.9M     └── ./target/release/dust
+ 1.2G  target
+ 622M ├─┬ debug
+ 445M │ ├── deps
+  70M │ ├── incremental
+  56M │ └── build
+ 262M ├─┬ rls
+ 262M │ └─┬ debug
+ 203M │   ├── deps
+  56M │   └── build
+ 165M ├─┬ package
+ 165M │ └─┬ du-dust-0.2.4
+ 165M │   └─┬ target
+ 165M │     └─┬ debug
+ 131M │       └── deps
+ 165M └─┬ release
+ 124M   └── deps
 ```
 
 ## Performance

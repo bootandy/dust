@@ -23,7 +23,12 @@ fn main() {
                 .default_value(DEFAULT_NUMBER_OF_LINES),
         )
         .arg(
-            Arg::with_name("use_apparent_size")
+            Arg::with_name("display_full_paths")
+                .short("p")
+                .help("If set sub directories will not have their path shortened"),
+        )
+        .arg(
+            Arg::with_name("display_apparent_size")
                 .short("s")
                 .help("If set will use file length. Otherwise we use blocks"),
         )
@@ -37,11 +42,12 @@ fn main() {
         }
     };
     let number_of_lines = value_t!(options.value_of("number_of_lines"), usize).unwrap();
-    let use_apparent_size = options.is_present("use_apparent_size");
+    let use_apparent_size = options.is_present("display_apparent_size");
+    let use_full_path = options.is_present("display_full_paths");
 
     let (permissions, nodes) = get_dir_tree(&filenames, use_apparent_size);
     let biggest_ones = find_big_ones(nodes, number_of_lines);
-    draw_it(permissions, filenames, biggest_ones);
+    draw_it(permissions, !use_full_path, filenames, biggest_ones);
 }
 
 #[cfg(test)]
