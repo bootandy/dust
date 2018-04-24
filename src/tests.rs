@@ -15,52 +15,52 @@ pub fn test_main() {
     assert_cli::Assert::main_binary()
         .with_args(&["src/test_dir"])
         .stdout()
-        .is(main_output())
+        .is(main_output(true))
+        .unwrap();
+}
+
+#[test]
+pub fn test_main_long_paths() {
+    assert_cli::Assert::main_binary()
+        .with_args(&["-p", "src/test_dir"])
+        .stdout()
+        .is(main_output(false))
         .unwrap();
 }
 
 #[cfg(target_os = "macos")]
-fn main_output() -> String {
+fn main_output(short_paths: bool) -> String {
     format!(
         "{}
 {}
 {}
 {}",
-        format_string("src/test_dir", true, " 4.0K", ""),
-        format_string("src/test_dir/many", true, " 4.0K", "└─┬",),
-        format_string("src/test_dir/many/hello_file", true, " 4.0K", "  ├──",),
-        format_string("src/test_dir/many/a_file", false, "   0B", "  └──",),
+        format_string("src/test_dir", true, short_paths, " 4.0K", ""),
+        format_string("src/test_dir/many", true, short_paths, " 4.0K", "└─┬",),
+        format_string("src/test_dir/many/hello_file", true, short_paths, " 4.0K", "  ├──",),
+        format_string("src/test_dir/many/a_file", false, short_paths, "   0B", "  └──",),
     )
 }
 
 #[cfg(target_os = "linux")]
-fn main_output() -> String {
+fn main_output(short_paths: bool) -> String {
     format!(
         "{}
 {}
 {}
 {}",
-        format_string("src/test_dir", true, " 8.0K", ""),
-        format_string("src/test_dir/many", true, " 4.0K", "└─┬",),
-        format_string("src/test_dir/many/hello_file", true, " 4.0K", "  ├──",),
-        format_string("src/test_dir/many/a_file", false, "   0B", "  └──",),
+        format_string("src/test_dir", true, short_paths, "  12K", ""),
+        format_string("src/test_dir/many", true, short_paths, " 8.0K", "└─┬",),
+        format_string("src/test_dir/many/hello_file", true, short_paths, " 4.0K", "  ├──",),
+        format_string("src/test_dir/many/a_file", false, short_paths, "   0B", "  └──",),
     )
-}
-
-#[test]
-pub fn test_main_extra_slash() {
-    assert_cli::Assert::main_binary()
-        .with_args(&["src/test_dir/"])
-        .stdout()
-        .is(main_output())
-        .unwrap();
 }
 
 #[test]
 pub fn test_apparent_size() {
     let r = format!(
         "{}",
-        format_string("src/test_dir/many/hello_file", true, "   6B", "  ├──",),
+        format_string("src/test_dir/many/hello_file", true, true, "   6B", "  ├──",),
     );
 
     assert_cli::Assert::main_binary()
@@ -106,9 +106,9 @@ fn soft_sym_link_output(dir: &str, file_path: &str, link_name: &str) -> String {
         "{}
 {}
 {}",
-        format_string(dir, true, " 8.0K", ""),
-        format_string(file_path, true, " 4.0K", "├──",),
-        format_string(link_name, false, " 4.0K", "└──",),
+        format_string(dir, true, true, " 8.0K", ""),
+        format_string(file_path, true, true, " 4.0K", "├──",),
+        format_string(link_name, false, true, " 4.0K", "└──",),
     )
 }
 #[cfg(target_os = "linux")]
@@ -117,9 +117,9 @@ fn soft_sym_link_output(dir: &str, file_path: &str, link_name: &str) -> String {
         "{}
 {}
 {}",
-        format_string(dir, true, " 4.0K", ""),
-        format_string(file_path, true, " 4.0K", "├──",),
-        format_string(link_name, false, "   0B", "└──",),
+        format_string(dir, true, true, " 8.0K", ""),
+        format_string(file_path, true, true, " 4.0K", "├──",),
+        format_string(link_name, false, true, "   0B", "└──",),
     )
 }
 
@@ -139,18 +139,7 @@ pub fn test_hard_sym_link() {
         .output();
     assert!(c.is_ok());
 
-    let r = format!(
-        "{}
-{}",
-        format_string(dir_s, true, " 4.0K", ""),
-        format_string(file_path_s, true, " 4.0K", "└──")
-    );
-    let r2 = format!(
-        "{}
-{}",
-        format_string(dir_s, true, " 4.0K", ""),
-        format_string(link_name_s, true, " 4.0K", "└──")
-    );
+    let (r, r2) = hard_link_output(dir_s, file_path_s, link_name_s);
 
     // Because this is a hard link the file and hard link look identicle. Therefore
     // we cannot guarantee which version will appear first.
@@ -169,6 +158,40 @@ pub fn test_hard_sym_link() {
             .contains(r2)
             .unwrap();
     }
+}
+
+#[cfg(target_os = "macos")]
+fn hard_link_output(dir_s: &str, file_path_s: &str, link_name_s: &str) -> (String, String) {
+    let r = format!(
+        "{}
+{}",
+        format_string(dir_s, true, true, " 4.0K", ""),
+        format_string(file_path_s, true, true, " 4.0K", "└──")
+    );
+    let r2 = format!(
+        "{}
+{}",
+        format_string(dir_s, true, true, " 4.0K", ""),
+        format_string(link_name_s, true, true, " 4.0K", "└──")
+    );
+    (r, r2)
+}
+
+#[cfg(target_os = "linux")]
+fn hard_link_output(dir_s: &str, file_path_s: &str, link_name_s: &str) -> (String, String) {
+    let r = format!(
+        "{}
+{}",
+        format_string(dir_s, true, true, " 8.0K", ""),
+        format_string(file_path_s, true, true, " 4.0K", "└──")
+    );
+    let r2 = format!(
+        "{}
+{}",
+        format_string(dir_s, true, true, " 8.0K", ""),
+        format_string(link_name_s, true, true, " 4.0K", "└──")
+    );
+    (r, r2)
 }
 
 //Check we don't recurse down an infinite symlink tree
@@ -199,8 +222,8 @@ fn recursive_sym_link_output(dir: &str, link_name: &str) -> String {
     format!(
         "{}
 {}",
-        format_string(dir, true, " 4.0K", ""),
-        format_string(link_name, true, " 4.0K", "└──",),
+        format_string(dir, true, true, " 4.0K", ""),
+        format_string(link_name, true, true, " 4.0K", "└──",),
     )
 }
 #[cfg(target_os = "linux")]
@@ -208,7 +231,9 @@ fn recursive_sym_link_output(dir: &str, link_name: &str) -> String {
     format!(
         "{}
 {}",
-        format_string(dir, true, "   0B", ""),
-        format_string(link_name, true, "   0B", "└──",),
+        format_string(dir, true, true, " 4.0K", ""),
+        format_string(link_name, true, true, "   0B", "└──",),
     )
 }
+
+// TODO: add test for bad path
