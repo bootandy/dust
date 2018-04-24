@@ -37,8 +37,20 @@ fn main_output(short_paths: bool) -> String {
 {}",
         format_string("src/test_dir", true, short_paths, " 4.0K", ""),
         format_string("src/test_dir/many", true, short_paths, " 4.0K", "└─┬",),
-        format_string("src/test_dir/many/hello_file", true, short_paths, " 4.0K", "  ├──",),
-        format_string("src/test_dir/many/a_file", false, short_paths, "   0B", "  └──",),
+        format_string(
+            "src/test_dir/many/hello_file",
+            true,
+            short_paths,
+            " 4.0K",
+            "  ├──",
+        ),
+        format_string(
+            "src/test_dir/many/a_file",
+            false,
+            short_paths,
+            "   0B",
+            "  └──",
+        ),
     )
 }
 
@@ -51,8 +63,20 @@ fn main_output(short_paths: bool) -> String {
 {}",
         format_string("src/test_dir", true, short_paths, "  12K", ""),
         format_string("src/test_dir/many", true, short_paths, " 8.0K", "└─┬",),
-        format_string("src/test_dir/many/hello_file", true, short_paths, " 4.0K", "  ├──",),
-        format_string("src/test_dir/many/a_file", false, short_paths, "   0B", "  └──",),
+        format_string(
+            "src/test_dir/many/hello_file",
+            true,
+            short_paths,
+            " 4.0K",
+            "  ├──",
+        ),
+        format_string(
+            "src/test_dir/many/a_file",
+            false,
+            short_paths,
+            "   0B",
+            "  └──",
+        ),
     )
 }
 
@@ -60,7 +84,13 @@ fn main_output(short_paths: bool) -> String {
 pub fn test_apparent_size() {
     let r = format!(
         "{}",
-        format_string("src/test_dir/many/hello_file", true, true, "   6B", "  ├──",),
+        format_string(
+            "src/test_dir/many/hello_file",
+            true,
+            true,
+            "   6B",
+            "  ├──",
+        ),
     );
 
     assert_cli::Assert::main_binary()
@@ -93,34 +123,60 @@ pub fn test_soft_sym_link() {
         .output();
     assert!(c.is_ok());
 
-    assert_cli::Assert::main_binary()
-        .with_args(&[dir_s])
-        .stdout()
-        .contains(soft_sym_link_output(dir_s, file_path_s, link_name_s))
-        .unwrap();
+    let (r, r2) = soft_sym_link_output(dir_s, file_path_s, link_name_s);
+
+    // We cannot guarantee which version will appear first.
+    // TODO: Consider adding predictable itteration order (sort file entries by name?)
+    let result = panic::catch_unwind(|| {
+        assert_cli::Assert::main_binary()
+            .with_args(&[dir_s])
+            .stdout()
+            .contains(r)
+            .unwrap();
+    });
+    if result.is_err() {
+        assert_cli::Assert::main_binary()
+            .with_args(&[dir_s])
+            .stdout()
+            .contains(r2)
+            .unwrap();
+    }
 }
 
 #[cfg(target_os = "macos")]
-fn soft_sym_link_output(dir: &str, file_path: &str, link_name: &str) -> String {
-    format!(
+fn soft_sym_link_output(dir: &str, file_path: &str, link_name: &str) -> (String, String) {
+    let r = format!(
         "{}
 {}
 {}",
         format_string(dir, true, true, " 8.0K", ""),
         format_string(file_path, true, true, " 4.0K", "├──",),
         format_string(link_name, false, true, " 4.0K", "└──",),
-    )
+    );
+    let r2 = format!(
+        "{}
+{}
+{}",
+        format_string(dir, true, true, " 8.0K", ""),
+        format_string(link_name, true, true, " 4.0K", "├──",),
+        format_string(file_path, false, true, " 4.0K", "└──",),
+    );
+    (r, r2)
 }
+
 #[cfg(target_os = "linux")]
-fn soft_sym_link_output(dir: &str, file_path: &str, link_name: &str) -> String {
-    format!(
+fn soft_sym_link_output(dir: &str, file_path: &str, link_name: &str) -> (String, String) {
+    let r = format!(
         "{}
 {}
 {}",
         format_string(dir, true, true, " 8.0K", ""),
         format_string(file_path, true, true, " 4.0K", "├──",),
         format_string(link_name, false, true, "   0B", "└──",),
-    )
+    );
+    // I have not yet seen the output appear the other way round on linux. If this happens
+    // then add in an alterate ordering like in the mac version of this function.
+    (r, "".to_string())
 }
 
 // Hard links are ignored as the inode is the same as the file
