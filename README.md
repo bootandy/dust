@@ -7,11 +7,11 @@ du + rust = dust. Like du but more intuitive
 
 ## Install
 
-### Cargo:
+### Cargo
 
 * cargo install du-dust
 
-### Download:
+### Download
 
 * Download linux / mac binary from [Releases](https://github.com/bootandy/dust/releases)
 * unzip file: tar -xvf _downloaded_file.tar.gz_
@@ -21,7 +21,7 @@ du + rust = dust. Like du but more intuitive
 
 Dust is meant to give you an instant overview of which directories are using disk space without requiring sort or head. Dust will print a maximum of 1 'Did not have permissions message'.
 
-Dust will list the 15 biggest sub directories or files and will smartly recurse down the tree to find the larger ones. There is no need for a '-d' flag or a '-h' flag. The largest sub directory will have its size shown in *red*
+Dust will list the 20 biggest sub directories or files and will smartly recurse down the tree to find the larger ones. There is no need for a '-d' flag or a '-h' flag. The largest sub directory will have its size shown in *red*
 
 ## Why?
 
@@ -33,10 +33,11 @@ Dust assumes that’s what you wanted to do in the first place, and takes care o
 
 ```
 Usage: dust <dir>
-Usage: dust <dir> <another_dir> <and_more>
-Usage: dust -p <dir> (full-path - does not shorten the path of the subdirectories)
-Usage: dust -s <dir> (apparent-size - shows the length of the file as opposed to the amount of disk space it uses)
-Usage: dust -n 30  <dir>  (Shows 30 directories not 15)
+Usage: dust <dir>  <another_dir> <and_more>
+Usage: dust -p <dir>  (full-path - does not shorten the path of the subdirectories)
+Usage: dust -s <dir>  (apparent-size - shows the length of the file as opposed to the amount of disk space it uses)
+Usage: dust -n 30  <dir>  (Shows 30 directories not 20)
+Usage: dust -d 3  <dir>  (Shows 3 levels of subdirectories)
 ```
 
 ```

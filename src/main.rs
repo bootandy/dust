@@ -11,7 +11,7 @@ use utils::{find_big_ones, get_dir_tree, sort};
 mod display;
 mod utils;
 
-static DEFAULT_NUMBER_OF_LINES: &'static str = "15";
+static DEFAULT_NUMBER_OF_LINES: &'static str = "20";
 
 fn main() {
     let options = App::new("Dust")
