@@ -19,12 +19,14 @@ fn main() {
         .arg(
             Arg::with_name("depth")
                 .short("d")
+                .long("depth")
                 .help("Depth to show")
                 .takes_value(true),
         )
         .arg(
             Arg::with_name("number_of_lines")
                 .short("n")
+                .long("number-of-lines")
                 .help("Number of lines of output to show")
                 .takes_value(true)
                 .default_value(DEFAULT_NUMBER_OF_LINES),
@@ -32,11 +34,13 @@ fn main() {
         .arg(
             Arg::with_name("display_full_paths")
                 .short("p")
+                .long("full-paths")
                 .help("If set sub directories will not have their path shortened"),
         )
         .arg(
             Arg::with_name("display_apparent_size")
                 .short("s")
+                .long("apparent-size")
                 .help("If set will use file length. Otherwise we use blocks"),
         )
         .arg(Arg::with_name("inputs").multiple(true))
