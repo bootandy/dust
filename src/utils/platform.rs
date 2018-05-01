@@ -9,23 +9,19 @@ fn get_block_size() -> u64 {
 #[cfg(target_family = "unix")]
 pub fn get_metadata(d: &DirEntry, use_apparent_size: bool) -> Option<(u64, Option<(u64, u64)>)> {
     use std::os::unix::fs::MetadataExt;
-    match d.metadata().ok() {
-        Some(md) => {
-            let inode = Some((md.ino(), md.dev()));
-            if use_apparent_size {
-                Some((md.len(), inode))
-            } else {
-                Some((md.blocks() * get_block_size(), inode))
-            }
+    d.metadata().ok().map_or(None, |md| {
+        let inode = Some((md.ino(), md.dev()));
+        if use_apparent_size {
+            Some((md.len(), inode))
+        } else {
+            Some((md.blocks() * get_block_size(), inode))
         }
-        None => None,
-    }
+    })
 }
 
 #[cfg(not(target_family = "unix"))]
 pub fn get_metadata(d: &DirEntry, _apparent: bool) -> Option<(u64, Option<(u64, u64)>)> {
-    match d.metadata().ok() {
-        Some(md) => Some((md.len(), None)),
-        None => None,
-    }
+    d.metadata().ok().map_or(None, |md| {
+        Some((md.len(), None))
+    })
 }
