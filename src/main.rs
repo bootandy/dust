@@ -10,9 +10,10 @@ use utils::{find_big_ones, get_dir_tree, sort};
 mod display;
 mod utils;
 
-static DEFAULT_NUMBER_OF_LINES: &'static str = "20";
+static DEFAULT_NUMBER_OF_LINES: usize = 20;
 
 fn main() {
+    let def_num_str = DEFAULT_NUMBER_OF_LINES.to_string();
     let options = App::new("Dust")
         .setting(AppSettings::TrailingVarArg)
         .arg(
@@ -28,7 +29,7 @@ fn main() {
                 .long("number-of-lines")
                 .help("Number of lines of output to show")
                 .takes_value(true)
-                .default_value(DEFAULT_NUMBER_OF_LINES),
+                .default_value(def_num_str.as_ref()),
         )
         .arg(
             Arg::with_name("display_full_paths")
@@ -52,21 +53,24 @@ fn main() {
         }
     };
 
-    let number_of_lines = value_t!(options.value_of("number_of_lines"), usize).unwrap();
+    let number_of_lines = match value_t!(options.value_of("number_of_lines"), usize) {
+        Ok(v) => v,
+        Err(_) => { eprintln!("Bad value for number_of_lines - ignoring"); DEFAULT_NUMBER_OF_LINES}
+    };
+
     let depth = {
         if options.is_present("depth") {
             match value_t!(options.value_of("depth"), u64) {
                 Ok(v) => Some(v + 1),
-                Err(_) => None,
+                Err(_) => { eprintln!("Bad value for depth - ignoring"); None},
             }
         } else {
             None
         }
     };
-    if options.is_present("depth")
-        && options.value_of("number_of_lines").unwrap() != DEFAULT_NUMBER_OF_LINES
+    if options.is_present("depth") && number_of_lines != DEFAULT_NUMBER_OF_LINES
     {
-        eprintln!("Use either -n for number of directories to show. Or -d for depth. Not both");
+        eprintln!("Use either -n or -d. Not both");
         return;
     }
 
