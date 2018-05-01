@@ -56,7 +56,7 @@ fn main() {
     let number_of_lines = match value_t!(options.value_of("number_of_lines"), usize) {
         Ok(v) => v,
         Err(_) => {
-            eprintln!("Bad value for number_of_lines - ignoring");
+            eprintln!("Ignoring bad value for number_of_lines");
             DEFAULT_NUMBER_OF_LINES
         }
     };
@@ -66,7 +66,7 @@ fn main() {
             match value_t!(options.value_of("depth"), u64) {
                 Ok(v) => Some(v + 1),
                 Err(_) => {
-                    eprintln!("Bad value for depth - ignoring");
+                    eprintln!("Ignoring bad value for depth");
                     None
                 }
             }
