@@ -4,9 +4,6 @@ use std::collections::HashSet;
 
 use walkdir::WalkDir;
 
-use std::path::Path;
-use std::path::PathBuf;
-
 mod platform;
 use self::platform::*;
 
@@ -22,7 +19,7 @@ pub fn get_dir_tree(
     for b in filenames {
         let top_level_name = strip_end_slashes(b);
         examine_dir(
-            &Path::new(&top_level_name).to_path_buf(),
+            &top_level_name,
             apparent_size,
             &mut inodes,
             &mut data,
@@ -42,7 +39,7 @@ fn strip_end_slashes(s: &str) -> String {
 }
 
 fn examine_dir(
-    top_dir: &PathBuf,
+    top_dir: &String,
     apparent_size: bool,
     inodes: &mut HashSet<(u64, u64)>,
     data: &mut HashMap<String, u64>,
@@ -66,9 +63,9 @@ fn examine_dir(
                         let mut e_path = e.path().to_path_buf();
                         loop {
                             let path_name = e_path.to_string_lossy().to_string();
-                            let s = data.entry(path_name).or_insert(0);
+                            let s = data.entry(path_name.clone()).or_insert(0);
                             *s += size;
-                            if e_path == *top_dir {
+                            if path_name == *top_dir {
                                 break;
                             }
                             e_path.pop();
