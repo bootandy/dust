@@ -5,7 +5,6 @@ extern crate walkdir;
 
 use self::display::draw_it;
 use clap::{App, AppSettings, Arg};
-use std::io::{self, Write};
 use utils::{find_big_ones, get_dir_tree, sort};
 
 mod display;
@@ -67,9 +66,7 @@ fn main() {
     if options.is_present("depth")
         && options.value_of("number_of_lines").unwrap() != DEFAULT_NUMBER_OF_LINES
     {
-        io::stderr()
-            .write(b"Use either -n for number of directories to show. Or -d for depth. Not both")
-            .expect("Error writing to stderr. Oh the irony!");
+        eprintln!("Use either -n for number of directories to show. Or -d for depth. Not both");
         return;
     }
 
