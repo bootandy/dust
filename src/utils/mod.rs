@@ -1,6 +1,6 @@
+use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::collections::HashSet;
-use std::cmp::Ordering;
 
 use walkdir::WalkDir;
 
@@ -81,7 +81,7 @@ fn examine_dir(
         }
     }
 }
-pub fn compare_tuple(a :&(String, u64), b: &(String, u64)) -> Ordering {
+pub fn compare_tuple(a: &(String, u64), b: &(String, u64)) -> Ordering {
     let result = b.1.cmp(&a.1);
     if result == Ordering::Equal {
         a.0.cmp(&b.0)

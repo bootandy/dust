@@ -21,7 +21,5 @@ pub fn get_metadata(d: &DirEntry, use_apparent_size: bool) -> Option<(u64, Optio
 
 #[cfg(not(target_family = "unix"))]
 pub fn get_metadata(d: &DirEntry, _apparent: bool) -> Option<(u64, Option<(u64, u64)>)> {
-    d.metadata().ok().map_or(None, |md| {
-        Some((md.len(), None))
-    })
+    d.metadata().ok().map_or(None, |md| Some((md.len(), None)))
 }

@@ -55,21 +55,26 @@ fn main() {
 
     let number_of_lines = match value_t!(options.value_of("number_of_lines"), usize) {
         Ok(v) => v,
-        Err(_) => { eprintln!("Bad value for number_of_lines - ignoring"); DEFAULT_NUMBER_OF_LINES}
+        Err(_) => {
+            eprintln!("Bad value for number_of_lines - ignoring");
+            DEFAULT_NUMBER_OF_LINES
+        }
     };
 
     let depth = {
         if options.is_present("depth") {
             match value_t!(options.value_of("depth"), u64) {
                 Ok(v) => Some(v + 1),
-                Err(_) => { eprintln!("Bad value for depth - ignoring"); None},
+                Err(_) => {
+                    eprintln!("Bad value for depth - ignoring");
+                    None
+                }
             }
         } else {
             None
         }
     };
-    if options.is_present("depth") && number_of_lines != DEFAULT_NUMBER_OF_LINES
-    {
+    if options.is_present("depth") && number_of_lines != DEFAULT_NUMBER_OF_LINES {
         eprintln!("Use either -n or -d. Not both");
         return;
     }
