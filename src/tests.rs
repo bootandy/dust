@@ -28,6 +28,15 @@ pub fn test_main_long_paths() {
         .unwrap();
 }
 
+#[test]
+pub fn test_main_multi_arg() {
+    assert_cli::Assert::main_binary()
+        .with_args(&["src/test_dir/many/", "src/test_dir/", "src/test_dir"])
+        .stdout()
+        .is(main_output(true))
+        .unwrap();
+}
+
 #[cfg(target_os = "macos")]
 fn main_output(short_paths: bool) -> String {
     format!(
@@ -271,4 +280,3 @@ fn recursive_sym_link_output(dir: &str, link_name: &str) -> String {
     )
 }
 
-// TODO: add test for bad path

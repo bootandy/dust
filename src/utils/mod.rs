@@ -7,25 +7,49 @@ use walkdir::WalkDir;
 mod platform;
 use self::platform::*;
 
+pub fn simplify_dir_names(filenames: Vec<&str>) -> HashSet<String> {
+    let mut top_level_names: HashSet<String> = HashSet::new();
+
+    for t in filenames {
+        let top_level_name = strip_end_slashes(t);
+        let mut can_add = true;
+        let mut to_remove: Vec<String> = Vec::new();
+
+        for tt in top_level_names.iter() {
+            let temp = tt.to_string();
+            if top_level_name.starts_with(&temp) {
+                can_add = false;
+            } else if tt.starts_with(&top_level_name) {
+                to_remove.push(temp);
+            }
+        }
+        for tr in to_remove {
+            top_level_names.remove(&tr);
+        }
+        if can_add {
+            top_level_names.insert(top_level_name);
+        }
+    }
+
+    top_level_names
+}
+
 pub fn get_dir_tree(
-    filenames: &Vec<&str>,
+    top_level_names: HashSet<String>,
     apparent_size: bool,
-) -> (bool, HashMap<String, u64>, Vec<String>) {
+) -> (bool, HashMap<String, u64>, HashSet<String>) {
     let mut permissions = 0;
     let mut inodes: HashSet<(u64, u64)> = HashSet::new();
     let mut data: HashMap<String, u64> = HashMap::new();
-    let mut top_level_names = Vec::new();
 
-    for b in filenames {
-        let top_level_name = strip_end_slashes(b);
+    for b in top_level_names.iter() {
         examine_dir(
-            &top_level_name,
+            &b,
             apparent_size,
             &mut inodes,
             &mut data,
             &mut permissions,
         );
-        top_level_names.push(top_level_name);
     }
     (permissions == 0, data, top_level_names)
 }
@@ -98,5 +122,41 @@ pub fn find_big_ones<'a>(new_l: Vec<(String, u64)>, max_to_show: usize) -> Vec<(
         new_l[0..max_to_show + 1].to_vec()
     } else {
         new_l
+    }
+}
+
+
+mod tests {
+    #[allow(unused_imports)]
+    use super::*;
+
+    #[test]
+    fn test_simplify_dir() {
+        let mut correct = HashSet::new();
+        correct.insert("a".to_string());
+        assert!(simplify_dir_names(vec!["a"]) == correct);
+    }
+
+    #[test]
+    fn test_simplify_dir_rm_subdir() {
+        let mut correct = HashSet::new();
+        correct.insert("a/b".to_string());
+        assert!(simplify_dir_names(vec!["a/b", "a/b/c", "a/b/d/f"]) == correct);
+    }
+
+    #[test]
+    fn test_simplify_dir_duplicates() {
+        let mut correct = HashSet::new();
+        correct.insert("a/b".to_string());
+        correct.insert("c".to_string());
+        assert!(simplify_dir_names(vec!["a/b", "a/b//", "c", "c/"]) == correct);
+    }
+    #[test]
+    fn test_simplify_dir_rm_subdir_and_not_substrings() {
+        let mut correct = HashSet::new();
+        correct.insert("a/b".to_string());
+        correct.insert("c/a/b".to_string());
+        correct.insert("b".to_string());
+        assert!(simplify_dir_names(vec!["a/b", "c/a/b/", "b"]) == correct);
     }
 }

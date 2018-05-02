@@ -1,5 +1,6 @@
 extern crate ansi_term;
 
+use std::collections::HashSet;
 use self::ansi_term::Colour::Fixed;
 
 static UNITS: [char; 4] = ['T', 'G', 'M', 'K'];
@@ -8,15 +9,18 @@ pub fn draw_it(
     permissions: bool,
     short_paths: bool,
     depth: Option<u64>,
-    base_dirs: Vec<String>,
+    base_dirs: HashSet<String>,
     to_display: Vec<(String, u64)>,
 ) -> () {
     if !permissions {
         eprintln!("Did not have permissions for all directories");
     }
+    let mut found = HashSet::new();
 
-    for f in base_dirs {
-        display_node(f, &to_display, true, short_paths, depth, "")
+    for &(ref k, _) in to_display.iter() {
+        if base_dirs.contains(k) {
+            display_node(&k, &mut found, &to_display, true, short_paths, depth, "")
+        }
     }
 }
 
@@ -30,19 +34,25 @@ fn get_size(nodes: &Vec<(String, u64)>, node_to_print: &String) -> Option<u64> {
 }
 
 fn display_node<S: Into<String>>(
-    node_to_print: String,
+    node_to_print: &String,
+    found: &mut HashSet<String>,
     to_display: &Vec<(String, u64)>,
     is_biggest: bool,
     short_paths: bool,
     depth: Option<u64>,
     indentation_str: S,
 ) {
+    if found.contains(node_to_print) {
+        return
+    }
+    found.insert(node_to_print.to_string());
+
     let new_depth = match depth {
         None => None,
         Some(0) => return,
         Some(d) => Some(d - 1),
     };
-    match get_size(to_display, &node_to_print) {
+    match get_size(to_display, node_to_print) {
         None => println!("Can not find path: {}", node_to_print),
         Some(size) => {
             let mut is = indentation_str.into();
@@ -83,7 +93,8 @@ fn display_node<S: Into<String>>(
                     }
 
                     display_node(
-                        k.to_string(),
+                        k,
+                        found,
                         to_display,
                         is_biggest,
                         short_paths,
