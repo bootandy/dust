@@ -141,8 +141,8 @@ pub fn format_string(
     indentation: &str,
 ) -> String {
     let printable_name = {
-        if short_paths && dir_name.contains('/') {
-            dir_name.split('/').last().unwrap()
+        if short_paths {
+            dir_name.split('/').last().unwrap_or(dir_name)
         } else {
             dir_name
         }
