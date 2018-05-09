@@ -43,13 +43,7 @@ pub fn get_dir_tree(
     let mut data: HashMap<String, u64> = HashMap::new();
 
     for b in top_level_names.iter() {
-        examine_dir(
-            &b,
-            apparent_size,
-            &mut inodes,
-            &mut data,
-            &mut permissions,
-        );
+        examine_dir(&b, apparent_size, &mut inodes, &mut data, &mut permissions);
     }
     (permissions == 0, data, top_level_names)
 }
@@ -124,7 +118,6 @@ pub fn find_big_ones<'a>(new_l: Vec<(String, u64)>, max_to_show: usize) -> Vec<(
         new_l
     }
 }
-
 
 mod tests {
     #[allow(unused_imports)]

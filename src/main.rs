@@ -5,7 +5,7 @@ extern crate walkdir;
 
 use self::display::draw_it;
 use clap::{App, AppSettings, Arg};
-use utils::{find_big_ones, get_dir_tree, sort, simplify_dir_names};
+use utils::{find_big_ones, get_dir_tree, simplify_dir_names, sort};
 
 mod display;
 mod utils;

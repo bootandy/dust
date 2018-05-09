@@ -1,7 +1,7 @@
 extern crate ansi_term;
 
-use std::collections::HashSet;
 use self::ansi_term::Colour::Fixed;
+use std::collections::HashSet;
 
 static UNITS: [char; 4] = ['T', 'G', 'M', 'K'];
 
@@ -43,7 +43,7 @@ fn display_node<S: Into<String>>(
     indentation_str: S,
 ) {
     if found.contains(node_to_print) {
-        return
+        return;
     }
     found.insert(node_to_print.to_string());
 
@@ -55,39 +55,25 @@ fn display_node<S: Into<String>>(
     match get_size(to_display, node_to_print) {
         None => println!("Can not find path: {}", node_to_print),
         Some(size) => {
-            let mut is = indentation_str.into();
+            let is = indentation_str.into();
             let ntp: &str = node_to_print.as_ref();
 
             print_this_node(ntp, size, is_biggest, short_paths, is.as_ref());
+            let new_indent_str = clean_indentation_string(is);
 
-            is = is.replace("└─┬", "  ");
-            is = is.replace("└──", "  ");
-            is = is.replace("├──", "│ ");
-            is = is.replace("├─┬", "│ ");
-            is = is.replace("─┬", " ");
-
-            let printable_node_slashes = node_to_print.matches('/').count();
-
-            let mut num_siblings = to_display.iter().fold(0, |a, b| {
-                if b.0.starts_with(ntp) && b.0.matches('/').count() == printable_node_slashes + 1 {
-                    a + 1
-                } else {
-                    a
-                }
-            });
+            let num_slashes = node_to_print.matches('/').count();
+            let mut num_siblings = count_siblings(to_display, num_slashes, ntp);
 
             let mut is_biggest = true;
             for &(ref k, _) in to_display.iter() {
-                if k.starts_with(ntp) && k.matches('/').count() == printable_node_slashes + 1 {
+                if k.starts_with(ntp) && k.matches('/').count() == num_slashes + 1 {
                     num_siblings -= 1;
 
                     let mut has_children = false;
                     if new_depth.is_none() || new_depth.unwrap() != 1 {
                         for &(ref k2, _) in to_display.iter() {
                             let kk: &str = k.as_ref();
-                            if k2.starts_with(kk)
-                                && k2.matches('/').count() == printable_node_slashes + 2
-                            {
+                            if k2.starts_with(kk) && k2.matches('/').count() == num_slashes + 2 {
                                 has_children = true;
                             }
                         }
@@ -100,13 +86,33 @@ fn display_node<S: Into<String>>(
                         is_biggest,
                         short_paths,
                         new_depth,
-                        is.to_string() + get_tree_chars(num_siblings, has_children),
+                        new_indent_str.to_string() + get_tree_chars(num_siblings, has_children),
                     );
                     is_biggest = false;
                 }
             }
         }
     }
+}
+
+fn clean_indentation_string<S: Into<String>>(s: S) -> String {
+    let mut is = s.into();
+    is = is.replace("└─┬", "  ");
+    is = is.replace("└──", "  ");
+    is = is.replace("├──", "│ ");
+    is = is.replace("├─┬", "│ ");
+    is = is.replace("─┬", " ");
+    is
+}
+
+fn count_siblings(to_display: &Vec<(String, u64)>, num_slashes: usize, ntp: &str) -> u64 {
+    to_display.iter().fold(0, |a, b| {
+        if b.0.starts_with(ntp) && b.0.matches('/').count() == num_slashes + 1 {
+            a + 1
+        } else {
+            a
+        }
+    })
 }
 
 fn get_tree_chars(num_siblings: u64, has_children: bool) -> &'static str {
