@@ -19,7 +19,7 @@ pub fn draw_it(
 
     for &(ref k, _) in to_display.iter() {
         if base_dirs.contains(k) {
-            display_node(&k, &mut found, &to_display, true, short_paths, depth, "")
+            display_node(&k, &mut found, &to_display, true, short_paths, depth, "─┬")
         }
     }
 }
@@ -64,6 +64,7 @@ fn display_node<S: Into<String>>(
             is = is.replace("└──", "  ");
             is = is.replace("├──", "│ ");
             is = is.replace("├─┬", "│ ");
+            is = is.replace("─┬", " ");
 
             let printable_node_slashes = node_to_print.matches('/').count();
 
