@@ -5,7 +5,7 @@ extern crate walkdir;
 
 use self::display::draw_it;
 use clap::{App, AppSettings, Arg};
-use utils::{find_big_ones, get_dir_tree, sort};
+use utils::{find_big_ones, get_dir_tree, simplify_dir_names, sort};
 
 mod display;
 mod utils;
@@ -46,7 +46,7 @@ fn main() {
         .arg(Arg::with_name("inputs").multiple(true))
         .get_matches();
 
-    let filenames = {
+    let target_dirs = {
         match options.values_of("inputs") {
             None => vec!["."],
             Some(r) => r.collect(),
@@ -82,7 +82,8 @@ fn main() {
     let use_apparent_size = options.is_present("display_apparent_size");
     let use_full_path = options.is_present("display_full_paths");
 
-    let (permissions, nodes, top_level_names) = get_dir_tree(&filenames, use_apparent_size);
+    let simplified_dirs = simplify_dir_names(target_dirs);
+    let (permissions, nodes, top_level_names) = get_dir_tree(simplified_dirs, use_apparent_size);
     let sorted_data = sort(nodes);
     let biggest_ones = {
         if depth.is_none() {
