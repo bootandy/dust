@@ -19,7 +19,7 @@ pub fn draw_it(
 
     for &(ref k, _) in to_display.iter() {
         if base_dirs.contains(k) {
-            display_node(&k, &mut found, &to_display, true, short_paths, depth, "─┬")
+            display_node(&k, &mut found, &to_display, true, short_paths, depth, "─┬");
         }
     }
 }
@@ -55,30 +55,20 @@ fn display_node<S: Into<String>>(
     match get_size(to_display, node_to_print) {
         None => println!("Can not find path: {}", node_to_print),
         Some(size) => {
-            let is = indentation_str.into();
             let ntp: &str = node_to_print.as_ref();
-
-            print_this_node(ntp, size, is_biggest, short_paths, is.as_ref());
-            let new_indent_str = clean_indentation_string(is);
-
             let num_slashes = node_to_print.matches('/').count();
+
+            let is = indentation_str.into();
+            print_this_node(ntp, size, is_biggest, short_paths, is.as_ref());
+            let new_indent = clean_indentation_string(is);
+
             let mut num_siblings = count_siblings(to_display, num_slashes, ntp);
 
             let mut is_biggest = true;
             for &(ref k, _) in to_display.iter() {
                 if k.starts_with(ntp) && k.matches('/').count() == num_slashes + 1 {
                     num_siblings -= 1;
-
-                    let mut has_children = false;
-                    if new_depth.is_none() || new_depth.unwrap() != 1 {
-                        for &(ref k2, _) in to_display.iter() {
-                            let kk: &str = k.as_ref();
-                            if k2.starts_with(kk) && k2.matches('/').count() == num_slashes + 2 {
-                                has_children = true;
-                            }
-                        }
-                    }
-
+                    let has_children = has_children(to_display, new_depth, k, num_slashes + 1);
                     display_node(
                         k,
                         found,
@@ -86,7 +76,7 @@ fn display_node<S: Into<String>>(
                         is_biggest,
                         short_paths,
                         new_depth,
-                        new_indent_str.to_string() + get_tree_chars(num_siblings, has_children),
+                        new_indent.to_string() + get_tree_chars(num_siblings != 0, has_children),
                     );
                     is_biggest = false;
                 }
@@ -115,8 +105,19 @@ fn count_siblings(to_display: &Vec<(String, u64)>, num_slashes: usize, ntp: &str
     })
 }
 
-fn get_tree_chars(num_siblings: u64, has_children: bool) -> &'static str {
-    if num_siblings == 0 {
+fn has_children(to_display: &Vec<(String, u64)>, new_depth: Option<u64>, ntp: &str, num_slashes: usize) -> bool {
+    if new_depth.is_none() || new_depth.unwrap() != 1 {
+        for &(ref k2, _) in to_display.iter() {
+            if k2.starts_with(ntp) && k2.matches('/').count() == num_slashes + 1 {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+fn get_tree_chars(has_smaller_siblings: bool, has_children: bool) -> &'static str {
+    if !has_smaller_siblings {
         if has_children {
             "└─┬"
         } else {
