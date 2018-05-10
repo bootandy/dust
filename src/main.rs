@@ -5,7 +5,7 @@ extern crate walkdir;
 
 use self::display::draw_it;
 use clap::{App, AppSettings, Arg};
-use utils::{find_big_ones, get_dir_tree, simplify_dir_names, sort};
+use utils::{find_big_ones, get_dir_tree, simplify_dir_names, sort, trim_deep_ones};
 
 mod display;
 mod utils;
@@ -83,22 +83,15 @@ fn main() {
     let use_full_path = options.is_present("display_full_paths");
 
     let simplified_dirs = simplify_dir_names(target_dirs);
-    let (permissions, nodes, top_level_names) = get_dir_tree(simplified_dirs, use_apparent_size);
+    let (permissions, nodes) = get_dir_tree(&simplified_dirs, use_apparent_size);
     let sorted_data = sort(nodes);
     let biggest_ones = {
-        if depth.is_none() {
-            find_big_ones(sorted_data, number_of_lines)
-        } else {
-            sorted_data
+        match depth {
+            None => find_big_ones(sorted_data, number_of_lines + simplified_dirs.len()),
+            Some(d) => trim_deep_ones(sorted_data, d, &simplified_dirs)
         }
     };
-    draw_it(
-        permissions,
-        !use_full_path,
-        depth,
-        top_level_names,
-        biggest_ones,
-    );
+    draw_it(permissions, !use_full_path, depth, simplified_dirs, biggest_ones);
 }
 
 #[cfg(test)]

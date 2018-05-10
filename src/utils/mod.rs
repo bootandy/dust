@@ -35,9 +35,9 @@ pub fn simplify_dir_names(filenames: Vec<&str>) -> HashSet<String> {
 }
 
 pub fn get_dir_tree(
-    top_level_names: HashSet<String>,
+    top_level_names: &HashSet<String>,
     apparent_size: bool,
-) -> (bool, HashMap<String, u64>, HashSet<String>) {
+) -> (bool, HashMap<String, u64>) {
     let mut permissions = 0;
     let mut inodes: HashSet<(u64, u64)> = HashSet::new();
     let mut data: HashMap<String, u64> = HashMap::new();
@@ -45,7 +45,7 @@ pub fn get_dir_tree(
     for b in top_level_names.iter() {
         examine_dir(&b, apparent_size, &mut inodes, &mut data, &mut permissions);
     }
-    (permissions == 0, data, top_level_names)
+    (permissions == 0, data)
 }
 
 fn strip_end_slashes(s: &str) -> String {
@@ -105,18 +105,38 @@ pub fn compare_tuple(a: &(String, u64), b: &(String, u64)) -> Ordering {
     }
 }
 
-pub fn sort<'a>(data: HashMap<String, u64>) -> Vec<(String, u64)> {
+pub fn sort(data: HashMap<String, u64>) -> Vec<(String, u64)> {
     let mut new_l: Vec<(String, u64)> = data.iter().map(|(a, b)| (a.clone(), *b)).collect();
     new_l.sort_by(|a, b| compare_tuple(&a, &b));
     new_l
 }
 
-pub fn find_big_ones<'a>(new_l: Vec<(String, u64)>, max_to_show: usize) -> Vec<(String, u64)> {
+pub fn find_big_ones(new_l: Vec<(String, u64)>, max_to_show: usize) -> Vec<(String, u64)> {
     if max_to_show > 0 && new_l.len() > max_to_show {
-        new_l[0..max_to_show + 1].to_vec()
+        new_l[0..max_to_show].to_vec()
     } else {
         new_l
     }
+}
+
+pub fn trim_deep_ones(
+    input: Vec<(String, u64)>,
+    max_depth: u64,
+    top_level_names: &HashSet<String>,
+) -> Vec<(String, u64)> {
+    let mut result: Vec<(String, u64)> = vec![];
+
+    for name in top_level_names {
+        let my_max_depth = name.matches('/').count() + max_depth as usize;
+        let name_ref: &str = name.as_ref();
+
+        for &(ref k, ref v) in input.iter() {
+            if k.starts_with(name_ref) && k.matches('/').count() <= my_max_depth {
+                result.push((k.clone(), *v));
+            }
+        }
+    }
+    result
 }
 
 mod tests {
