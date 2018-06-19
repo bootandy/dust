@@ -1,6 +1,7 @@
 extern crate ansi_term;
 
 use self::ansi_term::Colour::Fixed;
+use self::ansi_term::Style;
 use std::collections::HashSet;
 
 static UNITS: [char; 4] = ['T', 'G', 'M', 'K'];
@@ -171,7 +172,7 @@ pub fn format_string(
         if is_biggest {
             Fixed(196).paint(size)
         } else {
-            Fixed(7).paint(size)
+            Style::new().paint(size)
         },
         indentation,
         printable_name,

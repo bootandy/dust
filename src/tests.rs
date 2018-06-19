@@ -279,4 +279,3 @@ fn recursive_sym_link_output(dir: &str, link_name: &str) -> String {
         format_string(link_name, true, true, "   0B", " └──",),
     )
 }
-

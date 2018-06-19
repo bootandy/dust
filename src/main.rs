@@ -88,7 +88,7 @@ fn main() {
     let biggest_ones = {
         match depth {
             None => find_big_ones(sorted_data, number_of_lines + simplified_dirs.len()),
-            Some(d) => trim_deep_ones(sorted_data, d, &simplified_dirs)
+            Some(d) => trim_deep_ones(sorted_data, d, &simplified_dirs),
         }
     };
     draw_it(permissions, !use_full_path, depth, simplified_dirs, biggest_ones);
