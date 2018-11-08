@@ -62,7 +62,7 @@ djin:git/dust> dust
 
 ## Performance
 
-Dust is currently about 4 times slower than du.
+Dust is currently about 4 times faster than du.
 
 ## Alternatives
 
