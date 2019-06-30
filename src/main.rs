@@ -91,7 +91,13 @@ fn main() {
             Some(d) => trim_deep_ones(sorted_data, d, &simplified_dirs),
         }
     };
-    draw_it(permissions, !use_full_path, depth, simplified_dirs, biggest_ones);
+    draw_it(
+        permissions,
+        !use_full_path,
+        depth,
+        simplified_dirs,
+        biggest_ones,
+    );
 }
 
 #[cfg(test)]

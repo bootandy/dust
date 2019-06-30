@@ -50,49 +50,46 @@ pub fn get_dir_tree(
 
 fn strip_end_slashes(s: &str) -> String {
     let mut new_name = String::from(s);
-    while new_name.chars().last() == Some('/') && new_name.len() != 1 {
+    while new_name.ends_with('/') && new_name.len() != 1 {
         new_name.pop();
     }
     new_name
 }
 
 fn examine_dir(
-    top_dir: &String,
+    top_dir: &str,
     apparent_size: bool,
     inodes: &mut HashSet<(u64, u64)>,
     data: &mut HashMap<String, u64>,
     permissions: &mut u64,
 ) {
     for entry in WalkDir::new(top_dir) {
-        match entry {
-            Ok(e) => {
-                let maybe_size_and_inode = get_metadata(&e, apparent_size);
+        if let Ok(e) = entry {
+            let maybe_size_and_inode = get_metadata(&e, apparent_size);
 
-                match maybe_size_and_inode {
-                    Some((size, maybe_inode)) => {
-                        if !apparent_size {
-                            if let Some(inode_dev_pair) = maybe_inode {
-                                if inodes.contains(&inode_dev_pair) {
-                                    continue;
-                                }
-                                inodes.insert(inode_dev_pair);
+            match maybe_size_and_inode {
+                Some((size, maybe_inode)) => {
+                    if !apparent_size {
+                        if let Some(inode_dev_pair) = maybe_inode {
+                            if inodes.contains(&inode_dev_pair) {
+                                continue;
                             }
-                        }
-                        let mut e_path = e.path().to_path_buf();
-                        loop {
-                            let path_name = e_path.to_string_lossy().to_string();
-                            let s = data.entry(path_name.clone()).or_insert(0);
-                            *s += size;
-                            if path_name == *top_dir {
-                                break;
-                            }
-                            e_path.pop();
+                            inodes.insert(inode_dev_pair);
                         }
                     }
-                    None => *permissions += 1,
+                    let mut e_path = e.path().to_path_buf();
+                    loop {
+                        let path_name = e_path.to_string_lossy().to_string();
+                        let s = data.entry(path_name.clone()).or_insert(0);
+                        *s += size;
+                        if path_name == *top_dir {
+                            break;
+                        }
+                        e_path.pop();
+                    }
                 }
+                None => *permissions += 1,
             }
-            _ => {}
         }
     }
 }

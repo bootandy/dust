@@ -45,7 +45,13 @@ fn main_output(short_paths: bool) -> String {
 {}
 {}",
         format_string("src/test_dir", true, short_paths, " 4.0K", "─┬"),
-        format_string("src/test_dir/many", true, short_paths, " 4.0K", " └─┬",),
+        format_string(
+            "src/test_dir/many",
+            true,
+            short_paths,
+            " 4.0K",
+            " └─┬",
+        ),
         format_string(
             "src/test_dir/many/hello_file",
             true,
@@ -71,7 +77,13 @@ fn main_output(short_paths: bool) -> String {
 {}
 {}",
         format_string("src/test_dir", true, short_paths, "  12K", "─┬"),
-        format_string("src/test_dir/many", true, short_paths, " 8.0K", " └─┬",),
+        format_string(
+            "src/test_dir/many",
+            true,
+            short_paths,
+            " 8.0K",
+            " └─┬",
+        ),
         format_string(
             "src/test_dir/many/hello_file",
             true,
