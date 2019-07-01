@@ -50,7 +50,7 @@ pub fn get_dir_tree(
 
 fn strip_end_slashes(s: &str) -> String {
     let mut new_name = String::from(s);
-    while new_name.ends_with('/') && new_name.len() != 1 {
+    while (new_name.ends_with('/') || new_name.ends_with("/.")) && new_name.len() != 1 {
         new_name.pop();
     }
     new_name
