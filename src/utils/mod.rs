@@ -85,6 +85,7 @@ fn examine_dir(
                         if path_name == *top_dir {
                             break;
                         }
+                        assert!(path_name != "");
                         e_path.pop();
                     }
                 }
