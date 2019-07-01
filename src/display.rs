@@ -75,7 +75,8 @@ fn display_node<S: Into<String>>(
 
             let mut is_biggest = true;
             for &(ref k, _) in to_display.iter() {
-                if k.starts_with(ntp) && k.matches('/').count() == num_slashes + 1 {
+                let ntp_with_slash= String::from(ntp.to_owned() + "/");
+                if k.starts_with(ntp_with_slash.as_str()) && k.matches('/').count() == num_slashes + 1 {
                     num_siblings -= 1;
                     let has_children = has_children(to_display, new_depth, k, num_slashes + 1);
                     display_node(
@@ -122,7 +123,8 @@ fn has_children(
 ) -> bool {
     if new_depth.is_none() || new_depth.unwrap() != 1 {
         for &(ref k2, _) in to_display.iter() {
-            if k2.starts_with(ntp) && k2.matches('/').count() == num_slashes + 1 {
+            let ntp_with_slash= String::from(ntp.to_owned() + "/");
+            if k2.starts_with(ntp_with_slash.as_str()) && k2.matches('/').count() == num_slashes + 1 {
                 return true;
             }
         }
