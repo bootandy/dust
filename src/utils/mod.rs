@@ -145,14 +145,14 @@ mod tests {
     fn test_simplify_dir() {
         let mut correct = HashSet::new();
         correct.insert("a".to_string());
-        assert!(simplify_dir_names(vec!["a"]) == correct);
+        assert_eq!(simplify_dir_names(vec!["a"]), correct);
     }
 
     #[test]
     fn test_simplify_dir_rm_subdir() {
         let mut correct = HashSet::new();
         correct.insert("a/b".to_string());
-        assert!(simplify_dir_names(vec!["a/b", "a/b/c", "a/b/d/f"]) == correct);
+        assert_eq!(simplify_dir_names(vec!["a/b", "a/b/c", "a/b/d/f"]), correct);
     }
 
     #[test]
@@ -160,7 +160,7 @@ mod tests {
         let mut correct = HashSet::new();
         correct.insert("a/b".to_string());
         correct.insert("c".to_string());
-        assert!(simplify_dir_names(vec!["a/b", "a/b//", "c", "c/"]) == correct);
+        assert_eq!(simplify_dir_names(vec!["a/b", "a/b//", "c", "c/"]), correct);
     }
     #[test]
     fn test_simplify_dir_rm_subdir_and_not_substrings() {
@@ -168,6 +168,13 @@ mod tests {
         correct.insert("a/b".to_string());
         correct.insert("c/a/b".to_string());
         correct.insert("b".to_string());
-        assert!(simplify_dir_names(vec!["a/b", "c/a/b/", "b"]) == correct);
+        assert_eq!(simplify_dir_names(vec!["a/b", "c/a/b/", "b"]), correct);
+    }
+
+    #[test]
+    fn test_simplify_dir_dots() {
+        let mut correct = HashSet::new();
+        correct.insert("src".to_string());
+        assert_eq!(simplify_dir_names(vec!["src/."]), correct);
     }
 }
