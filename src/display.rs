@@ -3,6 +3,7 @@ extern crate ansi_term;
 use self::ansi_term::Colour::Fixed;
 use self::ansi_term::Style;
 use std::collections::HashSet;
+use utils::ensure_end_slash;
 
 static UNITS: [char; 4] = ['T', 'G', 'M', 'K'];
 
@@ -64,21 +65,20 @@ fn display_node<S: Into<String>>(
     match get_size(to_display, node_to_print) {
         None => println!("Can not find path: {}", node_to_print),
         Some(size) => {
-            let ntp: &str = node_to_print;
-            let num_slashes = node_to_print.matches('/').count();
-
             let is = indentation_str.into();
-            print_this_node(ntp, size, is_biggest, short_paths, is.as_ref());
+            print_this_node(node_to_print, size, is_biggest, short_paths, is.as_ref());
             let new_indent = clean_indentation_string(is);
 
-            let mut num_siblings = count_siblings(to_display, num_slashes, ntp);
+            let ntp_with_slash = ensure_end_slash(node_to_print);
+            let num_slashes = ntp_with_slash.matches('/').count();
+            let mut num_siblings = count_siblings(to_display, num_slashes - 1, node_to_print);
 
             let mut is_biggest = true;
             for &(ref k, _) in to_display.iter() {
-                let ntp_with_slash= String::from(ntp.to_owned() + "/");
-                if k.starts_with(ntp_with_slash.as_str()) && k.matches('/').count() == num_slashes + 1 {
+                if k.starts_with(ntp_with_slash.as_str()) && k.matches('/').count() == num_slashes {
                     num_siblings -= 1;
-                    let has_children = has_children(to_display, new_depth, k, num_slashes + 1);
+                    let has_children = has_children(to_display, new_depth, k, num_slashes);
+                    //println!("{:?} {:?} {:?}", k ,num_siblings, has_children);
                     display_node(
                         k,
                         found,
@@ -107,7 +107,7 @@ fn clean_indentation_string<S: Into<String>>(s: S) -> String {
 
 fn count_siblings(to_display: &[(String, u64)], num_slashes: usize, ntp: &str) -> u64 {
     to_display.iter().fold(0, |a, b| {
-        if b.0.starts_with(ntp) && b.0.matches('/').count() == num_slashes + 1 {
+        if b.0.starts_with(ntp) && b.0.as_str().matches('/').count() == num_slashes + 1 {
             a + 1
         } else {
             a
@@ -123,8 +123,9 @@ fn has_children(
 ) -> bool {
     if new_depth.is_none() || new_depth.unwrap() != 1 {
         for &(ref k2, _) in to_display.iter() {
-            let ntp_with_slash= String::from(ntp.to_owned() + "/");
-            if k2.starts_with(ntp_with_slash.as_str()) && k2.matches('/').count() == num_slashes + 1 {
+            let ntp_with_slash = String::from(ntp.to_owned() + "/");
+            if k2.starts_with(ntp_with_slash.as_str()) && k2.matches('/').count() == num_slashes + 1
+            {
                 return true;
             }
         }

@@ -11,7 +11,7 @@ pub fn simplify_dir_names(filenames: Vec<&str>) -> HashSet<String> {
     let mut top_level_names: HashSet<String> = HashSet::new();
 
     for t in filenames {
-        let top_level_name = strip_end_slashes(t);
+        let top_level_name = ensure_end_slash(t);
         let mut can_add = true;
         let mut to_remove: Vec<String> = Vec::new();
 
@@ -27,7 +27,7 @@ pub fn simplify_dir_names(filenames: Vec<&str>) -> HashSet<String> {
             top_level_names.remove(&tr);
         }
         if can_add {
-            top_level_names.insert(top_level_name);
+            top_level_names.insert(strip_end_slash(t));
         }
     }
 
@@ -48,9 +48,18 @@ pub fn get_dir_tree(
     (permissions == 0, data)
 }
 
-fn strip_end_slashes(s: &str) -> String {
+pub fn ensure_end_slash(s: &str) -> String {
     let mut new_name = String::from(s);
-    while (new_name.ends_with('/') || new_name.ends_with("/.")) && new_name.len() != 1 {
+    while new_name.ends_with('/') || new_name.ends_with("/.") {
+        new_name.pop();
+    }
+    new_name + "/"
+}
+
+// TODO fairly sure we shouldn't need this func
+pub fn strip_end_slash(s: &str) -> String {
+    let mut new_name = String::from(s);
+    while (new_name.ends_with('/') || new_name.ends_with("/.")) && new_name.len() > 1 {
         new_name.pop();
     }
     new_name
@@ -125,11 +134,11 @@ pub fn trim_deep_ones(
     let mut result: Vec<(String, u64)> = vec![];
 
     for name in top_level_names {
-        let my_max_depth = name.matches('/').count() + max_depth as usize;
+        let my_max_depth = name.matches('/').count() - 1 + max_depth as usize;
         let name_ref: &str = name.as_ref();
 
         for &(ref k, ref v) in input.iter() {
-            if k.starts_with(name_ref) && k.matches('/').count() <= my_max_depth {
+            if k.starts_with(name_ref) && k.matches('/').count() - 1 <= my_max_depth {
                 result.push((k.clone(), *v));
             }
         }
@@ -165,9 +174,9 @@ mod tests {
     #[test]
     fn test_simplify_dir_rm_subdir_and_not_substrings() {
         let mut correct = HashSet::new();
-        correct.insert("a/b".to_string());
-        correct.insert("c/a/b".to_string());
         correct.insert("b".to_string());
+        correct.insert("c/a/b".to_string());
+        correct.insert("a/b".to_string());
         assert_eq!(simplify_dir_names(vec!["a/b", "c/a/b/", "b"]), correct);
     }
 
