@@ -99,6 +99,8 @@ fn examine_dir(
                 }
                 None => *file_count_no_permission += 1,
             }
+        } else {
+            *file_count_no_permission += 1
         }
     }
 }
