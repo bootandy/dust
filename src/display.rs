@@ -3,7 +3,7 @@ extern crate ansi_term;
 use self::ansi_term::Colour::Fixed;
 use self::ansi_term::Style;
 use std::collections::HashSet;
-use utils::ensure_end_slash;
+use utils::{ensure_end_slash, strip_end_slash};
 
 static UNITS: [char; 4] = ['T', 'G', 'M', 'K'];
 
@@ -21,15 +21,7 @@ pub fn draw_it(
 
     for &(ref k, _) in to_display.iter() {
         if base_dirs.contains(k) {
-            display_node(
-                &k,
-                &mut found,
-                &to_display,
-                true,
-                short_paths,
-                depth,
-                "─┬",
-            );
+            display_node(&k, &mut found, &to_display, true, short_paths, depth, "─┬");
         }
     }
 }
@@ -69,16 +61,22 @@ fn display_node<S: Into<String>>(
             print_this_node(node_to_print, size, is_biggest, short_paths, is.as_ref());
             let new_indent = clean_indentation_string(is);
 
-            let ntp_with_slash = ensure_end_slash(node_to_print);
-            let num_slashes = ntp_with_slash.matches('/').count();
+            let ntp_with_slash = strip_end_slash(node_to_print);
+
+            // Annoying edge case for when run on root directory
+            let num_slashes = if ntp_with_slash == "/" {
+                1
+            } else {
+                ntp_with_slash.matches('/').count() + 1
+            };
             let mut num_siblings = count_siblings(to_display, num_slashes - 1, node_to_print);
 
             let mut is_biggest = true;
             for &(ref k, _) in to_display.iter() {
-                if k.starts_with(ntp_with_slash.as_str()) && k.matches('/').count() == num_slashes {
+                let temp = String::from(ensure_end_slash(node_to_print));
+                if k.starts_with(temp.as_str()) && k.matches('/').count() == num_slashes {
                     num_siblings -= 1;
                     let has_children = has_children(to_display, new_depth, k, num_slashes);
-                    //println!("{:?} {:?} {:?}", k ,num_siblings, has_children);
                     display_node(
                         k,
                         found,

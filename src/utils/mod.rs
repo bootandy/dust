@@ -56,7 +56,6 @@ pub fn ensure_end_slash(s: &str) -> String {
     new_name + "/"
 }
 
-// TODO fairly sure we shouldn't need this func
 pub fn strip_end_slash(s: &str) -> String {
     let mut new_name = String::from(s);
     while (new_name.ends_with('/') || new_name.ends_with("/.")) && new_name.len() > 1 {
@@ -134,11 +133,11 @@ pub fn trim_deep_ones(
     let mut result: Vec<(String, u64)> = vec![];
 
     for name in top_level_names {
-        let my_max_depth = name.matches('/').count() - 1 + max_depth as usize;
+        let my_max_depth = name.matches('/').count() + max_depth as usize;
         let name_ref: &str = name.as_ref();
 
         for &(ref k, ref v) in input.iter() {
-            if k.starts_with(name_ref) && k.matches('/').count() - 1 <= my_max_depth {
+            if k.starts_with(name_ref) && k.matches('/').count() <= my_max_depth {
                 result.push((k.clone(), *v));
             }
         }

@@ -45,13 +45,7 @@ fn main_output(short_paths: bool) -> String {
 {}
 {}",
         format_string("src/test_dir", true, short_paths, " 4.0K", "─┬"),
-        format_string(
-            "src/test_dir/many",
-            true,
-            short_paths,
-            " 4.0K",
-            " └─┬",
-        ),
+        format_string("src/test_dir/many", true, short_paths, " 4.0K", " └─┬",),
         format_string(
             "src/test_dir/many/hello_file",
             true,
@@ -77,13 +71,7 @@ fn main_output(short_paths: bool) -> String {
 {}
 {}",
         format_string("src/test_dir", true, short_paths, "  12K", "─┬"),
-        format_string(
-            "src/test_dir/many",
-            true,
-            short_paths,
-            " 8.0K",
-            " └─┬",
-        ),
+        format_string("src/test_dir/many", true, short_paths, " 8.0K", " └─┬",),
         format_string(
             "src/test_dir/many/hello_file",
             true,
@@ -118,6 +106,16 @@ pub fn test_apparent_size() {
         .with_args(&["-s", "src/test_dir"])
         .stdout()
         .contains(r)
+        .unwrap();
+}
+
+#[test]
+pub fn test_d_flag_works() {
+    // We should see the top level directory but not the sub dirs / files:
+    assert_cli::Assert::main_binary()
+        .with_args(&["-d", "1", "-s", "src/test_dir"])
+        .stdout()
+        .doesnt_contain("hello_file")
         .unwrap();
 }
 
