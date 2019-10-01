@@ -9,7 +9,7 @@ fn get_block_size() -> u64 {
 #[cfg(target_family = "unix")]
 pub fn get_metadata(d: &DirEntry, use_apparent_size: bool) -> Option<(u64, Option<(u64, u64)>)> {
     use std::os::unix::fs::MetadataExt;
-    d.metadata().ok().map_or(None, |md| {
+    d.metadata().ok().and_then(|md| {
         let inode = Some((md.ino(), md.dev()));
         if use_apparent_size {
             Some((md.len(), inode))

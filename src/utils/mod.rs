@@ -11,7 +11,7 @@ pub fn simplify_dir_names(filenames: Vec<&str>) -> HashSet<String> {
     let mut top_level_names: HashSet<String> = HashSet::new();
 
     for t in filenames {
-        let top_level_name = strip_end_slashes(t);
+        let top_level_name = ensure_end_slash(t);
         let mut can_add = true;
         let mut to_remove: Vec<String> = Vec::new();
 
@@ -27,7 +27,7 @@ pub fn simplify_dir_names(filenames: Vec<&str>) -> HashSet<String> {
             top_level_names.remove(&tr);
         }
         if can_add {
-            top_level_names.insert(top_level_name);
+            top_level_names.insert(strip_end_slash(t));
         }
     }
 
@@ -48,51 +48,57 @@ pub fn get_dir_tree(
     (permissions == 0, data)
 }
 
-fn strip_end_slashes(s: &str) -> String {
+pub fn ensure_end_slash(s: &str) -> String {
     let mut new_name = String::from(s);
-    while new_name.chars().last() == Some('/') && new_name.len() != 1 {
+    while new_name.ends_with('/') || new_name.ends_with("/.") {
+        new_name.pop();
+    }
+    new_name + "/"
+}
+
+pub fn strip_end_slash(s: &str) -> String {
+    let mut new_name = String::from(s);
+    while (new_name.ends_with('/') || new_name.ends_with("/.")) && new_name.len() > 1 {
         new_name.pop();
     }
     new_name
 }
 
 fn examine_dir(
-    top_dir: &String,
+    top_dir: &str,
     apparent_size: bool,
     inodes: &mut HashSet<(u64, u64)>,
     data: &mut HashMap<String, u64>,
     permissions: &mut u64,
 ) {
     for entry in WalkDir::new(top_dir) {
-        match entry {
-            Ok(e) => {
-                let maybe_size_and_inode = get_metadata(&e, apparent_size);
+        if let Ok(e) = entry {
+            let maybe_size_and_inode = get_metadata(&e, apparent_size);
 
-                match maybe_size_and_inode {
-                    Some((size, maybe_inode)) => {
-                        if !apparent_size {
-                            if let Some(inode_dev_pair) = maybe_inode {
-                                if inodes.contains(&inode_dev_pair) {
-                                    continue;
-                                }
-                                inodes.insert(inode_dev_pair);
+            match maybe_size_and_inode {
+                Some((size, maybe_inode)) => {
+                    if !apparent_size {
+                        if let Some(inode_dev_pair) = maybe_inode {
+                            if inodes.contains(&inode_dev_pair) {
+                                continue;
                             }
-                        }
-                        let mut e_path = e.path().to_path_buf();
-                        loop {
-                            let path_name = e_path.to_string_lossy().to_string();
-                            let s = data.entry(path_name.clone()).or_insert(0);
-                            *s += size;
-                            if path_name == *top_dir {
-                                break;
-                            }
-                            e_path.pop();
+                            inodes.insert(inode_dev_pair);
                         }
                     }
-                    None => *permissions += 1,
+                    let mut e_path = e.path().to_path_buf();
+                    loop {
+                        let path_name = e_path.to_string_lossy().to_string();
+                        let s = data.entry(path_name.clone()).or_insert(0);
+                        *s += size;
+                        if path_name == *top_dir {
+                            break;
+                        }
+                        assert!(path_name != "");
+                        e_path.pop();
+                    }
                 }
+                None => *permissions += 1,
             }
-            _ => {}
         }
     }
 }
@@ -147,14 +153,14 @@ mod tests {
     fn test_simplify_dir() {
         let mut correct = HashSet::new();
         correct.insert("a".to_string());
-        assert!(simplify_dir_names(vec!["a"]) == correct);
+        assert_eq!(simplify_dir_names(vec!["a"]), correct);
     }
 
     #[test]
     fn test_simplify_dir_rm_subdir() {
         let mut correct = HashSet::new();
         correct.insert("a/b".to_string());
-        assert!(simplify_dir_names(vec!["a/b", "a/b/c", "a/b/d/f"]) == correct);
+        assert_eq!(simplify_dir_names(vec!["a/b", "a/b/c", "a/b/d/f"]), correct);
     }
 
     #[test]
@@ -162,14 +168,21 @@ mod tests {
         let mut correct = HashSet::new();
         correct.insert("a/b".to_string());
         correct.insert("c".to_string());
-        assert!(simplify_dir_names(vec!["a/b", "a/b//", "c", "c/"]) == correct);
+        assert_eq!(simplify_dir_names(vec!["a/b", "a/b//", "c", "c/"]), correct);
     }
     #[test]
     fn test_simplify_dir_rm_subdir_and_not_substrings() {
         let mut correct = HashSet::new();
-        correct.insert("a/b".to_string());
-        correct.insert("c/a/b".to_string());
         correct.insert("b".to_string());
-        assert!(simplify_dir_names(vec!["a/b", "c/a/b/", "b"]) == correct);
+        correct.insert("c/a/b".to_string());
+        correct.insert("a/b".to_string());
+        assert_eq!(simplify_dir_names(vec!["a/b", "c/a/b/", "b"]), correct);
+    }
+
+    #[test]
+    fn test_simplify_dir_dots() {
+        let mut correct = HashSet::new();
+        correct.insert("src".to_string());
+        assert_eq!(simplify_dir_names(vec!["src/."]), correct);
     }
 }
