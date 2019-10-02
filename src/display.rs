@@ -69,8 +69,8 @@ fn display_node(
                 ntp_with_slash.matches('/').count() + 1
             };
             let mut num_siblings = count_siblings(to_display, num_slashes - 1, node_to_print);
+            let max_siblings = num_siblings;
 
-            let mut is_biggest = true;
             for &(ref k, _) in to_display.iter() {
                 let temp = String::from(ensure_end_slash(node_to_print));
                 if k.starts_with(temp.as_str()) && k.matches('/').count() == num_slashes {
@@ -80,12 +80,11 @@ fn display_node(
                         k,
                         found,
                         to_display,
-                        is_biggest,
+                        num_siblings == max_siblings - 1,
                         short_paths,
                         new_depth,
                         &*(new_indent.to_string() + get_tree_chars(num_siblings != 0, has_children)),
                     );
-                    is_biggest = false;
                 }
             }
         }
