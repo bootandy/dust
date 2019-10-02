@@ -69,7 +69,7 @@ fn examine_dir(
     apparent_size: bool,
     inodes: &mut HashSet<(u64, u64)>,
     data: &mut HashMap<String, u64>,
-    permissions: &mut u64,
+    file_count_no_permission: &mut u64,
 ) {
     for entry in WalkDir::new(top_dir) {
         if let Ok(e) = entry {
@@ -97,8 +97,10 @@ fn examine_dir(
                         e_path.pop();
                     }
                 }
-                None => *permissions += 1,
+                None => *file_count_no_permission += 1,
             }
+        } else {
+            *file_count_no_permission += 1
         }
     }
 }
