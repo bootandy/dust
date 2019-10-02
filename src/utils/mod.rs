@@ -121,6 +121,15 @@ pub fn compare_tuple(a: &(String, u64), b: &(String, u64)) -> Ordering {
     }
 }
 
+pub fn compare_tuple_smallest_first(a: &(String, u64), b: &(String, u64)) -> Ordering {
+    let result = a.1.cmp(&b.1);
+    if result == Ordering::Equal {
+        b.0.cmp(&a.0)
+    } else {
+        result
+    }
+}
+
 pub fn sort(data: HashMap<String, u64>) -> Vec<(String, u64)> {
     let mut new_l: Vec<(String, u64)> = data.iter().map(|(a, b)| (a.clone(), *b)).collect();
     new_l.sort_by(|a, b| compare_tuple(&a, &b));

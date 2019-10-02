@@ -5,7 +5,10 @@ extern crate walkdir;
 
 use self::display::draw_it;
 use clap::{App, AppSettings, Arg};
-use utils::{find_big_ones, get_dir_tree, simplify_dir_names, sort, trim_deep_ones};
+use utils::{
+    compare_tuple_smallest_first, find_big_ones, get_dir_tree, simplify_dir_names, sort,
+    trim_deep_ones,
+};
 
 mod display;
 mod utils;
@@ -42,6 +45,12 @@ fn main() {
                 .short("s")
                 .long("apparent-size")
                 .help("If set will use file length. Otherwise we use blocks"),
+        )
+        .arg(
+            Arg::with_name("reverse")
+                .short("r")
+                .long("reverse")
+                .help("If applied tree will be printed upside down (biggest lowest)"),
         )
         .arg(Arg::with_name("inputs").multiple(true))
         .get_matches();
@@ -85,18 +94,23 @@ fn main() {
     let simplified_dirs = simplify_dir_names(target_dirs);
     let (permissions, nodes) = get_dir_tree(&simplified_dirs, use_apparent_size);
     let sorted_data = sort(nodes);
-    let biggest_ones = {
+    let mut biggest_ones = {
         match depth {
             None => find_big_ones(sorted_data, number_of_lines + simplified_dirs.len()),
             Some(d) => trim_deep_ones(sorted_data, d, &simplified_dirs),
         }
     };
+    if options.is_present("reverse") {
+        biggest_ones.sort_by(compare_tuple_smallest_first);
+    }
+
     draw_it(
         permissions,
         !use_full_path,
         depth,
         simplified_dirs,
         biggest_ones,
+        options.is_present("reverse"),
     );
 }
 

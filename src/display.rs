@@ -13,15 +13,32 @@ pub fn draw_it(
     depth: Option<u64>,
     base_dirs: HashSet<String>,
     to_display: Vec<(String, u64)>,
+    is_reversed: bool,
 ) {
     if !permissions {
         eprintln!("Did not have permissions for all directories");
     }
     let mut found = HashSet::new();
+    let first_tree_chars = {
+        if is_reversed {
+            "─┴"
+        } else {
+            "─┬"
+        }
+    };
 
     for &(ref k, _) in to_display.iter() {
         if base_dirs.contains(k) {
-            display_node(&k, &mut found, &to_display, true, short_paths, depth, "─┬");
+            display_node(
+                &k,
+                &mut found,
+                &to_display,
+                true,
+                short_paths,
+                depth,
+                first_tree_chars,
+                is_reversed,
+            );
         }
     }
 }
@@ -36,18 +53,19 @@ fn get_size(nodes: &[(String, u64)], node_to_print: &str) -> Option<u64> {
 }
 
 fn display_node(
-    node_to_print: &str,
-    found: &mut HashSet<String>,
+    node: &str,
+    nodes_already_found: &mut HashSet<String>,
     to_display: &[(String, u64)],
     is_biggest: bool,
     short_paths: bool,
     depth: Option<u64>,
-    indentation_str: &str,
+    indent: &str,
+    is_reversed: bool,
 ) {
-    if found.contains(node_to_print) {
+    if nodes_already_found.contains(node) {
         return;
     }
-    found.insert(node_to_print.to_string());
+    nodes_already_found.insert(node.to_string());
 
     let new_depth = match depth {
         None => None,
@@ -55,35 +73,36 @@ fn display_node(
         Some(d) => Some(d - 1),
     };
 
-    match get_size(to_display, node_to_print) {
-        None => println!("Can not find path: {}", node_to_print),
+    match get_size(to_display, node) {
+        None => println!("Can not find path: {}", node),
         Some(size) => {
-            print_this_node(
-                node_to_print,
-                size,
-                is_biggest,
-                short_paths,
-                indentation_str,
-            );
+            if !is_reversed {
+                print_this_node(node, size, is_biggest, short_paths, indent);
+            }
             fan_out(
-                node_to_print,
-                found,
+                node,
+                nodes_already_found,
                 to_display,
                 short_paths,
                 new_depth,
-                indentation_str,
+                indent,
+                is_reversed,
             );
+            if is_reversed {
+                print_this_node(node, size, is_biggest, short_paths, indent);
+            }
         }
     }
 }
 
 fn fan_out(
     node_to_print: &str,
-    found: &mut HashSet<String>,
+    nodes_already_found: &mut HashSet<String>,
     to_display: &[(String, u64)],
     short_paths: bool,
     new_depth: Option<u64>,
     indentation_str: &str,
+    is_reversed: bool,
 ) {
     let new_indent = clean_indentation_string(indentation_str);
     let num_slashes = strip_end_slash_including_root(node_to_print)
@@ -98,14 +117,26 @@ fn fan_out(
         if k.starts_with(temp.as_str()) && k.matches('/').count() == num_slashes + 1 {
             num_siblings -= 1;
             let has_children = has_children(to_display, new_depth, k, num_slashes + 1);
+            let (new_tree_chars, biggest) = if is_reversed {
+                (
+                    get_tree_chars_reversed(num_siblings != max_siblings - 1, has_children),
+                    num_siblings == 0,
+                )
+            } else {
+                (
+                    get_tree_chars(num_siblings != 0, has_children),
+                    num_siblings == max_siblings - 1,
+                )
+            };
             display_node(
                 k,
-                found,
+                nodes_already_found,
                 to_display,
-                num_siblings == max_siblings - 1,
+                biggest,
                 short_paths,
                 new_depth,
-                &*(new_indent.to_string() + get_tree_chars(num_siblings != 0, has_children)),
+                &*(new_indent.to_string() + new_tree_chars),
+                is_reversed,
             );
         }
     }
@@ -113,11 +144,18 @@ fn fan_out(
 
 fn clean_indentation_string(s: &str) -> String {
     let mut is: String = s.into();
+    // For reversed:
+    is = is.replace("┌─┴", "  ");
+    is = is.replace("┌──", "  ");
+    is = is.replace("├─┴", "│ ");
+    is = is.replace("─┴", " ");
+    // For normal
     is = is.replace("└─┬", "  ");
     is = is.replace("└──", "  ");
-    is = is.replace("├──", "│ ");
     is = is.replace("├─┬", "│ ");
     is = is.replace("─┬", " ");
+    // For both
+    is = is.replace("├──", "│ ");
     is
 }
 
@@ -158,6 +196,20 @@ fn get_tree_chars(has_smaller_siblings: bool, has_children: bool) -> &'static st
         }
     } else if has_children {
         "├─┬"
+    } else {
+        "├──"
+    }
+}
+
+fn get_tree_chars_reversed(has_smaller_siblings: bool, has_children: bool) -> &'static str {
+    if !has_smaller_siblings {
+        if has_children {
+            "┌─┴"
+        } else {
+            "┬──"
+        }
+    } else if has_children {
+        "├─┴"
     } else {
         "├──"
     }
