@@ -35,14 +35,14 @@ fn get_size(nodes: &[(String, u64)], node_to_print: &str) -> Option<u64> {
     None
 }
 
-fn display_node<S: Into<String>>(
+fn display_node(
     node_to_print: &str,
     found: &mut HashSet<String>,
     to_display: &[(String, u64)],
     is_biggest: bool,
     short_paths: bool,
     depth: Option<u64>,
-    indentation_str: S,
+    indentation_str: &str,
 ) {
     if found.contains(node_to_print) {
         return;
@@ -57,9 +57,8 @@ fn display_node<S: Into<String>>(
     match get_size(to_display, node_to_print) {
         None => println!("Can not find path: {}", node_to_print),
         Some(size) => {
-            let is = indentation_str.into();
-            print_this_node(node_to_print, size, is_biggest, short_paths, is.as_ref());
-            let new_indent = clean_indentation_string(is);
+            print_this_node(node_to_print, size, is_biggest, short_paths, indentation_str);
+            let new_indent = clean_indentation_string(indentation_str);
 
             let ntp_with_slash = strip_end_slash(node_to_print);
 
@@ -84,7 +83,7 @@ fn display_node<S: Into<String>>(
                         is_biggest,
                         short_paths,
                         new_depth,
-                        new_indent.to_string() + get_tree_chars(num_siblings != 0, has_children),
+                        &*(new_indent.to_string() + get_tree_chars(num_siblings != 0, has_children)),
                     );
                     is_biggest = false;
                 }
@@ -93,8 +92,8 @@ fn display_node<S: Into<String>>(
     }
 }
 
-fn clean_indentation_string<S: Into<String>>(s: S) -> String {
-    let mut is = s.into();
+fn clean_indentation_string(s: &str) -> String {
+    let mut is :String = s.into();
     is = is.replace("└─┬", "  ");
     is = is.replace("└──", "  ");
     is = is.replace("├──", "│ ");
