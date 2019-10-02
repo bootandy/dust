@@ -54,39 +54,50 @@ fn display_node(
         Some(0) => return,
         Some(d) => Some(d - 1),
     };
+
     match get_size(to_display, node_to_print) {
         None => println!("Can not find path: {}", node_to_print),
         Some(size) => {
             print_this_node(node_to_print, size, is_biggest, short_paths, indentation_str);
-            let new_indent = clean_indentation_string(indentation_str);
+            fan_out(node_to_print, found, to_display, short_paths, new_depth, indentation_str);
+        }
+    }
+}
 
-            let ntp_with_slash = strip_end_slash(node_to_print);
+fn fan_out(
+    node_to_print: &str,
+    found: &mut HashSet<String>,
+    to_display: &[(String, u64)],
+    short_paths: bool,
+    new_depth: Option<u64>,
+    indentation_str: &str,
+) {
+    let new_indent = clean_indentation_string(indentation_str);
+    let ntp_with_slash = strip_end_slash(node_to_print);
 
-            // Annoying edge case for when run on root directory
-            let num_slashes = if ntp_with_slash == "/" {
-                1
-            } else {
-                ntp_with_slash.matches('/').count() + 1
-            };
-            let mut num_siblings = count_siblings(to_display, num_slashes - 1, node_to_print);
-            let max_siblings = num_siblings;
+    // Annoying edge case for when run on root directory
+    let num_slashes = if ntp_with_slash == "/" {
+        1
+    } else {
+        ntp_with_slash.matches('/').count() + 1
+    };
+    let mut num_siblings = count_siblings(to_display, num_slashes - 1, node_to_print);
+    let max_siblings = num_siblings;
 
-            for &(ref k, _) in to_display.iter() {
-                let temp = String::from(ensure_end_slash(node_to_print));
-                if k.starts_with(temp.as_str()) && k.matches('/').count() == num_slashes {
-                    num_siblings -= 1;
-                    let has_children = has_children(to_display, new_depth, k, num_slashes);
-                    display_node(
-                        k,
-                        found,
-                        to_display,
-                        num_siblings == max_siblings - 1,
-                        short_paths,
-                        new_depth,
-                        &*(new_indent.to_string() + get_tree_chars(num_siblings != 0, has_children)),
-                    );
-                }
-            }
+    for &(ref k, _) in to_display.iter() {
+        let temp = String::from(ensure_end_slash(node_to_print));
+        if k.starts_with(temp.as_str()) && k.matches('/').count() == num_slashes {
+            num_siblings -= 1;
+            let has_children = has_children(to_display, new_depth, k, num_slashes);
+            display_node(
+                k,
+                found,
+                to_display,
+                num_siblings == max_siblings - 1,
+                short_paths,
+                new_depth,
+                &*(new_indent.to_string() + get_tree_chars(num_siblings != 0, has_children)),
+            );
         }
     }
 }
