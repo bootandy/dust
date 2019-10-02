@@ -3,7 +3,7 @@ extern crate ansi_term;
 use self::ansi_term::Colour::Fixed;
 use self::ansi_term::Style;
 use std::collections::HashSet;
-use utils::{ensure_end_slash, strip_end_slash};
+use utils::{ensure_end_slash, strip_end_slash_including_root};
 
 static UNITS: [char; 4] = ['T', 'G', 'M', 'K'];
 
@@ -58,8 +58,21 @@ fn display_node(
     match get_size(to_display, node_to_print) {
         None => println!("Can not find path: {}", node_to_print),
         Some(size) => {
-            print_this_node(node_to_print, size, is_biggest, short_paths, indentation_str);
-            fan_out(node_to_print, found, to_display, short_paths, new_depth, indentation_str);
+            print_this_node(
+                node_to_print,
+                size,
+                is_biggest,
+                short_paths,
+                indentation_str,
+            );
+            fan_out(
+                node_to_print,
+                found,
+                to_display,
+                short_paths,
+                new_depth,
+                indentation_str,
+            );
         }
     }
 }
@@ -73,22 +86,18 @@ fn fan_out(
     indentation_str: &str,
 ) {
     let new_indent = clean_indentation_string(indentation_str);
-    let ntp_with_slash = strip_end_slash(node_to_print);
+    let num_slashes = strip_end_slash_including_root(node_to_print)
+        .matches('/')
+        .count();
 
-    // Annoying edge case for when run on root directory
-    let num_slashes = if ntp_with_slash == "/" {
-        1
-    } else {
-        ntp_with_slash.matches('/').count() + 1
-    };
-    let mut num_siblings = count_siblings(to_display, num_slashes - 1, node_to_print);
+    let mut num_siblings = count_siblings(to_display, num_slashes, node_to_print);
     let max_siblings = num_siblings;
 
     for &(ref k, _) in to_display.iter() {
         let temp = String::from(ensure_end_slash(node_to_print));
-        if k.starts_with(temp.as_str()) && k.matches('/').count() == num_slashes {
+        if k.starts_with(temp.as_str()) && k.matches('/').count() == num_slashes + 1 {
             num_siblings -= 1;
-            let has_children = has_children(to_display, new_depth, k, num_slashes);
+            let has_children = has_children(to_display, new_depth, k, num_slashes + 1);
             display_node(
                 k,
                 found,
@@ -103,7 +112,7 @@ fn fan_out(
 }
 
 fn clean_indentation_string(s: &str) -> String {
-    let mut is :String = s.into();
+    let mut is: String = s.into();
     is = is.replace("└─┬", "  ");
     is = is.replace("└──", "  ");
     is = is.replace("├──", "│ ");

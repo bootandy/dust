@@ -64,6 +64,14 @@ pub fn strip_end_slash(s: &str) -> String {
     new_name
 }
 
+pub fn strip_end_slash_including_root(s: &str) -> String {
+    let mut new_name = String::from(s);
+    while new_name.ends_with('/') || new_name.ends_with("/.") {
+        new_name.pop();
+    }
+    new_name
+}
+
 fn examine_dir(
     top_dir: &str,
     apparent_size: bool,
