@@ -2,65 +2,129 @@ extern crate ansi_term;
 
 use self::ansi_term::Colour::Fixed;
 use self::ansi_term::Style;
+use std::cmp::max;
 use std::collections::HashSet;
 use utils::{ensure_end_slash, strip_end_slash_including_root};
 
 static UNITS: [char; 4] = ['T', 'G', 'M', 'K'];
 
-pub fn draw_it(
-    permissions: bool,
-    short_paths: bool,
-    depth: Option<u64>,
-    base_dirs: HashSet<String>,
-    to_display: Vec<(String, u64)>,
-    is_reversed: bool,
-) {
-    if !permissions {
-        eprintln!("Did not have permissions for all directories");
-    }
-    let mut found = HashSet::new();
-    let first_tree_chars = {
-        if is_reversed {
+pub struct DisplayData {
+    pub short_paths: bool,
+    pub is_reversed: bool,
+    pub to_display: Vec<(String, u64)>,
+}
+
+impl DisplayData {
+    fn get_first_chars(&self) -> &str {
+        if self.is_reversed {
             "─┴"
         } else {
             "─┬"
         }
-    };
+    }
 
-    for &(ref k, _) in to_display.iter() {
-        if base_dirs.contains(k) {
-            display_node(
-                &k,
-                &mut found,
-                &to_display,
-                true,
-                short_paths,
-                depth,
-                first_tree_chars,
-                is_reversed,
-            );
+    fn get_tree_chars(
+        &self,
+        num_siblings: u64,
+        max_siblings: u64,
+        has_children: bool,
+    ) -> &'static str {
+        if self.is_reversed {
+            if num_siblings == max_siblings - 1 {
+                if has_children {
+                    "┌─┴"
+                } else {
+                    "┌──"
+                }
+            } else if has_children {
+                "├─┴"
+            } else {
+                "├──"
+            }
+        } else {
+            if num_siblings == 0 {
+                if has_children {
+                    "└─┬"
+                } else {
+                    "└──"
+                }
+            } else if has_children {
+                "├─┬"
+            } else {
+                "├──"
+            }
         }
+    }
+
+    fn biggest(&self, num_siblings: u64, max_siblings: u64) -> bool {
+        if self.is_reversed {
+            num_siblings == 0
+        } else {
+            num_siblings == max_siblings - 1
+        }
+    }
+
+    fn get_size(&self, node_to_print: &str) -> Option<u64> {
+        for &(ref k, ref v) in self.to_display.iter() {
+            if *k == *node_to_print {
+                return Some(*v);
+            }
+        }
+        None
+    }
+
+    fn count_siblings(&self, num_slashes: usize, ntp: &str) -> u64 {
+        self.to_display.iter().fold(0, |a, b| {
+            if b.0.starts_with(ntp) && b.0.as_str().matches('/').count() == num_slashes + 1 {
+                a + 1
+            } else {
+                a
+            }
+        })
+    }
+
+    fn has_children(&self, new_depth: Option<u64>, ntp: &str, num_slashes: usize) -> bool {
+        // this shouldn't be needed we should have already stripped
+        if new_depth.is_none() || new_depth.unwrap() != 1 {
+            for &(ref k2, _) in self.to_display.iter() {
+                let ntp_with_slash = String::from(ntp.to_owned() + "/");
+                if k2.starts_with(ntp_with_slash.as_str())
+                    && k2.matches('/').count() == num_slashes + 1
+                {
+                    return true;
+                }
+            }
+        }
+        false
     }
 }
 
-fn get_size(nodes: &[(String, u64)], node_to_print: &str) -> Option<u64> {
-    for &(ref k, ref v) in nodes.iter() {
-        if *k == *node_to_print {
-            return Some(*v);
+pub fn draw_it(
+    permissions: bool,
+    depth: Option<u64>,
+    base_dirs: HashSet<String>,
+    display_data: &DisplayData,
+) {
+    if !permissions {
+        eprintln!("Did not have permissions for all directories");
+    }
+    let first_tree_chars = display_data.get_first_chars();
+    let mut found = HashSet::new();
+
+    for &(ref k, _) in display_data.to_display.iter() {
+        if base_dirs.contains(k) {
+            display_node(&k, &mut found, true, depth, first_tree_chars, display_data);
         }
     }
-    None
 }
 
 fn display_node(
     node: &str,
     nodes_already_found: &mut HashSet<String>,
-    to_display: &[(String, u64)],
     is_biggest: bool,
-    short_paths: bool,
     depth: Option<u64>,
     indent: &str,
-    is_reversed: bool,
+    display_data: &DisplayData,
 ) {
     if nodes_already_found.contains(node) {
         return;
@@ -73,23 +137,17 @@ fn display_node(
         Some(d) => Some(d - 1),
     };
 
-    match get_size(to_display, node) {
+    match display_data.get_size(node) {
         None => println!("Can not find path: {}", node),
         Some(size) => {
-            if !is_reversed {
-                print_this_node(node, size, is_biggest, short_paths, indent);
+            let short_path = display_data.short_paths;
+            // move this inside display_data?
+            if !display_data.is_reversed {
+                print_this_node(node, size, is_biggest, short_path, indent);
             }
-            fan_out(
-                node,
-                nodes_already_found,
-                to_display,
-                short_paths,
-                new_depth,
-                indent,
-                is_reversed,
-            );
-            if is_reversed {
-                print_this_node(node, size, is_biggest, short_paths, indent);
+            fan_out(node, nodes_already_found, new_depth, indent, display_data);
+            if display_data.is_reversed {
+                print_this_node(node, size, is_biggest, short_path, indent);
             }
         }
     }
@@ -98,45 +156,33 @@ fn display_node(
 fn fan_out(
     node_to_print: &str,
     nodes_already_found: &mut HashSet<String>,
-    to_display: &[(String, u64)],
-    short_paths: bool,
     new_depth: Option<u64>,
     indentation_str: &str,
-    is_reversed: bool,
+    display_data: &DisplayData,
 ) {
     let new_indent = clean_indentation_string(indentation_str);
     let num_slashes = strip_end_slash_including_root(node_to_print)
         .matches('/')
         .count();
 
-    let mut num_siblings = count_siblings(to_display, num_slashes, node_to_print);
+    let mut num_siblings = display_data.count_siblings(num_slashes, node_to_print);
     let max_siblings = num_siblings;
 
-    for &(ref k, _) in to_display.iter() {
+    for &(ref k, _) in display_data.to_display.iter() {
         let temp = String::from(ensure_end_slash(node_to_print));
         if k.starts_with(temp.as_str()) && k.matches('/').count() == num_slashes + 1 {
             num_siblings -= 1;
-            let has_children = has_children(to_display, new_depth, k, num_slashes + 1);
-            let (new_tree_chars, biggest) = if is_reversed {
-                (
-                    get_tree_chars_reversed(num_siblings != max_siblings - 1, has_children),
-                    num_siblings == 0,
-                )
-            } else {
-                (
-                    get_tree_chars(num_siblings != 0, has_children),
-                    num_siblings == max_siblings - 1,
-                )
-            };
+            let has_children = display_data.has_children(new_depth, k, num_slashes + 1);
+            let new_tree_chars =
+                display_data.get_tree_chars(num_siblings, max_siblings, has_children);
+            let biggest = display_data.biggest(num_siblings, max_siblings);
             display_node(
                 k,
                 nodes_already_found,
-                to_display,
                 biggest,
-                short_paths,
                 new_depth,
                 &*(new_indent.to_string() + new_tree_chars),
-                is_reversed,
+                display_data,
             );
         }
     }
@@ -157,62 +203,6 @@ fn clean_indentation_string(s: &str) -> String {
     // For both
     is = is.replace("├──", "│ ");
     is
-}
-
-fn count_siblings(to_display: &[(String, u64)], num_slashes: usize, ntp: &str) -> u64 {
-    to_display.iter().fold(0, |a, b| {
-        if b.0.starts_with(ntp) && b.0.as_str().matches('/').count() == num_slashes + 1 {
-            a + 1
-        } else {
-            a
-        }
-    })
-}
-
-fn has_children(
-    to_display: &[(String, u64)],
-    new_depth: Option<u64>,
-    ntp: &str,
-    num_slashes: usize,
-) -> bool {
-    if new_depth.is_none() || new_depth.unwrap() != 1 {
-        for &(ref k2, _) in to_display.iter() {
-            let ntp_with_slash = String::from(ntp.to_owned() + "/");
-            if k2.starts_with(ntp_with_slash.as_str()) && k2.matches('/').count() == num_slashes + 1
-            {
-                return true;
-            }
-        }
-    }
-    false
-}
-
-fn get_tree_chars(has_smaller_siblings: bool, has_children: bool) -> &'static str {
-    if !has_smaller_siblings {
-        if has_children {
-            "└─┬"
-        } else {
-            "└──"
-        }
-    } else if has_children {
-        "├─┬"
-    } else {
-        "├──"
-    }
-}
-
-fn get_tree_chars_reversed(has_smaller_siblings: bool, has_children: bool) -> &'static str {
-    if !has_smaller_siblings {
-        if has_children {
-            "┌─┴"
-        } else {
-            "┬──"
-        }
-    } else if has_children {
-        "├─┴"
-    } else {
-        "├──"
-    }
 }
 
 fn print_this_node(

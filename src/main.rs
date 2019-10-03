@@ -4,6 +4,7 @@ extern crate assert_cli;
 extern crate walkdir;
 
 use self::display::draw_it;
+use self::display::DisplayData;
 use clap::{App, AppSettings, Arg};
 use utils::{
     compare_tuple_smallest_first, find_big_ones, get_dir_tree, simplify_dir_names, sort,
@@ -103,15 +104,13 @@ fn main() {
     if options.is_present("reverse") {
         biggest_ones.sort_by(compare_tuple_smallest_first);
     }
+    let dd = DisplayData {
+        short_paths: !use_full_path,
+        is_reversed: options.is_present("reverse"),
+        to_display: biggest_ones,
+    };
 
-    draw_it(
-        permissions,
-        !use_full_path,
-        depth,
-        simplified_dirs,
-        biggest_ones,
-        options.is_present("reverse"),
-    );
+    draw_it(permissions, depth, simplified_dirs, &dd);
 }
 
 #[cfg(test)]
