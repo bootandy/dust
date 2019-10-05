@@ -4,11 +4,10 @@ extern crate assert_cli;
 extern crate walkdir;
 
 use self::display::draw_it;
-use self::display::DisplayData;
 use clap::{App, AppSettings, Arg};
 use utils::{
     compare_tuple_smallest_first, find_big_ones, get_dir_tree, simplify_dir_names, sort,
-    trim_deep_ones,
+    trim_deep_ones, Node,
 };
 
 mod display;
@@ -104,13 +103,45 @@ fn main() {
     if options.is_present("reverse") {
         biggest_ones.sort_by(compare_tuple_smallest_first);
     }
-    let dd = DisplayData {
-        short_paths: !use_full_path,
-        is_reversed: options.is_present("reverse"),
-        to_display: biggest_ones,
+    let tree = build_tree(&biggest_ones);
+    //println!("{:?}", tree);
+
+    draw_it(
+        permissions,
+        depth,
+        use_full_path,
+        options.is_present("reverse"),
+        tree,
+    );
+}
+
+fn build_tree(biggest_ones: &Vec<(String, u64)>) -> Node {
+    let mut top_parent = Node {
+        name: "".to_string(),
+        size: 0,
+        children: vec![],
     };
 
-    draw_it(permissions, depth, simplified_dirs, &dd);
+    // assume sorted order
+    for b in biggest_ones.clone() {
+        let n = Node {
+            name: b.0,
+            size: b.1,
+            children: vec![],
+        };
+        recursively_build_tree(&mut top_parent, n)
+    }
+    top_parent
+}
+
+fn recursively_build_tree(parent_node: &mut Node, new_node: Node) {
+    for c in parent_node.children.iter_mut() {
+        if new_node.name.starts_with(&c.name) {
+            return recursively_build_tree(&mut *c, new_node);
+        }
+    }
+    let temp = Box::<Node>::new(new_node);
+    parent_node.children.push(temp);
 }
 
 #[cfg(test)]
