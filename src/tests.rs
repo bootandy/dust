@@ -110,6 +110,27 @@ pub fn test_apparent_size() {
 }
 
 #[test]
+pub fn test_reverse_flag() {
+    // variable names the same length make the output easier to read
+    let a = "    ┌── a_file";
+    let b = "    ├── hello_file";
+    let c = "  ┌─┴ many";
+    let d = " ─┴ test_dir";
+
+    assert_cli::Assert::main_binary()
+        .with_args(&["-r", "src/test_dir"])
+        .stdout()
+        .contains(a)
+        .stdout()
+        .contains(b)
+        .stdout()
+        .contains(c)
+        .stdout()
+        .contains(d)
+        .unwrap();
+}
+
+#[test]
 pub fn test_d_flag_works() {
     // We should see the top level directory but not the sub dirs / files:
     assert_cli::Assert::main_binary()

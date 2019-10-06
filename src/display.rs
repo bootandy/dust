@@ -53,7 +53,7 @@ impl DisplayData {
         }
     }
 
-    fn biggest(&self, num_siblings: u64, max_siblings: u64) -> bool {
+    fn is_biggest(&self, num_siblings: u64, max_siblings: u64) -> bool {
         if self.is_reversed {
             num_siblings == 0
         } else {
@@ -102,7 +102,7 @@ fn display_node(node: Node, is_biggest: bool, indent: &str, display_data: &Displ
     for c in display_data.get_children_from_node(node) {
         num_siblings -= 1;
         let chars = display_data.get_tree_chars(num_siblings, max_sibling, c.children.len() > 0);
-        let is_biggest = display_data.biggest(num_siblings, max_sibling);
+        let is_biggest = display_data.is_biggest(num_siblings, max_sibling);
         let full_indent = new_indent.clone() + chars;
         display_node(*c, is_biggest, &*full_indent, display_data)
     }
@@ -133,16 +133,10 @@ fn print_this_node(name: &str, size: u64, is_biggest: bool, short_paths: bool, i
     let pretty_size = format!("{:>5}", human_readable_number(size),);
     println!(
         "{}",
-        format_string(
-            name,
-            is_biggest,
-            short_paths,
-            pretty_size.as_ref(),
-            indentation
-        )
+        format_string(name, is_biggest, short_paths, &*pretty_size, indentation)
     )
 }
-// idea: squash these 2
+
 pub fn format_string(
     dir_name: &str,
     is_biggest: bool,
