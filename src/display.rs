@@ -60,15 +60,18 @@ impl DisplayData {
             num_siblings == max_siblings - 1
         }
     }
+
+    fn get_children_from_node(&self, node: Node) -> impl Iterator<Item = Box<Node>> {
+        if self.is_reversed {
+            let n: Vec<Box<Node>> = node.children.into_iter().rev().map(|a| a).collect();
+            return n.into_iter();
+        } else {
+            return node.children.into_iter();
+        }
+    }
 }
 
-pub fn draw_it(
-    permissions: bool,
-    depth: Option<u64>,
-    use_full_path: bool,
-    is_reversed: bool,
-    root_node: Node,
-) {
+pub fn draw_it(permissions: bool, use_full_path: bool, is_reversed: bool, root_node: Node) {
     if !permissions {
         eprintln!("Did not have permissions for all directories");
     }
@@ -77,37 +80,35 @@ pub fn draw_it(
         is_reversed,
     };
 
-    for c in root_node.children {
+    for c in display_data.get_children_from_node(root_node) {
         let first_tree_chars = display_data.get_first_chars();
-        display_node(*c, true, depth, first_tree_chars, &display_data)
+        display_node(*c, true, first_tree_chars, &display_data)
     }
 }
 
-fn display_node(
-    node: Node,
-    is_biggest: bool,
-    depth: Option<u64>,
-    indent: &str,
-    display_data: &DisplayData,
-) {
-    let new_depth = match depth {
-        None => None,
-        Some(0) => return,
-        Some(d) => Some(d - 1),
-    };
+fn display_node(node: Node, is_biggest: bool, indent: &str, display_data: &DisplayData) {
     let short = display_data.short_paths;
-    print_this_node(&node, is_biggest, short, indent);
 
     let mut num_siblings = node.children.len() as u64;
     let max_sibling = num_siblings;
     let new_indent = clean_indentation_string(indent);
+    let name = node.name.clone();
+    let size = node.size;
 
-    for c in node.children {
+    if !display_data.is_reversed {
+        print_this_node(&*name, size, is_biggest, short, indent);
+    }
+
+    for c in display_data.get_children_from_node(node) {
         num_siblings -= 1;
         let chars = display_data.get_tree_chars(num_siblings, max_sibling, c.children.len() > 0);
         let is_biggest = display_data.biggest(num_siblings, max_sibling);
-        let full_indent = (new_indent.clone() + chars);
-        display_node(*c, is_biggest, new_depth, &*full_indent, display_data)
+        let full_indent = new_indent.clone() + chars;
+        display_node(*c, is_biggest, &*full_indent, display_data)
+    }
+
+    if display_data.is_reversed {
+        print_this_node(&*name, size, is_biggest, short, indent);
     }
 }
 
@@ -128,12 +129,12 @@ fn clean_indentation_string(s: &str) -> String {
     is
 }
 
-fn print_this_node(node: &Node, is_biggest: bool, short_paths: bool, indentation: &str) {
-    let pretty_size = format!("{:>5}", human_readable_number(node.size),);
+fn print_this_node(name: &str, size: u64, is_biggest: bool, short_paths: bool, indentation: &str) {
+    let pretty_size = format!("{:>5}", human_readable_number(size),);
     println!(
         "{}",
         format_string(
-            &*node.name,
+            name,
             is_biggest,
             short_paths,
             pretty_size.as_ref(),
