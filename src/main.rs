@@ -5,7 +5,7 @@ extern crate walkdir;
 
 use self::display::draw_it;
 use clap::{App, AppSettings, Arg};
-use utils::{find_big_ones, get_dir_tree, simplify_dir_names, sort, trim_deep_ones};
+use utils::{find_big_ones, get_dir_tree, simplify_dir_names, sort, trim_deep_ones, Node};
 
 mod display;
 mod utils;
@@ -42,6 +42,12 @@ fn main() {
                 .short("s")
                 .long("apparent-size")
                 .help("If set will use file length. Otherwise we use blocks"),
+        )
+        .arg(
+            Arg::with_name("reverse")
+                .short("r")
+                .long("reverse")
+                .help("If applied tree will be printed upside down (biggest lowest)"),
         )
         .arg(Arg::with_name("inputs").multiple(true))
         .get_matches();
@@ -91,13 +97,49 @@ fn main() {
             Some(d) => trim_deep_ones(sorted_data, d, &simplified_dirs),
         }
     };
+    let tree = build_tree(biggest_ones, depth);
+    //println!("{:?}", tree);
+
     draw_it(
         permissions,
-        !use_full_path,
-        depth,
-        simplified_dirs,
-        biggest_ones,
+        use_full_path,
+        options.is_present("reverse"),
+        tree,
     );
+}
+
+fn build_tree(biggest_ones: Vec<(String, u64)>, depth: Option<u64>) -> Node {
+    let mut top_parent = Node {
+        name: "".to_string(),
+        size: 0,
+        children: vec![],
+    };
+
+    // assume sorted order
+    for b in biggest_ones {
+        let n = Node {
+            name: b.0,
+            size: b.1,
+            children: vec![],
+        };
+        recursively_build_tree(&mut top_parent, n, depth)
+    }
+    top_parent
+}
+
+fn recursively_build_tree(parent_node: &mut Node, new_node: Node, depth: Option<u64>) {
+    let new_depth = match depth {
+        None => None,
+        Some(0) => return,
+        Some(d) => Some(d - 1),
+    };
+    for c in parent_node.children.iter_mut() {
+        if new_node.name.starts_with(&c.name) {
+            return recursively_build_tree(&mut *c, new_node, new_depth);
+        }
+    }
+    let temp = Box::<Node>::new(new_node);
+    parent_node.children.push(temp);
 }
 
 #[cfg(test)]

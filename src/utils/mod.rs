@@ -7,6 +7,13 @@ use walkdir::WalkDir;
 mod platform;
 use self::platform::*;
 
+#[derive(Debug)]
+pub struct Node {
+    pub name: String,
+    pub size: u64,
+    pub children: Vec<Box<Node>>,
+}
+
 pub fn simplify_dir_names(filenames: Vec<&str>) -> HashSet<String> {
     let mut top_level_names: HashSet<String> = HashSet::new();
 
@@ -85,6 +92,7 @@ fn examine_dir(
                             inodes.insert(inode_dev_pair);
                         }
                     }
+                    // This path and all its parent paths have their counter incremented
                     let mut e_path = e.path().to_path_buf();
                     loop {
                         let path_name = e_path.to_string_lossy().to_string();
@@ -104,7 +112,8 @@ fn examine_dir(
         }
     }
 }
-pub fn compare_tuple(a: &(String, u64), b: &(String, u64)) -> Ordering {
+
+pub fn sort_by_size_first_name_second(a: &(String, u64), b: &(String, u64)) -> Ordering {
     let result = b.1.cmp(&a.1);
     if result == Ordering::Equal {
         a.0.cmp(&b.0)
@@ -115,7 +124,7 @@ pub fn compare_tuple(a: &(String, u64), b: &(String, u64)) -> Ordering {
 
 pub fn sort(data: HashMap<String, u64>) -> Vec<(String, u64)> {
     let mut new_l: Vec<(String, u64)> = data.iter().map(|(a, b)| (a.clone(), *b)).collect();
-    new_l.sort_by(|a, b| compare_tuple(&a, &b));
+    new_l.sort_by(|a, b| sort_by_size_first_name_second(&a, &b));
     new_l
 }
 
