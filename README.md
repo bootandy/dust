@@ -38,6 +38,7 @@ Usage: dust -p <dir>  (full-path - does not shorten the path of the subdirectori
 Usage: dust -s <dir>  (apparent-size - shows the length of the file as opposed to the amount of disk space it uses)
 Usage: dust -n 30  <dir>  (Shows 30 directories not 20)
 Usage: dust -d 3  <dir>  (Shows 3 levels of subdirectories)
+Usage: dust -r  <dir>  (Reverse order of output, with root at the lowest)
 ```
 
 ```
