@@ -1,6 +1,12 @@
 # Based on the "trust" template v0.1.2
 # https://github.com/japaric/trust/tree/v0.1.2
 
+# ----------- To do a release ---------
+# tag a commit and push:
+#   git tag v0.4.0.1
+#   git push origin v0.4.0.1
+# Remember to do a cargo publish to put it in crates.io
+
 dist: trusty
 language: rust
 services: docker
