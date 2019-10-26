@@ -2,7 +2,7 @@ extern crate ansi_term;
 
 use self::ansi_term::Colour::Fixed;
 use self::ansi_term::Style;
-use utils::Node;
+use crate::utils::Node;
 
 static UNITS: [char; 4] = ['T', 'G', 'M', 'K'];
 
