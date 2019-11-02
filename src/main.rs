@@ -15,6 +15,8 @@ static DEFAULT_NUMBER_OF_LINES: usize = 20;
 fn main() {
     let def_num_str = DEFAULT_NUMBER_OF_LINES.to_string();
     let options = App::new("Dust")
+        .about("Like du but more intuitive")
+        .version(crate_version!())
         .setting(AppSettings::TrailingVarArg)
         .arg(
             Arg::with_name("depth")
