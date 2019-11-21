@@ -1,7 +1,3 @@
-extern crate ansi_term;
-extern crate tempfile;
-use self::tempfile::Builder;
-use self::tempfile::TempDir;
 use super::*;
 use display::format_string;
 use std::fs::File;
@@ -9,6 +5,8 @@ use std::io::Write;
 use std::panic;
 use std::path::PathBuf;
 use std::process::Command;
+use tempfile::Builder;
+use tempfile::TempDir;
 
 #[test]
 pub fn test_main() {

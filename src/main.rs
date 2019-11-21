@@ -1,7 +1,5 @@
 #[macro_use]
 extern crate clap;
-extern crate assert_cli;
-extern crate walkdir;
 
 use self::display::draw_it;
 use clap::{App, AppSettings, Arg};
