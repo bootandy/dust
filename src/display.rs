@@ -1,5 +1,7 @@
 extern crate ansi_term;
 
+use either::*;
+
 use self::ansi_term::Colour::Fixed;
 use self::ansi_term::Style;
 use crate::utils::Node;
@@ -59,12 +61,11 @@ impl DisplayData {
         }
     }
 
-    fn get_children_from_node(&self, node: Node) -> impl Iterator<Item = Node> {
+    fn get_children_from_node(&self, node: Node) -> impl IntoIterator<Item = Node> {
         if self.is_reversed {
-            let n: Vec<Node> = node.children.into_iter().rev().map(|a| a).collect();
-            n.into_iter()
+            Left(node.children.into_iter().rev())
         } else {
-            node.children.into_iter()
+            Right(node.children.into_iter())
         }
     }
 }
