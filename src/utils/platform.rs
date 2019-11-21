@@ -1,5 +1,6 @@
 use walkdir::DirEntry;
 
+#[allow(dead_code)]
 fn get_block_size() -> u64 {
     // All os specific implementations of MetatdataExt seem to define a block as 512 bytes
     // https://doc.rust-lang.org/std/os/linux/fs/trait.MetadataExt.html#tymethod.st_blocks
@@ -21,5 +22,5 @@ pub fn get_metadata(d: &DirEntry, use_apparent_size: bool) -> Option<(u64, Optio
 
 #[cfg(not(target_family = "unix"))]
 pub fn get_metadata(d: &DirEntry, _apparent: bool) -> Option<(u64, Option<(u64, u64)>)> {
-    d.metadata().ok().map_or(None, |md| Some((md.len(), None)))
+    d.metadata().ok().map(|md| (md.len(), None))
 }

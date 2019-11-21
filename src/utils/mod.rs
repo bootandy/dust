@@ -11,7 +11,7 @@ use self::platform::*;
 pub struct Node {
     pub name: String,
     pub size: u64,
-    pub children: Vec<Box<Node>>,
+    pub children: Vec<Node>,
 }
 
 pub fn simplify_dir_names(filenames: Vec<&str>) -> HashSet<String> {

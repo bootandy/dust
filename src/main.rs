@@ -140,8 +140,7 @@ fn recursively_build_tree(parent_node: &mut Node, new_node: Node, depth: Option<
             return recursively_build_tree(&mut *c, new_node, new_depth);
         }
     }
-    let temp = Box::<Node>::new(new_node);
-    parent_node.children.push(temp);
+    parent_node.children.push(new_node);
 }
 
 #[cfg(test)]
