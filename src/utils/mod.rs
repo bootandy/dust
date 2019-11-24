@@ -2,7 +2,7 @@ use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::collections::HashSet;
 
-use walkdir::WalkDir;
+use jwalk::WalkDir;
 
 mod platform;
 use self::platform::*;
@@ -78,7 +78,7 @@ fn examine_dir(
     data: &mut HashMap<String, u64>,
     file_count_no_permission: &mut u64,
 ) {
-    for entry in WalkDir::new(top_dir) {
+    for entry in WalkDir::new(top_dir).preload_metadata(true) {
         if let Ok(e) = entry {
             let maybe_size_and_inode = get_metadata(&e, apparent_size);
 
@@ -93,12 +93,12 @@ fn examine_dir(
                         }
                     }
                     // This path and all its parent paths have their counter incremented
-                    let mut e_path = e.path().to_path_buf();
+                    let mut e_path = e.path();
                     loop {
                         let path_name = e_path.to_string_lossy().to_string();
                         let s = data.entry(path_name.clone()).or_insert(0);
                         *s += size;
-                        if path_name == *top_dir {
+                        if path_name == top_dir || path_name == "/" {
                             break;
                         }
                         assert!(path_name != "");
