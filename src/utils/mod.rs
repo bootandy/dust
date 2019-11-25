@@ -1,13 +1,14 @@
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::collections::HashSet;
+use std::path::PathBuf;
 
 use jwalk::WalkDir;
 
 mod platform;
 use self::platform::*;
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Node {
     pub name: String,
     pub size: u64,
@@ -15,26 +16,25 @@ pub struct Node {
 }
 
 pub fn simplify_dir_names(filenames: Vec<&str>) -> HashSet<String> {
-    let mut top_level_names: HashSet<String> = HashSet::new();
+    let mut top_level_names: HashSet<String> = HashSet::with_capacity(filenames.len());
+    let mut to_remove: Vec<String> = Vec::with_capacity(filenames.len());
 
     for t in filenames {
         let top_level_name = ensure_end_slash(t);
         let mut can_add = true;
-        let mut to_remove: Vec<String> = Vec::new();
 
         for tt in top_level_names.iter() {
-            let temp = tt.to_string();
-            if top_level_name.starts_with(&temp) {
+            if top_level_name.starts_with(tt) {
                 can_add = false;
             } else if tt.starts_with(&top_level_name) {
-                to_remove.push(temp);
+                to_remove.push(tt.to_string());
             }
         }
-        for tr in to_remove {
-            top_level_names.remove(&tr);
-        }
+        to_remove.sort_unstable();
+        top_level_names.retain(|tr| to_remove.binary_search(tr).is_err());
+        to_remove.clear();
         if can_add {
-            top_level_names.insert(strip_end_slash(t));
+            top_level_names.insert(strip_end_slash(t).to_owned());
         }
     }
 
@@ -63,10 +63,9 @@ pub fn ensure_end_slash(s: &str) -> String {
     new_name + "/"
 }
 
-pub fn strip_end_slash(s: &str) -> String {
-    let mut new_name = String::from(s);
+pub fn strip_end_slash(mut new_name: &str) -> &str {
     while (new_name.ends_with('/') || new_name.ends_with("/.")) && new_name.len() > 1 {
-        new_name.pop();
+        new_name = &new_name[..new_name.len() - 1];
     }
     new_name
 }
@@ -93,16 +92,13 @@ fn examine_dir(
                         }
                     }
                     // This path and all its parent paths have their counter incremented
-                    let mut e_path = e.path();
-                    loop {
-                        let path_name = e_path.to_string_lossy().to_string();
-                        let s = data.entry(path_name.clone()).or_insert(0);
+                    for path_name in PathBuf::from(e.path()).ancestors() {
+                        let path_name = path_name.to_string_lossy();
+                        let s = data.entry(path_name.to_string()).or_insert(0);
                         *s += size;
-                        if path_name == top_dir || path_name == "/" {
+                        if path_name == top_dir {
                             break;
                         }
-                        assert!(path_name != "");
-                        e_path.pop();
                     }
                 }
                 None => *file_count_no_permission += 1,
@@ -124,7 +120,7 @@ pub fn sort_by_size_first_name_second(a: &(String, u64), b: &(String, u64)) -> O
 
 pub fn sort(data: HashMap<String, u64>) -> Vec<(String, u64)> {
     let mut new_l: Vec<(String, u64)> = data.iter().map(|(a, b)| (a.clone(), *b)).collect();
-    new_l.sort_by(|a, b| sort_by_size_first_name_second(&a, &b));
+    new_l.sort_unstable_by(sort_by_size_first_name_second);
     new_l
 }
 
@@ -141,7 +137,7 @@ pub fn trim_deep_ones(
     max_depth: u64,
     top_level_names: &HashSet<String>,
 ) -> Vec<(String, u64)> {
-    let mut result: Vec<(String, u64)> = vec![];
+    let mut result: Vec<(String, u64)> = Vec::with_capacity(input.len() * top_level_names.len());
 
     for name in top_level_names {
         let my_max_depth = name.matches('/').count() + max_depth as usize;

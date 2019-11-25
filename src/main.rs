@@ -109,18 +109,14 @@ fn main() {
 }
 
 fn build_tree(biggest_ones: Vec<(String, u64)>, depth: Option<u64>) -> Node {
-    let mut top_parent = Node {
-        name: "".to_string(),
-        size: 0,
-        children: vec![],
-    };
+    let mut top_parent = Node::default();
 
     // assume sorted order
     for b in biggest_ones {
         let n = Node {
             name: b.0,
             size: b.1,
-            children: vec![],
+            children: Vec::default(),
         };
         recursively_build_tree(&mut top_parent, n, depth)
     }
@@ -133,13 +129,16 @@ fn recursively_build_tree(parent_node: &mut Node, new_node: Node, depth: Option<
         Some(0) => return,
         Some(d) => Some(d - 1),
     };
-    for c in parent_node.children.iter_mut() {
-        if new_node.name.starts_with(&c.name) {
-            return recursively_build_tree(&mut *c, new_node, new_depth);
-        }
+    if let Some(c) = parent_node
+        .children
+        .iter_mut()
+        .find(|c| new_node.name.starts_with(&c.name))
+    {
+        recursively_build_tree(&mut *c, new_node, new_depth);
+    } else {
+        let temp = Box::<Node>::new(new_node);
+        parent_node.children.push(temp);
     }
-    let temp = Box::<Node>::new(new_node);
-    parent_node.children.push(temp);
 }
 
 #[cfg(test)]
