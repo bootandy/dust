@@ -77,7 +77,10 @@ fn examine_dir(
     data: &mut HashMap<String, u64>,
     file_count_no_permission: &mut u64,
 ) {
-    for entry in WalkDir::new(top_dir).preload_metadata(true) {
+    for entry in WalkDir::new(top_dir)
+        .preload_metadata(true)
+        .skip_hidden(false)
+    {
         if let Ok(e) = entry {
             let maybe_size_and_inode = get_metadata(&e, apparent_size);
 
