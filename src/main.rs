@@ -24,6 +24,13 @@ fn main() {
                 .takes_value(true),
         )
         .arg(
+            Arg::with_name("threads")
+                .short("t")
+                .long("threads")
+                .help("Number of threads to spawn simultaneously")
+                .takes_value(true),
+        )
+        .arg(
             Arg::with_name("number_of_lines")
                 .short("n")
                 .long("number-of-lines")
@@ -67,19 +74,20 @@ fn main() {
         }
     };
 
-    let depth = {
-        if options.is_present("depth") {
-            match value_t!(options.value_of("depth"), u64) {
-                Ok(v) => Some(v + 1),
-                Err(_) => {
-                    eprintln!("Ignoring bad value for depth");
-                    None
-                }
-            }
-        } else {
-            None
-        }
-    };
+    let threads = options.value_of("threads").and_then(|threads| {
+        threads
+            .parse::<usize>()
+            .map_err(|_| eprintln!("Ignoring bad value for threads: {:?}", threads))
+            .ok()
+    });
+
+    let depth = options.value_of("depth").and_then(|depth| {
+        depth
+            .parse::<u64>()
+            .map(|v| v + 1)
+            .map_err(|_| eprintln!("Ignoring bad value for depth"))
+            .ok()
+    });
     if options.is_present("depth") && number_of_lines != DEFAULT_NUMBER_OF_LINES {
         eprintln!("Use either -n or -d. Not both");
         return;
@@ -89,7 +97,7 @@ fn main() {
     let use_full_path = options.is_present("display_full_paths");
 
     let simplified_dirs = simplify_dir_names(target_dirs);
-    let (permissions, nodes) = get_dir_tree(&simplified_dirs, use_apparent_size);
+    let (permissions, nodes) = get_dir_tree(&simplified_dirs, use_apparent_size, threads);
     let sorted_data = sort(nodes);
     let biggest_ones = {
         match depth {

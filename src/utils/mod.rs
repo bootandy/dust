@@ -44,13 +44,21 @@ pub fn simplify_dir_names(filenames: Vec<&str>) -> HashSet<String> {
 pub fn get_dir_tree(
     top_level_names: &HashSet<String>,
     apparent_size: bool,
+    threads: Option<usize>,
 ) -> (bool, HashMap<String, u64>) {
     let mut permissions = 0;
     let mut inodes: HashSet<(u64, u64)> = HashSet::new();
     let mut data: HashMap<String, u64> = HashMap::new();
 
     for b in top_level_names.iter() {
-        examine_dir(&b, apparent_size, &mut inodes, &mut data, &mut permissions);
+        examine_dir(
+            &b,
+            apparent_size,
+            &mut inodes,
+            &mut data,
+            &mut permissions,
+            threads,
+        );
     }
     (permissions == 0, data)
 }
@@ -76,11 +84,15 @@ fn examine_dir(
     inodes: &mut HashSet<(u64, u64)>,
     data: &mut HashMap<String, u64>,
     file_count_no_permission: &mut u64,
+    cpus: Option<usize>,
 ) {
-    for entry in WalkDir::new(top_dir)
+    let mut iter = WalkDir::new(top_dir)
         .preload_metadata(true)
-        .skip_hidden(false)
-    {
+        .skip_hidden(false);
+    if let Some(cpus) = cpus {
+        iter = iter.num_threads(cpus);
+    }
+    for entry in iter {
         if let Ok(e) = entry {
             let maybe_size_and_inode = get_metadata(&e, apparent_size);
 
