@@ -142,10 +142,9 @@ fn recursively_build_tree(parent_node: &mut Node, new_node: Node, depth: Option<
         .iter_mut()
         .find(|c| new_node.name.starts_with(&c.name))
     {
-        recursively_build_tree(&mut *c, new_node, new_depth);
+        recursively_build_tree(c, new_node, new_depth);
     } else {
-        let temp = Box::<Node>::new(new_node);
-        parent_node.children.push(temp);
+        parent_node.children.push(new_node);
     }
 }
 

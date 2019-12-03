@@ -1,7 +1,6 @@
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::collections::HashSet;
-use std::path::PathBuf;
 
 use jwalk::WalkDir;
 
@@ -12,7 +11,7 @@ use self::platform::*;
 pub struct Node {
     pub name: String,
     pub size: u64,
-    pub children: Vec<Box<Node>>,
+    pub children: Vec<Node>,
 }
 
 pub fn simplify_dir_names(filenames: Vec<&str>) -> HashSet<String> {
@@ -107,7 +106,7 @@ fn examine_dir(
                         }
                     }
                     // This path and all its parent paths have their counter incremented
-                    for path_name in PathBuf::from(e.path()).ancestors() {
+                    for path_name in e.path().ancestors() {
                         let path_name = path_name.to_string_lossy();
                         let s = data.entry(path_name.to_string()).or_insert(0);
                         *s += size;
