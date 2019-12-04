@@ -61,12 +61,12 @@ impl DisplayData {
         }
     }
 
-    fn get_children_from_node(&self, node: Node) -> impl Iterator<Item = Box<Node>> {
+    fn get_children_from_node(&self, node: Node) -> impl Iterator<Item = Node> {
         if self.is_reversed {
-            let n: Vec<Box<Node>> = node.children.into_iter().rev().map(|a| a).collect();
-            return n.into_iter();
+            let n: Vec<Node> = node.children.into_iter().rev().map(|a| a).collect();
+            n.into_iter()
         } else {
-            return node.children.into_iter();
+            node.children.into_iter()
         }
     }
 }
@@ -82,7 +82,7 @@ pub fn draw_it(permissions: bool, use_full_path: bool, is_reversed: bool, root_n
 
     for c in display_data.get_children_from_node(root_node) {
         let first_tree_chars = display_data.get_first_chars();
-        display_node(*c, true, first_tree_chars, &display_data)
+        display_node(c, true, first_tree_chars, &display_data)
     }
 }
 
@@ -101,10 +101,10 @@ fn display_node(node: Node, is_biggest: bool, indent: &str, display_data: &Displ
 
     for c in display_data.get_children_from_node(node) {
         num_siblings -= 1;
-        let chars = display_data.get_tree_chars(num_siblings, max_sibling, c.children.len() > 0);
+        let chars = display_data.get_tree_chars(num_siblings, max_sibling, !c.children.is_empty());
         let is_biggest = display_data.is_biggest(num_siblings, max_sibling);
         let full_indent = new_indent.clone() + chars;
-        display_node(*c, is_biggest, &*full_indent, display_data)
+        display_node(c, is_biggest, &*full_indent, display_data)
     }
 
     if display_data.is_reversed {
