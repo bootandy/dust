@@ -83,13 +83,13 @@ fn examine_dir(
     inodes: &mut HashSet<(u64, u64)>,
     data: &mut HashMap<String, u64>,
     file_count_no_permission: &mut u64,
-    cpus: Option<usize>,
+    threads: Option<usize>,
 ) {
     let mut iter = WalkDir::new(top_dir)
         .preload_metadata(true)
         .skip_hidden(false);
-    if let Some(cpus) = cpus {
-        iter = iter.num_threads(cpus);
+    if let Some(threads_to_start) = threads {
+        iter = iter.num_threads(threads_to_start);
     }
     for entry in iter {
         if let Ok(e) = entry {
