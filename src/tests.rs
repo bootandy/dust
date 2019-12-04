@@ -138,7 +138,7 @@ pub fn test_d_flag_works() {
         .unwrap();
 }
 
-fn build_temp_file(dir: &TempDir) -> (PathBuf) {
+fn build_temp_file(dir: &TempDir) -> PathBuf {
     let file_path = dir.path().join("notes.txt");
     let mut file = File::create(&file_path).unwrap();
     writeln!(file, "I am a temp file").unwrap();
@@ -164,7 +164,7 @@ pub fn test_soft_sym_link() {
     let r = soft_sym_link_output(dir_s, file_path_s, link_name_s);
 
     // We cannot guarantee which version will appear first.
-    // TODO: Consider adding predictable itteration order (sort file entries by name?)
+    // TODO: Consider adding predictable iteration order (sort file entries by name?)
     assert_cli::Assert::main_binary()
         .with_args(&[dir_s])
         .stdout()
@@ -307,4 +307,46 @@ fn recursive_sym_link_output(dir: &str, link_name: &str) -> String {
         format_string(dir, true, true, " 4.0K", "─┬"),
         format_string(link_name, true, true, "   0B", " └──",),
     )
+}
+
+// Check against directories and files whos names are substrings of each other
+#[test]
+#[cfg(target_os = "macos")]
+pub fn test_substring_of_names() {
+    assert_cli::Assert::main_binary()
+        .with_args(&["src/test_dir2"])
+        .stdout()
+        .contains(" ─┬ test_dir2")
+        .stdout()
+        .contains("  ├─┬ dir")
+        .stdout()
+        .contains("  │ └── hello")
+        .stdout()
+        .contains("  ├── dir_name_clash")
+        .stdout()
+        .contains("  └─┬ dir_substring")
+        .stdout()
+        .contains("    └── hello")
+        .unwrap();
+}
+
+// Check against directories and files whos names are substrings of each other
+#[test]
+#[cfg(target_os = "linux")]
+pub fn test_substring_of_names() {
+    assert_cli::Assert::main_binary()
+        .with_args(&["src/test_dir2"])
+        .stdout()
+        .contains(" ─┬ test_dir2")
+        .stdout()
+        .contains("  ├─┬ dir")
+        .stdout()
+        .contains("  │ └── hello")
+        .stdout()
+        .contains("  ├─┬ dir_substring")
+        .stdout()
+        .contains("  │ └── hello")
+        .stdout()
+        .contains("  └── dir_name_clash")
+        .unwrap();
 }

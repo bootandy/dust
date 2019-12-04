@@ -7,11 +7,37 @@ use jwalk::WalkDir;
 mod platform;
 use self::platform::*;
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Eq)]
 pub struct Node {
     pub name: String,
     pub size: u64,
     pub children: Vec<Node>,
+}
+
+impl Ord for Node {
+    fn cmp(&self, other: &Self) -> Ordering {
+        if self.size == other.size {
+            self.name.cmp(&other.name)
+        } else {
+            self.size.cmp(&other.size)
+        }
+    }
+}
+
+impl PartialOrd for Node {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl PartialEq for Node {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name && self.size == other.size && self.children == other.children
+    }
+}
+
+pub fn is_a_parent_of(parent: &str, child: &str) -> bool {
+    child.starts_with(parent) && child.chars().nth(parent.chars().count()) == Some('/')
 }
 
 pub fn simplify_dir_names(filenames: Vec<&str>) -> HashSet<String> {
@@ -19,14 +45,14 @@ pub fn simplify_dir_names(filenames: Vec<&str>) -> HashSet<String> {
     let mut to_remove: Vec<String> = Vec::with_capacity(filenames.len());
 
     for t in filenames {
-        let top_level_name = ensure_end_slash(t);
+        let top_level_name = strip_end_slash(t);
         let mut can_add = true;
 
         for tt in top_level_names.iter() {
-            if top_level_name.starts_with(tt) {
-                can_add = false;
-            } else if tt.starts_with(&top_level_name) {
+            if is_a_parent_of(&top_level_name, tt) {
                 to_remove.push(tt.to_string());
+            } else if is_a_parent_of(tt, &top_level_name) {
+                can_add = false;
             }
         }
         to_remove.sort_unstable();
@@ -60,14 +86,6 @@ pub fn get_dir_tree(
         );
     }
     (permissions == 0, data)
-}
-
-pub fn ensure_end_slash(s: &str) -> String {
-    let mut new_name = String::from(s);
-    while new_name.ends_with('/') || new_name.ends_with("/.") {
-        new_name.pop();
-    }
-    new_name + "/"
 }
 
 pub fn strip_end_slash(mut new_name: &str) -> &str {
@@ -205,5 +223,13 @@ mod tests {
         let mut correct = HashSet::new();
         correct.insert("src".to_string());
         assert_eq!(simplify_dir_names(vec!["src/."]), correct);
+    }
+
+    #[test]
+    fn test_simplify_dir_substring_names() {
+        let mut correct = HashSet::new();
+        correct.insert("src".to_string());
+        correct.insert("src_v2".to_string());
+        assert_eq!(simplify_dir_names(vec!["src/", "src_v2"]), correct);
     }
 }
