@@ -2,6 +2,7 @@
 extern crate clap;
 
 use self::display::draw_it;
+use crate::utils::is_a_parent_of;
 use clap::{App, AppSettings, Arg};
 use utils::{find_big_ones, get_dir_tree, simplify_dir_names, sort, trim_deep_ones, Node};
 
@@ -106,7 +107,6 @@ fn main() {
         }
     };
     let tree = build_tree(biggest_ones, depth);
-    //println!("{:?}", tree);
 
     draw_it(
         permissions,
@@ -126,7 +126,8 @@ fn build_tree(biggest_ones: Vec<(String, u64)>, depth: Option<u64>) -> Node {
             size: b.1,
             children: Vec::default(),
         };
-        recursively_build_tree(&mut top_parent, n, depth)
+        recursively_build_tree(&mut top_parent, n, depth);
+        top_parent.children.sort_unstable()
     }
     top_parent
 }
@@ -140,7 +141,7 @@ fn recursively_build_tree(parent_node: &mut Node, new_node: Node, depth: Option<
     if let Some(c) = parent_node
         .children
         .iter_mut()
-        .find(|c| new_node.name.starts_with(&c.name))
+        .find(|c| is_a_parent_of(&c.name, &new_node.name))
     {
         recursively_build_tree(c, new_node, new_depth);
     } else {

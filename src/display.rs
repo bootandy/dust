@@ -20,6 +20,7 @@ impl DisplayData {
         }
     }
 
+    #[allow(clippy::collapsible_if)]
     fn get_tree_chars(
         &self,
         num_siblings: u64,
