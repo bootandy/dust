@@ -72,7 +72,13 @@ impl DisplayData {
     }
 }
 
-pub fn draw_it(permissions: bool, use_full_path: bool, is_reversed: bool, root_node: Node) {
+pub fn draw_it(
+    permissions: bool,
+    use_full_path: bool,
+    is_reversed: bool,
+    colors_on: bool,
+    root_node: Node,
+) {
     if !permissions {
         eprintln!("Did not have permissions for all directories");
     }
@@ -83,11 +89,17 @@ pub fn draw_it(permissions: bool, use_full_path: bool, is_reversed: bool, root_n
 
     for c in display_data.get_children_from_node(root_node) {
         let first_tree_chars = display_data.get_first_chars();
-        display_node(c, true, first_tree_chars, &display_data)
+        display_node(c, true, colors_on, first_tree_chars, &display_data)
     }
 }
 
-fn display_node(node: Node, is_biggest: bool, indent: &str, display_data: &DisplayData) {
+fn display_node(
+    node: Node,
+    is_biggest: bool,
+    colors_on: bool,
+    indent: &str,
+    display_data: &DisplayData,
+) {
     let short = display_data.short_paths;
 
     let mut num_siblings = node.children.len() as u64;
@@ -97,7 +109,7 @@ fn display_node(node: Node, is_biggest: bool, indent: &str, display_data: &Displ
     let size = node.size;
 
     if !display_data.is_reversed {
-        print_this_node(&*name, size, is_biggest, short, indent);
+        print_this_node(&*name, size, is_biggest, short, colors_on, indent);
     }
 
     for c in display_data.get_children_from_node(node) {
@@ -105,11 +117,11 @@ fn display_node(node: Node, is_biggest: bool, indent: &str, display_data: &Displ
         let chars = display_data.get_tree_chars(num_siblings, max_sibling, !c.children.is_empty());
         let is_biggest = display_data.is_biggest(num_siblings, max_sibling);
         let full_indent = new_indent.clone() + chars;
-        display_node(c, is_biggest, &*full_indent, display_data)
+        display_node(c, is_biggest, colors_on, &*full_indent, display_data)
     }
 
     if display_data.is_reversed {
-        print_this_node(&*name, size, is_biggest, short, indent);
+        print_this_node(&*name, size, is_biggest, short, colors_on, indent);
     }
 }
 
@@ -130,11 +142,25 @@ fn clean_indentation_string(s: &str) -> String {
     is
 }
 
-fn print_this_node(name: &str, size: u64, is_biggest: bool, short_paths: bool, indentation: &str) {
+fn print_this_node(
+    name: &str,
+    size: u64,
+    is_biggest: bool,
+    short_paths: bool,
+    colors_on: bool,
+    indentation: &str,
+) {
     let pretty_size = format!("{:>5}", human_readable_number(size),);
     println!(
         "{}",
-        format_string(name, is_biggest, short_paths, &*pretty_size, indentation)
+        format_string(
+            name,
+            is_biggest,
+            short_paths,
+            colors_on,
+            &*pretty_size,
+            indentation
+        )
     )
 }
 
@@ -142,6 +168,7 @@ pub fn format_string(
     dir_name: &str,
     is_biggest: bool,
     short_paths: bool,
+    colors_on: bool,
     size: &str,
     indentation: &str,
 ) -> String {
@@ -154,7 +181,7 @@ pub fn format_string(
     };
     format!(
         "{} {} {}",
-        if is_biggest {
+        if is_biggest && colors_on {
             Fixed(196).paint(size)
         } else {
             Style::new().paint(size)

@@ -57,6 +57,12 @@ fn main() {
                 .long("reverse")
                 .help("If applied tree will be printed upside down (biggest lowest)"),
         )
+        .arg(
+            Arg::with_name("no_colors")
+                .short("c")
+                .long("no_colors")
+                .help("If applied no colors will be printed (normally largest directories are marked in red"),
+        )
         .arg(Arg::with_name("inputs").multiple(true))
         .get_matches();
 
@@ -112,6 +118,7 @@ fn main() {
         permissions,
         use_full_path,
         options.is_present("reverse"),
+        !options.is_present("no_colors"),
         tree,
     );
 }
