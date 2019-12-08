@@ -1,4 +1,5 @@
 use super::*;
+use crate::display::DisplayData;
 use display::format_string;
 use std::fs::File;
 use std::io::Write;
@@ -37,67 +38,83 @@ pub fn test_main_multi_arg() {
 
 #[cfg(target_os = "macos")]
 fn main_output(short_paths: bool) -> String {
+    let d = DisplayData {
+        short_paths,
+        is_reversed: false,
+        colors_on: true,
+    };
     format!(
         "{}
 {}
 {}
 {}",
-        format_string("src/test_dir", true, short_paths, " 4.0K", "─┬"),
-        format_string("src/test_dir/many", true, short_paths, " 4.0K", " └─┬",),
-        format_string(
-            "src/test_dir/many/hello_file",
-            true,
-            short_paths,
-            " 4.0K",
-            "   ├──",
-        ),
-        format_string(
-            "src/test_dir/many/a_file",
-            false,
-            short_paths,
-            "   0B",
-            "   └──",
-        ),
+        format_string("src/test_dir", true, &d, " 4.0K", "─┬"),
+        format_string("src/test_dir/many", true, &d, " 4.0K", " └─┬",),
+        format_string("src/test_dir/many/hello_file", true, &d, " 4.0K", "   ├──",),
+        format_string("src/test_dir/many/a_file", false, &d, "   0B", "   └──",),
     )
 }
 
 #[cfg(target_os = "linux")]
 fn main_output(short_paths: bool) -> String {
+    let d = DisplayData {
+        short_paths,
+        is_reversed: false,
+        colors_on: true,
+    };
     format!(
         "{}
 {}
 {}
 {}",
-        format_string("src/test_dir", true, short_paths, "  12K", "─┬"),
-        format_string("src/test_dir/many", true, short_paths, " 8.0K", " └─┬",),
-        format_string(
-            "src/test_dir/many/hello_file",
-            true,
-            short_paths,
-            " 4.0K",
-            "   ├──",
-        ),
-        format_string(
-            "src/test_dir/many/a_file",
-            false,
-            short_paths,
-            "   0B",
-            "   └──",
-        ),
+        format_string("src/test_dir", true, &d, "  12K", "─┬"),
+        format_string("src/test_dir/many", true, &d, " 8.0K", " └─┬",),
+        format_string("src/test_dir/many/hello_file", true, &d, " 4.0K", "   ├──",),
+        format_string("src/test_dir/many/a_file", false, &d, "   0B", "   └──",),
     )
 }
 
 #[test]
+pub fn test_no_color_flag() {
+    assert_cli::Assert::main_binary()
+        .with_args(&["-c", "src/test_dir/"])
+        .stdout()
+        .is(no_color_flag_output())
+        .unwrap();
+}
+
+#[cfg(target_os = "macos")]
+fn no_color_flag_output() -> String {
+    "
+ 4.0K ─┬ test_dir
+ 4.0K  └─┬ many
+ 4.0K    ├── hello_file
+   0B    └── a_file
+    "
+    .to_string()
+}
+
+#[cfg(target_os = "linux")]
+fn no_color_flag_output() -> String {
+    "
+  12K ─┬ test_dir
+ 8.0K  └─┬ many
+ 4.0K    ├── hello_file
+   0B    └── a_file
+    "
+    .to_string()
+}
+
+#[test]
 pub fn test_apparent_size() {
+    let d = DisplayData {
+        short_paths: true,
+        is_reversed: false,
+        colors_on: true,
+    };
     let r = format!(
         "{}",
-        format_string(
-            "src/test_dir/many/hello_file",
-            true,
-            true,
-            "   6B",
-            "   ├──",
-        ),
+        format_string("src/test_dir/many/hello_file", true, &d, "   6B", "   ├──",),
     );
 
     assert_cli::Assert::main_binary()
@@ -161,39 +178,19 @@ pub fn test_soft_sym_link() {
         .output();
     assert!(c.is_ok());
 
-    let r = soft_sym_link_output(dir_s, file_path_s, link_name_s);
+    let a = format!(" ─┬ {}", dir_s);
+    let b = format!("  ├── {}", file_path_s);
+    let c = format!("  └── {}", link_name_s);
 
-    // We cannot guarantee which version will appear first.
-    // TODO: Consider adding predictable iteration order (sort file entries by name?)
     assert_cli::Assert::main_binary()
-        .with_args(&[dir_s])
+        .with_args(&["-p", &dir_s])
         .stdout()
-        .contains(r)
+        .contains(a)
+        .stdout()
+        .contains(b)
+        .stdout()
+        .contains(c)
         .unwrap();
-}
-
-#[cfg(target_os = "macos")]
-fn soft_sym_link_output(dir: &str, file_path: &str, link_name: &str) -> String {
-    format!(
-        "{}
-{}
-{}",
-        format_string(dir, true, true, " 8.0K", "─┬"),
-        format_string(file_path, true, true, " 4.0K", " ├──",),
-        format_string(link_name, false, true, " 4.0K", " └──",),
-    )
-}
-
-#[cfg(target_os = "linux")]
-fn soft_sym_link_output(dir: &str, file_path: &str, link_name: &str) -> String {
-    format!(
-        "{}
-{}
-{}",
-        format_string(dir, true, true, " 8.0K", "─┬"),
-        format_string(file_path, true, true, " 4.0K", " ├──",),
-        format_string(link_name, false, true, "   0B", " └──",),
-    )
 }
 
 // Hard links are ignored as the inode is the same as the file
@@ -212,62 +209,33 @@ pub fn test_hard_sym_link() {
         .output();
     assert!(c.is_ok());
 
-    let (r, r2) = hard_link_output(dir_s, file_path_s, link_name_s);
+    let a = format!(" ─┬ {}", dir_s);
+    let b = format!("  └── {}", link_name_s);
+    let b2 = format!("  └── {}", file_path_s);
 
     // Because this is a hard link the file and hard link look identical. Therefore
     // we cannot guarantee which version will appear first.
-    // TODO: Consider adding predictable iteration order (sort file entries by name?)
     let result = panic::catch_unwind(|| {
         assert_cli::Assert::main_binary()
-            .with_args(&[dir_s])
+            .with_args(&["-p", dir_s])
             .stdout()
-            .contains(r)
+            .contains(a.clone())
+            .stdout()
+            .contains(b)
             .unwrap();
     });
     if result.is_err() {
         assert_cli::Assert::main_binary()
-            .with_args(&[dir_s])
+            .with_args(&["-p", dir_s])
             .stdout()
-            .contains(r2)
+            .contains(a)
+            .stdout()
+            .contains(b2)
             .unwrap();
     }
 }
 
-#[cfg(target_os = "macos")]
-fn hard_link_output(dir_s: &str, file_path_s: &str, link_name_s: &str) -> (String, String) {
-    let r = format!(
-        "{}
-{}",
-        format_string(dir_s, true, true, " 4.0K", "─┬"),
-        format_string(file_path_s, true, true, " 4.0K", " └──")
-    );
-    let r2 = format!(
-        "{}
-{}",
-        format_string(dir_s, true, true, " 4.0K", "─┬"),
-        format_string(link_name_s, true, true, " 4.0K", " └──")
-    );
-    (r, r2)
-}
-
-#[cfg(target_os = "linux")]
-fn hard_link_output(dir_s: &str, file_path_s: &str, link_name_s: &str) -> (String, String) {
-    let r = format!(
-        "{}
-{}",
-        format_string(dir_s, true, true, " 8.0K", "─┬"),
-        format_string(file_path_s, true, true, " 4.0K", " └──")
-    );
-    let r2 = format!(
-        "{}
-{}",
-        format_string(dir_s, true, true, " 8.0K", "─┬"),
-        format_string(link_name_s, true, true, " 4.0K", " └──")
-    );
-    (r, r2)
-}
-
-//Check we don't recurse down an infinite symlink tree
+// Check we don't recurse down an infinite symlink tree
 #[test]
 pub fn test_recursive_sym_link() {
     let dir = Builder::new().tempdir().unwrap();
@@ -283,70 +251,50 @@ pub fn test_recursive_sym_link() {
         .output();
     assert!(c.is_ok());
 
-    assert_cli::Assert::main_binary()
-        .with_args(&[dir_s])
-        .stdout()
-        .contains(recursive_sym_link_output(dir_s, link_name_s))
-        .unwrap();
-}
+    let a = format!(" ─┬ {}", dir_s);
+    let b = format!("  └── {}", link_name_s);
 
-#[cfg(target_os = "macos")]
-fn recursive_sym_link_output(dir: &str, link_name: &str) -> String {
-    format!(
-        "{}
-{}",
-        format_string(dir, true, true, " 4.0K", "─┬"),
-        format_string(link_name, true, true, " 4.0K", " └──",),
-    )
-}
-#[cfg(target_os = "linux")]
-fn recursive_sym_link_output(dir: &str, link_name: &str) -> String {
-    format!(
-        "{}
-{}",
-        format_string(dir, true, true, " 4.0K", "─┬"),
-        format_string(link_name, true, true, "   0B", " └──",),
-    )
-}
-
-// Check against directories and files whos names are substrings of each other
-#[test]
-#[cfg(target_os = "macos")]
-pub fn test_substring_of_names() {
     assert_cli::Assert::main_binary()
-        .with_args(&["src/test_dir2"])
+        .with_args(&["-p", dir_s])
         .stdout()
-        .contains(" ─┬ test_dir2")
+        .contains(a)
         .stdout()
-        .contains("  ├─┬ dir")
-        .stdout()
-        .contains("  │ └── hello")
-        .stdout()
-        .contains("  ├── dir_name_clash")
-        .stdout()
-        .contains("  └─┬ dir_substring")
-        .stdout()
-        .contains("    └── hello")
+        .contains(b)
         .unwrap();
 }
 
 // Check against directories and files whos names are substrings of each other
 #[test]
-#[cfg(target_os = "linux")]
 pub fn test_substring_of_names() {
     assert_cli::Assert::main_binary()
-        .with_args(&["src/test_dir2"])
+        .with_args(&["-c", "src/test_dir2"])
         .stdout()
-        .contains(" ─┬ test_dir2")
-        .stdout()
-        .contains("  ├─┬ dir")
-        .stdout()
-        .contains("  │ └── hello")
-        .stdout()
-        .contains("  ├─┬ dir_substring")
-        .stdout()
-        .contains("  │ └── hello")
-        .stdout()
-        .contains("  └── dir_name_clash")
+        .is(no_substring_of_names_output())
         .unwrap();
+}
+
+#[cfg(target_os = "linux")]
+fn no_substring_of_names_output() -> String {
+    "
+  24K ─┬ test_dir2
+ 8.0K  ├─┬ dir
+ 4.0K  │ └── hello
+ 8.0K  ├─┬ dir_substring
+ 4.0K  │ └── hello
+ 4.0K  └── dir_name_clash
+    "
+    .into()
+}
+
+#[cfg(target_os = "macos")]
+fn no_substring_of_names_output() -> String {
+    "
+  12K ─┬ test_dir2
+ 4.0K  ├─┬ dir
+ 4.0K  │ └── hello
+ 4.0K  ├── dir_name_clash
+ 4.0K  └─┬ dir_substring
+ 4.0K    └── hello
+    "
+    .into()
 }

@@ -101,7 +101,6 @@ fn main() {
     }
 
     let use_apparent_size = options.is_present("display_apparent_size");
-    let use_full_path = options.is_present("display_full_paths");
 
     let simplified_dirs = simplify_dir_names(target_dirs);
     let (permissions, nodes) = get_dir_tree(&simplified_dirs, use_apparent_size, threads);
@@ -116,9 +115,9 @@ fn main() {
 
     draw_it(
         permissions,
-        use_full_path,
+        options.is_present("display_full_paths"),
         options.is_present("reverse"),
-        !options.is_present("no_colors"),
+        options.is_present("no_colors"),
         tree,
     );
 }
