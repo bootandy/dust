@@ -9,6 +9,7 @@ static UNITS: [char; 4] = ['T', 'G', 'M', 'K'];
 pub struct DisplayData {
     pub short_paths: bool,
     pub is_reversed: bool,
+    pub colors_on: bool,
 }
 
 impl DisplayData {
@@ -72,13 +73,20 @@ impl DisplayData {
     }
 }
 
-pub fn draw_it(permissions: bool, use_full_path: bool, is_reversed: bool, root_node: Node) {
+pub fn draw_it(
+    permissions: bool,
+    use_full_path: bool,
+    is_reversed: bool,
+    no_colors: bool,
+    root_node: Node,
+) {
     if !permissions {
         eprintln!("Did not have permissions for all directories");
     }
     let display_data = DisplayData {
         short_paths: !use_full_path,
         is_reversed,
+        colors_on: !no_colors,
     };
 
     for c in display_data.get_children_from_node(root_node) {
@@ -88,8 +96,6 @@ pub fn draw_it(permissions: bool, use_full_path: bool, is_reversed: bool, root_n
 }
 
 fn display_node(node: Node, is_biggest: bool, indent: &str, display_data: &DisplayData) {
-    let short = display_data.short_paths;
-
     let mut num_siblings = node.children.len() as u64;
     let max_sibling = num_siblings;
     let new_indent = clean_indentation_string(indent);
@@ -97,7 +103,7 @@ fn display_node(node: Node, is_biggest: bool, indent: &str, display_data: &Displ
     let size = node.size;
 
     if !display_data.is_reversed {
-        print_this_node(&*name, size, is_biggest, short, indent);
+        print_this_node(&*name, size, is_biggest, display_data, indent);
     }
 
     for c in display_data.get_children_from_node(node) {
@@ -109,7 +115,7 @@ fn display_node(node: Node, is_biggest: bool, indent: &str, display_data: &Displ
     }
 
     if display_data.is_reversed {
-        print_this_node(&*name, size, is_biggest, short, indent);
+        print_this_node(&*name, size, is_biggest, display_data, indent);
     }
 }
 
@@ -130,23 +136,29 @@ fn clean_indentation_string(s: &str) -> String {
     is
 }
 
-fn print_this_node(name: &str, size: u64, is_biggest: bool, short_paths: bool, indentation: &str) {
+fn print_this_node(
+    name: &str,
+    size: u64,
+    is_biggest: bool,
+    display_data: &DisplayData,
+    indentation: &str,
+) {
     let pretty_size = format!("{:>5}", human_readable_number(size),);
     println!(
         "{}",
-        format_string(name, is_biggest, short_paths, &*pretty_size, indentation)
+        format_string(name, is_biggest, display_data, &*pretty_size, indentation)
     )
 }
 
 pub fn format_string(
     dir_name: &str,
     is_biggest: bool,
-    short_paths: bool,
+    display_data: &DisplayData,
     size: &str,
     indentation: &str,
 ) -> String {
     let printable_name = {
-        if short_paths {
+        if display_data.short_paths {
             dir_name.split('/').last().unwrap_or(dir_name)
         } else {
             dir_name
@@ -154,7 +166,7 @@ pub fn format_string(
     };
     format!(
         "{} {} {}",
-        if is_biggest {
+        if is_biggest && display_data.colors_on {
             Fixed(196).paint(size)
         } else {
             Style::new().paint(size)
