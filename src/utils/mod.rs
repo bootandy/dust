@@ -125,6 +125,11 @@ fn examine_dir(
                     }
                     // This path and all its parent paths have their counter incremented
                     for path_name in e.path().ancestors() {
+                        // This is required due to bug in Jwalk that adds '/' to all sub dir lists
+                        // see: https://github.com/jessegrosjean/jwalk/issues/13
+                        if path_name.to_string_lossy() == "/" && top_dir != "/" {
+                            continue
+                        }
                         let path_name = path_name.to_string_lossy();
                         let s = data.entry(path_name.to_string()).or_insert(0);
                         *s += size;
