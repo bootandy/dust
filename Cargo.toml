@@ -23,7 +23,7 @@ path = "src/main.rs"
 [dependencies]
 ansi_term = "=0.11"
 clap = "=2.33"
-jwalk = "0.4"
+jwalk = "0.4.0"
 
 [dev-dependencies]
 assert_cli = "=0.5"
