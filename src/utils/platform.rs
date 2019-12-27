@@ -1,5 +1,6 @@
 use jwalk::DirEntry;
 
+#[cfg(target_family = "unix")]
 fn get_block_size() -> u64 {
     // All os specific implementations of MetatdataExt seem to define a block as 512 bytes
     // https://doc.rust-lang.org/std/os/linux/fs/trait.MetadataExt.html#tymethod.st_blocks
