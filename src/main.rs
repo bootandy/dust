@@ -11,7 +11,16 @@ mod utils;
 
 static DEFAULT_NUMBER_OF_LINES: usize = 20;
 
+#[cfg(windows)]
+fn init_color() {
+    ansi_term::enable_ansi_support().expect("Couldn't enable color support");
+}
+
+#[cfg(not(windows))]
+fn init_color() {}
+
 fn main() {
+    init_color();
     let def_num_str = DEFAULT_NUMBER_OF_LINES.to_string();
     let options = App::new("Dust")
         .about("Like du but more intuitive")
