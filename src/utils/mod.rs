@@ -37,7 +37,7 @@ impl PartialEq for Node {
 }
 
 pub fn is_a_parent_of(parent: &str, child: &str) -> bool {
-    child.starts_with(parent) && child.chars().nth(parent.chars().count()) == Some('/')
+    (child.starts_with(parent) && child.chars().nth(parent.chars().count()) == Some('/')) || parent == "/"
 }
 
 pub fn simplify_dir_names(filenames: Vec<&str>) -> HashSet<String> {
@@ -125,6 +125,11 @@ fn examine_dir(
                     }
                     // This path and all its parent paths have their counter incremented
                     for path_name in e.path().ancestors() {
+                        // This is required due to bug in Jwalk that adds '/' to all sub dir lists
+                        // see: https://github.com/jessegrosjean/jwalk/issues/13
+                        if path_name.to_string_lossy() == "/" && top_dir != "/" {
+                            continue
+                        }
                         let path_name = path_name.to_string_lossy();
                         let s = data.entry(path_name.to_string()).or_insert(0);
                         *s += size;
@@ -231,5 +236,19 @@ mod tests {
         correct.insert("src".to_string());
         correct.insert("src_v2".to_string());
         assert_eq!(simplify_dir_names(vec!["src/", "src_v2"]), correct);
+    }
+
+    #[test]
+    fn test_is_a_parent_of() {
+        assert!(is_a_parent_of("/usr", "/usr/andy"));
+        assert!(is_a_parent_of("/usr", "/usr/andy/i/am/descendant"));
+        assert!(!is_a_parent_of("/usr/andy", "/usr"));
+        assert!(!is_a_parent_of("/usr/andy", "/usr/sibling"));
+    }
+
+    #[test]
+    fn test_is_a_parent_of_root() {
+        assert!(is_a_parent_of("/", "/usr/andy"));
+        assert!(is_a_parent_of("/", "/usr"));
     }
 }

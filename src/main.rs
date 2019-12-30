@@ -133,7 +133,6 @@ fn build_tree(biggest_ones: Vec<(String, u64)>, depth: Option<u64>) -> Node {
             children: Vec::default(),
         };
         recursively_build_tree(&mut top_parent, n, depth);
-        top_parent.children.sort_unstable()
     }
     top_parent
 }
