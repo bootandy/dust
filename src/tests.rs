@@ -1,4 +1,5 @@
 use super::*;
+
 use crate::display::DisplayData;
 use display::format_string;
 use std::fs::File;
@@ -14,7 +15,7 @@ pub fn test_main() {
     assert_cli::Assert::main_binary()
         .with_args(&["src/test_dir"])
         .stdout()
-        .is(main_output(true))
+        .is(main_output(true).as_str())
         .unwrap();
 }
 
@@ -23,7 +24,7 @@ pub fn test_main_long_paths() {
     assert_cli::Assert::main_binary()
         .with_args(&["-p", "src/test_dir"])
         .stdout()
-        .is(main_output(false))
+        .is(main_output(false).as_str())
         .unwrap();
 }
 
@@ -32,7 +33,7 @@ pub fn test_main_multi_arg() {
     assert_cli::Assert::main_binary()
         .with_args(&["src/test_dir/many/", "src/test_dir/", "src/test_dir"])
         .stdout()
-        .is(main_output(true))
+        .is(main_output(true).as_str())
         .unwrap();
 }
 
@@ -79,7 +80,7 @@ pub fn test_no_color_flag() {
     assert_cli::Assert::main_binary()
         .with_args(&["-c", "src/test_dir/"])
         .stdout()
-        .is(no_color_flag_output())
+        .is(no_color_flag_output().as_str())
         .unwrap();
 }
 
@@ -120,7 +121,7 @@ pub fn test_apparent_size() {
     assert_cli::Assert::main_binary()
         .with_args(&["-s", "src/test_dir"])
         .stdout()
-        .contains(r)
+        .contains(r.as_str())
         .unwrap();
 }
 
@@ -185,11 +186,11 @@ pub fn test_soft_sym_link() {
     assert_cli::Assert::main_binary()
         .with_args(&["-p", &dir_s])
         .stdout()
-        .contains(a)
+        .contains(a.as_str())
         .stdout()
-        .contains(b)
+        .contains(b.as_str())
         .stdout()
-        .contains(c)
+        .contains(c.as_str())
         .unwrap();
 }
 
@@ -219,18 +220,18 @@ pub fn test_hard_sym_link() {
         assert_cli::Assert::main_binary()
             .with_args(&["-p", dir_s])
             .stdout()
-            .contains(a.clone())
+            .contains(a.as_str())
             .stdout()
-            .contains(b)
+            .contains(b.as_str())
             .unwrap();
     });
     if result.is_err() {
         assert_cli::Assert::main_binary()
             .with_args(&["-p", dir_s])
             .stdout()
-            .contains(a)
+            .contains(a.as_str())
             .stdout()
-            .contains(b2)
+            .contains(b2.as_str())
             .unwrap();
     }
 }
@@ -257,9 +258,9 @@ pub fn test_recursive_sym_link() {
     assert_cli::Assert::main_binary()
         .with_args(&["-p", dir_s])
         .stdout()
-        .contains(a)
+        .contains(a.as_str())
         .stdout()
-        .contains(b)
+        .contains(b.as_str())
         .unwrap();
 }
 
@@ -269,7 +270,7 @@ pub fn test_substring_of_names() {
     assert_cli::Assert::main_binary()
         .with_args(&["-c", "src/test_dir2"])
         .stdout()
-        .is(no_substring_of_names_output())
+        .is(no_substring_of_names_output().as_str())
         .unwrap();
 }
 
