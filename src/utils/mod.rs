@@ -1,3 +1,4 @@
+use jwalk::DirEntry;
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::collections::HashSet;
@@ -116,7 +117,7 @@ pub fn strip_end_slash(mut new_name: &str) -> &str {
 fn examine_dir(
     top_dir: &str,
     apparent_size: bool,
-    restricted_filesystems: &Option<HashSet<u64>>,
+    filesystems: &Option<HashSet<u64>>,
     inodes: &mut HashSet<(u64, u64)>,
     data: &mut HashMap<String, u64>,
     file_count_no_permission: &mut u64,
@@ -134,43 +135,63 @@ fn examine_dir(
 
             match maybe_size_and_inode {
                 Some((size, maybe_inode)) => {
-                    if !apparent_size {
-                        if let Some(inode_dev_pair) = maybe_inode {
-                            // Ignore files on different devices (if flag applied)
-                            if restricted_filesystems.is_some()
-                                && !restricted_filesystems
-                                    .as_ref()
-                                    .unwrap()
-                                    .contains(&inode_dev_pair.1)
-                            {
-                                continue;
-                            }
-                            // Ignore files already visited or symlinked
-                            if inodes.contains(&inode_dev_pair) {
-                                continue;
-                            }
-                            inodes.insert(inode_dev_pair);
-                        }
-                    }
-                    // This path and all its parent paths have their counter incremented
-                    for path_name in e.path().ancestors() {
-                        // This is required due to bug in Jwalk that adds '/' to all sub dir lists
-                        // see: https://github.com/jessegrosjean/jwalk/issues/13
-                        if path_name.to_string_lossy() == "/" && top_dir != "/" {
-                            continue;
-                        }
-                        let path_name = path_name.to_string_lossy();
-                        let s = data.entry(path_name.to_string()).or_insert(0);
-                        *s += size;
-                        if path_name == top_dir {
-                            break;
-                        }
+                    if !should_ignore_file(apparent_size, filesystems, inodes, maybe_inode) {
+                        process_file_with_size_and_inode(top_dir, data, e, size)
                     }
                 }
                 None => *file_count_no_permission += 1,
             }
         } else {
             *file_count_no_permission += 1
+        }
+    }
+}
+
+fn should_ignore_file(
+    apparent_size: bool,
+    restricted_filesystems: &Option<HashSet<u64>>,
+    inodes: &mut HashSet<(u64, u64)>,
+    maybe_inode: Option<(u64, u64)>,
+) -> bool {
+    if !apparent_size {
+        if let Some(inode_dev_pair) = maybe_inode {
+            // Ignore files on different devices (if flag applied)
+            if restricted_filesystems.is_some()
+                && !restricted_filesystems
+                    .as_ref()
+                    .unwrap()
+                    .contains(&inode_dev_pair.1)
+            {
+                return true;
+            }
+            // Ignore files already visited or symlinked
+            if inodes.contains(&inode_dev_pair) {
+                return true;
+            }
+            inodes.insert(inode_dev_pair);
+        }
+    }
+    false
+}
+
+fn process_file_with_size_and_inode(
+    top_dir: &str,
+    data: &mut HashMap<String, u64>,
+    e: DirEntry,
+    size: u64,
+) {
+    // This path and all its parent paths have their counter incremented
+    for path_name in e.path().ancestors() {
+        // This is required due to bug in Jwalk that adds '/' to all sub dir lists
+        // see: https://github.com/jessegrosjean/jwalk/issues/13
+        if path_name.to_string_lossy() == "/" && top_dir != "/" {
+            continue;
+        }
+        let path_name = path_name.to_string_lossy();
+        let s = data.entry(path_name.to_string()).or_insert(0);
+        *s += size;
+        if path_name == top_dir {
+            break;
         }
     }
 }
