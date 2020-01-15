@@ -37,7 +37,8 @@ impl PartialEq for Node {
 }
 
 pub fn is_a_parent_of(parent: &str, child: &str) -> bool {
-    (child.starts_with(parent) && child.chars().nth(parent.chars().count()) == Some('/')) || parent == "/"
+    (child.starts_with(parent) && child.chars().nth(parent.chars().count()) == Some('/'))
+        || parent == "/"
 }
 
 pub fn simplify_dir_names(filenames: Vec<&str>) -> HashSet<String> {
@@ -69,16 +70,23 @@ pub fn simplify_dir_names(filenames: Vec<&str>) -> HashSet<String> {
 pub fn get_dir_tree(
     top_level_names: &HashSet<String>,
     apparent_size: bool,
+    limit_filesystem: bool,
     threads: Option<usize>,
 ) -> (bool, HashMap<String, u64>) {
     let mut permissions = 0;
     let mut inodes: HashSet<(u64, u64)> = HashSet::new();
     let mut data: HashMap<String, u64> = HashMap::new();
+    let restricted_filesystems = if limit_filesystem {
+        get_allowed_filesystems(top_level_names)
+    } else {
+        None
+    };
 
     for b in top_level_names.iter() {
         examine_dir(
             &b,
             apparent_size,
+            &restricted_filesystems,
             &mut inodes,
             &mut data,
             &mut permissions,
@@ -86,6 +94,16 @@ pub fn get_dir_tree(
         );
     }
     (permissions == 0, data)
+}
+
+fn get_allowed_filesystems(top_level_names: &HashSet<String>) -> Option<HashSet<u64>> {
+    let mut limit_filesystems: HashSet<u64> = HashSet::new();
+    for file_name in top_level_names.iter() {
+        if let Some(a) = get_filesystem(file_name) {
+            limit_filesystems.insert(a);
+        }
+    }
+    Some(limit_filesystems)
 }
 
 pub fn strip_end_slash(mut new_name: &str) -> &str {
@@ -98,6 +116,7 @@ pub fn strip_end_slash(mut new_name: &str) -> &str {
 fn examine_dir(
     top_dir: &str,
     apparent_size: bool,
+    restricted_filesystems: &Option<HashSet<u64>>,
     inodes: &mut HashSet<(u64, u64)>,
     data: &mut HashMap<String, u64>,
     file_count_no_permission: &mut u64,
@@ -117,6 +136,16 @@ fn examine_dir(
                 Some((size, maybe_inode)) => {
                     if !apparent_size {
                         if let Some(inode_dev_pair) = maybe_inode {
+                            // Ignore files on different devices (if flag applied)
+                            if restricted_filesystems.is_some()
+                                && !restricted_filesystems
+                                    .as_ref()
+                                    .unwrap()
+                                    .contains(&inode_dev_pair.1)
+                            {
+                                continue;
+                            }
+                            // Ignore files already visited or symlinked
                             if inodes.contains(&inode_dev_pair) {
                                 continue;
                             }
@@ -128,7 +157,7 @@ fn examine_dir(
                         // This is required due to bug in Jwalk that adds '/' to all sub dir lists
                         // see: https://github.com/jessegrosjean/jwalk/issues/13
                         if path_name.to_string_lossy() == "/" && top_dir != "/" {
-                            continue
+                            continue;
                         }
                         let path_name = path_name.to_string_lossy();
                         let s = data.entry(path_name.to_string()).or_insert(0);
