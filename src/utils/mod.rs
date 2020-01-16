@@ -100,7 +100,7 @@ pub fn get_dir_tree(
 fn get_allowed_filesystems(top_level_names: &HashSet<String>) -> Option<HashSet<u64>> {
     let mut limit_filesystems: HashSet<u64> = HashSet::new();
     for file_name in top_level_names.iter() {
-        if let Some(a) = get_filesystem(file_name) {
+        if let Ok(a) = get_filesystem(file_name) {
             limit_filesystems.insert(a);
         }
     }

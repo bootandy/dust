@@ -1,5 +1,6 @@
 use jwalk::DirEntry;
 use std::fs;
+use std::io;
 
 #[cfg(target_family = "unix")]
 fn get_block_size() -> u64 {
@@ -41,20 +42,20 @@ pub fn get_metadata(d: &DirEntry, _apparent: bool) -> Option<(u64, Option<(u64, 
 }
 
 #[cfg(target_family = "unix")]
-pub fn get_filesystem(file_path: &str) -> Option<u64> {
+pub fn get_filesystem(file_path: &str) -> Result<u64, io::Error> {
     use std::os::unix::fs::MetadataExt;
-    let metadata = fs::metadata(file_path).unwrap();
-    Some(metadata.dev())
+    let metadata = fs::metadata(file_path)?;
+    Ok(metadata.dev())
 }
 
 #[cfg(target_family = "windows")]
-pub fn get_device(file_path: &str) -> Option<u64> {
+pub fn get_device(file_path: &str) -> Result<u64, io::Error> {
     use std::os::windows::fs::MetadataExt;
-    let metadata = fs::metadata(file_path).unwrap();
-    Some(metadata.volume_serial_number())
+    let metadata = fs::metadata(file_path)?;
+    Ok(metadata.volume_serial_number())
 }
 
 #[cfg(all(not(target_family = "windows"), not(target_family = "unix")))]
-pub fn get_device(file_path: &str) -> Option<u64> {
+pub fn get_device(file_path: &str) -> Result<u64, io::Error> {
     None
 }
