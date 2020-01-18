@@ -70,6 +70,7 @@ pub fn simplify_dir_names(filenames: Vec<&str>) -> HashSet<String> {
 
 pub fn get_dir_tree(
     top_level_names: &HashSet<String>,
+    ignore_directory: Option<&str>,
     apparent_size: bool,
     limit_filesystem: bool,
     threads: Option<usize>,
@@ -88,6 +89,7 @@ pub fn get_dir_tree(
             &b,
             apparent_size,
             &restricted_filesystems,
+            &ignore_directory,
             &mut inodes,
             &mut data,
             &mut permissions,
@@ -118,6 +120,7 @@ fn examine_dir(
     top_dir: &str,
     apparent_size: bool,
     filesystems: &Option<HashSet<u64>>,
+    ignore_directory: &Option<&str>,
     inodes: &mut HashSet<(u64, u64)>,
     data: &mut HashMap<String, u64>,
     file_count_no_permission: &mut u64,
@@ -132,6 +135,14 @@ fn examine_dir(
     for entry in iter {
         if let Ok(e) = entry {
             let maybe_size_and_inode = get_metadata(&e, apparent_size);
+            match ignore_directory {
+                Some(d) => {
+                    if e.path().to_string_lossy().contains(*d) {
+                        continue;
+                    }
+                }
+                _ => {}
+            }
 
             match maybe_size_and_inode {
                 Some((size, maybe_inode)) => {

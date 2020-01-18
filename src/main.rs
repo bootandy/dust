@@ -55,6 +55,13 @@ fn main() {
                 .help("If set sub directories will not have their path shortened"),
         )
         .arg(
+            Arg::with_name("ignore_directory")
+                .short("X")
+                .long("ignore-directory")
+                .takes_value(true)
+                .help("Exclude any file or directory with contains this substring."),
+        )
+        .arg(
             Arg::with_name("limit_filesystem")
                 .short("x")
                 .long("limit-filesystem")
@@ -128,10 +135,12 @@ fn main() {
 
     let use_apparent_size = options.is_present("display_apparent_size");
     let limit_filesystem = options.is_present("limit_filesystem");
+    let ignore_directory = options.value_of("ignore_directory");
 
     let simplified_dirs = simplify_dir_names(target_dirs);
     let (permissions, nodes) = get_dir_tree(
         &simplified_dirs,
+        ignore_directory,
         use_apparent_size,
         limit_filesystem,
         threads,
