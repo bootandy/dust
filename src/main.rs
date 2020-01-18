@@ -55,6 +55,12 @@ fn main() {
                 .help("If set sub directories will not have their path shortened"),
         )
         .arg(
+            Arg::with_name("limit_filesystem")
+                .short("x")
+                .long("limit-filesystem")
+                .help("Only count the files and directories in the same filesystem as the supplied directory"),
+        )
+        .arg(
             Arg::with_name("display_apparent_size")
                 .short("s")
                 .long("apparent-size")
@@ -110,9 +116,15 @@ fn main() {
     }
 
     let use_apparent_size = options.is_present("display_apparent_size");
+    let limit_filesystem = options.is_present("limit_filesystem");
 
     let simplified_dirs = simplify_dir_names(target_dirs);
-    let (permissions, nodes) = get_dir_tree(&simplified_dirs, use_apparent_size, threads);
+    let (permissions, nodes) = get_dir_tree(
+        &simplified_dirs,
+        use_apparent_size,
+        limit_filesystem,
+        threads,
+    );
     let sorted_data = sort(nodes);
     let biggest_ones = {
         match depth {
