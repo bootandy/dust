@@ -76,7 +76,6 @@ pub fn get_dir_tree(
     threads: Option<usize>,
 ) -> (bool, HashMap<String, u64>) {
     let mut permissions = 0;
-    let mut inodes: HashSet<(u64, u64)> = HashSet::new();
     let mut data: HashMap<String, u64> = HashMap::new();
     let restricted_filesystems = if limit_filesystem {
         get_allowed_filesystems(top_level_names)
@@ -90,7 +89,6 @@ pub fn get_dir_tree(
             apparent_size,
             &restricted_filesystems,
             &ignore_directory,
-            &mut inodes,
             &mut data,
             &mut permissions,
             threads,
@@ -121,11 +119,11 @@ fn examine_dir(
     apparent_size: bool,
     filesystems: &Option<HashSet<u64>>,
     ignore_directory: &Option<&str>,
-    inodes: &mut HashSet<(u64, u64)>,
     data: &mut HashMap<String, u64>,
     file_count_no_permission: &mut u64,
     threads: Option<usize>,
 ) {
+    let mut inodes: HashSet<(u64, u64)> = HashSet::new();
     let mut iter = WalkDir::new(top_dir)
         .preload_metadata(true)
         .skip_hidden(false);
@@ -135,18 +133,15 @@ fn examine_dir(
     for entry in iter {
         if let Ok(e) = entry {
             let maybe_size_and_inode = get_metadata(&e, apparent_size);
-            match ignore_directory {
-                Some(d) => {
-                    if e.path().to_string_lossy().contains(*d) {
-                        continue;
-                    }
+            if let Some(d) = ignore_directory {
+                if e.path().to_string_lossy().contains(*d) {
+                    continue;
                 }
-                _ => {}
             }
 
             match maybe_size_and_inode {
                 Some((size, maybe_inode)) => {
-                    if !should_ignore_file(apparent_size, filesystems, inodes, maybe_inode) {
+                    if !should_ignore_file(apparent_size, filesystems, &mut inodes, maybe_inode) {
                         process_file_with_size_and_inode(top_dir, data, e, size)
                     }
                 }
