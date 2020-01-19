@@ -1,4 +1,11 @@
 
+fix-version
+Updated 3 months ago by bootandy
+44
+0
+#35
+Merged
+
 [![Build Status](https://travis-ci.org/bootandy/dust.svg?branch=master)](https://travis-ci.org/bootandy/dust)
 
 # Dust
@@ -32,6 +39,7 @@ Dust assumes that’s what you wanted to do in the first place, and takes care o
 ## Usage
 
 ```
+Usage: dust
 Usage: dust <dir>
 Usage: dust <dir>  <another_dir> <and_more>
 Usage: dust -p <dir>  (full-path - does not shorten the path of the subdirectories)
@@ -39,6 +47,8 @@ Usage: dust -s <dir>  (apparent-size - shows the length of the file as opposed t
 Usage: dust -n 30  <dir>  (Shows 30 directories not 20)
 Usage: dust -d 3  <dir>  (Shows 3 levels of subdirectories)
 Usage: dust -r  <dir>  (Reverse order of output, with root at the lowest)
+Usage: dust -x  <dir>  (Only show directories on same filesystem)
+Usage: dust -X ignore  <dir>  (Ignore all files and directories containing the string 'ignore')
 ```
 
 ```
