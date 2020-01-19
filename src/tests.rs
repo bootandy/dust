@@ -299,3 +299,35 @@ fn no_substring_of_names_output() -> String {
     "
     .into()
 }
+
+// Check against directories and files whos names are substrings of each other
+#[test]
+pub fn test_ignore_dir() {
+    assert_cli::Assert::main_binary()
+        .with_args(&["-c", "-X", "dir_substring", "src/test_dir2"])
+        .stdout()
+        .is(ignore_dir_output().as_str())
+        .unwrap();
+}
+
+#[cfg(target_os = "linux")]
+fn ignore_dir_output() -> String {
+    "
+  16K ─┬ test_dir2
+ 8.0K  ├─┬ dir
+ 4.0K  │ └── hello
+ 4.0K  └── dir_name_clash
+    "
+    .into()
+}
+
+#[cfg(target_os = "macos")]
+fn ignore_dir_output() -> String {
+    "
+ 8.0K ─┬ test_dir2
+ 4.0K  ├─┬ dir
+ 4.0K  │ └── hello
+ 4.0K  └── dir_name_clash
+    "
+    .into()
+}
