@@ -1,11 +1,4 @@
 
-fix-version
-Updated 3 months ago by bootandy
-44
-0
-#35
-Merged
-
 [![Build Status](https://travis-ci.org/bootandy/dust.svg?branch=master)](https://travis-ci.org/bootandy/dust)
 
 # Dust
