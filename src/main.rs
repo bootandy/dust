@@ -59,6 +59,8 @@ fn main() {
                 .short("X")
                 .long("ignore-directory")
                 .takes_value(true)
+                .number_of_values(1)
+                .multiple(true)
                 .help("Exclude any file or directory with contains this substring."),
         )
         .arg(
@@ -135,12 +137,12 @@ fn main() {
 
     let use_apparent_size = options.is_present("display_apparent_size");
     let limit_filesystem = options.is_present("limit_filesystem");
-    let ignore_directory = options.value_of("ignore_directory");
+    let ignore_directories = options.values_of("ignore_directory").map(|r| r.collect());
 
     let simplified_dirs = simplify_dir_names(target_dirs);
     let (permissions, nodes) = get_dir_tree(
         &simplified_dirs,
-        ignore_directory,
+        ignore_directories,
         use_apparent_size,
         limit_filesystem,
         threads,
