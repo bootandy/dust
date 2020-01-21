@@ -75,6 +75,31 @@ fn main_output(short_paths: bool) -> String {
     )
 }
 
+#[cfg(target_os = "windows")]
+fn main_output(short_paths: bool) -> String {
+    let d = DisplayData {
+        short_paths,
+        is_reversed: false,
+        colors_on: true,
+    };
+    format!(
+        "{}
+{}
+{}
+{}",
+        format_string("src/test_dir", true, &d, "   6B", "─┬"),
+        format_string("src/test_dir\\many", true, &d, "   6B", " └─┬",),
+        format_string(
+            "src/test_dir\\many\\hello_file",
+            true,
+            &d,
+            "   6B",
+            "   ├──",
+        ),
+        format_string("src/test_dir\\many\\a_file", false, &d, "   0B", "   └──",),
+    )
+}
+
 #[test]
 pub fn test_no_color_flag() {
     assert_cli::Assert::main_binary()
@@ -101,6 +126,17 @@ fn no_color_flag_output() -> String {
   12K ─┬ test_dir
  8.0K  └─┬ many
  4.0K    ├── hello_file
+   0B    └── a_file
+    "
+    .to_string()
+}
+
+#[cfg(target_os = "windows")]
+fn no_color_flag_output() -> String {
+    "
+   6B ─┬ test_dir
+   6B  └─┬ many
+   6B    ├── hello_file
    0B    └── a_file
     "
     .to_string()
@@ -300,6 +336,19 @@ fn no_substring_of_names_output() -> String {
     .into()
 }
 
+#[cfg(target_os = "windows")]
+fn no_substring_of_names_output() -> String {
+    "
+  16B ─┬ test_dir2
+   6B  ├─┬ dir_substring
+   6B  │ └── hello
+   5B  ├─┬ dir
+   5B  │ └── hello
+   5B  └── dir_name_clash
+    "
+    .into()
+}
+
 // Check against directories and files whos names are substrings of each other
 #[test]
 pub fn test_ignore_dir() {
@@ -328,6 +377,17 @@ fn ignore_dir_output() -> String {
  4.0K  ├─┬ dir
  4.0K  │ └── hello
  4.0K  └── dir_name_clash
+    "
+    .into()
+}
+
+#[cfg(target_os = "windows")]
+fn ignore_dir_output() -> String {
+    "
+  10B ─┬ test_dir2
+   5B  ├─┬ dir
+   5B  │ └── hello
+   5B  └── dir_name_clash
     "
     .into()
 }
