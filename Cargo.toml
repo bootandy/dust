@@ -26,6 +26,9 @@ clap = "=2.33"
 jwalk = "0.4.0"
 num_cpus = "1.12"
 
+[target.'cfg(windows)'.dependencies]
+winapi-util = "0.1"
+
 [dev-dependencies]
 assert_cli = "=0.6"
 tempfile = "=3"
