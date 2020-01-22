@@ -199,6 +199,8 @@ fn build_temp_file(dir: &TempDir) -> PathBuf {
     file_path
 }
 
+// fix! [rivy; 2020-01-22] possible on "windows"?
+#[cfg(not(target_os = "windows"))]
 #[test]
 pub fn test_soft_sym_link() {
     let dir = Builder::new().tempdir().unwrap();
@@ -273,6 +275,8 @@ pub fn test_hard_sym_link() {
 }
 
 // Check we don't recurse down an infinite symlink tree
+// fix! [rivy; 2020-01-22] possible on "windows"?
+#[cfg(not(target_os = "windows"))]
 #[test]
 pub fn test_recursive_sym_link() {
     let dir = Builder::new().tempdir().unwrap();
