@@ -11,7 +11,7 @@ use tempfile::Builder;
 use tempfile::TempDir;
 
 // fix! [rivy; 2020-22-01] "windows" result data can vary by host (size seems to be variable by one byte); fix code vs test and re-enable
-#[cfg(not(target_os = "windows"))]
+#[cfg_attr(target_os = "windows", ignore)]
 #[test]
 pub fn test_main() {
     assert_cli::Assert::main_binary()
@@ -22,7 +22,7 @@ pub fn test_main() {
 }
 
 // fix! [rivy; 2020-22-01] "windows" result data can vary by host (size seems to be variable by one byte); fix code vs test and re-enable
-#[cfg(not(target_os = "windows"))]
+#[cfg_attr(target_os = "windows", ignore)]
 #[test]
 pub fn test_main_long_paths() {
     assert_cli::Assert::main_binary()
@@ -33,7 +33,7 @@ pub fn test_main_long_paths() {
 }
 
 // fix! [rivy; 2020-22-01] "windows" result data can vary by host (size seems to be variable by one byte); fix code vs test and re-enable
-#[cfg(not(target_os = "windows"))]
+#[cfg_attr(target_os = "windows", ignore)]
 #[test]
 pub fn test_main_multi_arg() {
     assert_cli::Assert::main_binary()
@@ -81,8 +81,6 @@ fn main_output(short_paths: bool) -> String {
     )
 }
 
-// fix! [rivy; 2020-22-01] "windows" result data can vary by host (size seems to be variable by one byte); fix code vs test and re-enable
-#[allow(dead_code)]
 #[cfg(target_os = "windows")]
 fn main_output(short_paths: bool) -> String {
     let d = DisplayData {
@@ -109,7 +107,7 @@ fn main_output(short_paths: bool) -> String {
 }
 
 // fix! [rivy; 2020-22-01] "windows" result data can vary by host (size seems to be variable by one byte); fix code vs test and re-enable
-#[cfg(not(target_os = "windows"))]
+#[cfg_attr(target_os = "windows", ignore)]
 #[test]
 pub fn test_no_color_flag() {
     assert_cli::Assert::main_binary()
@@ -141,8 +139,6 @@ fn no_color_flag_output() -> String {
     .to_string()
 }
 
-// fix! [rivy; 2020-22-01] "windows" result data can vary by host (size seems to be variable by one byte); fix code vs test and re-enable
-#[allow(dead_code)]
 #[cfg(target_os = "windows")]
 fn no_color_flag_output() -> String {
     "
@@ -155,7 +151,7 @@ fn no_color_flag_output() -> String {
 }
 
 // fix! [rivy; 2020-22-01] "windows" result data can vary by host (size seems to be variable by one byte); fix code vs test and re-enable
-#[cfg(not(target_os = "windows"))]
+#[cfg_attr(target_os = "windows", ignore)]
 #[test]
 pub fn test_apparent_size() {
     let d = DisplayData {
@@ -323,7 +319,7 @@ pub fn test_recursive_sym_link() {
 
 // Check against directories and files whos names are substrings of each other
 // fix! [rivy; 2020-22-01] "windows" result data can vary by host (size seems to be variable by one byte); fix code vs test and re-enable
-#[cfg(not(target_os = "windows"))]
+#[cfg_attr(target_os = "windows", ignore)]
 #[test]
 pub fn test_substring_of_names() {
     assert_cli::Assert::main_binary()
@@ -359,8 +355,6 @@ fn no_substring_of_names_output() -> String {
     .into()
 }
 
-// fix! [rivy; 2020-22-01] "windows" result data can vary by host (size seems to be variable by one byte); fix code vs test and re-enable
-#[allow(dead_code)]
 #[cfg(target_os = "windows")]
 fn no_substring_of_names_output() -> String {
     "
