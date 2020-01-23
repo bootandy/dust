@@ -310,6 +310,7 @@ mod tests {
         assert!(!is_a_parent_of("/usr/", "/usr"));
         assert!(!is_a_parent_of("/usr/andy", "/usr"));
         assert!(!is_a_parent_of("/usr/andy", "/usr/sibling"));
+        assert!(!is_a_parent_of("/usr/folder", "/usr/folder_not_a_child"));
     }
 
     #[test]
