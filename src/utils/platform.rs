@@ -28,7 +28,7 @@ pub fn get_metadata(d: &DirEntry, _use_apparent_size: bool) -> Option<(u64, Opti
     use winapi_util::file::information;
     use winapi_util::Handle;
 
-    let h = Handle::from_path(d.path()).ok()?;
+    let h = Handle::from_path_any(d.path()).ok()?;
     let info = information(&h).ok()?;
 
     Some((
@@ -59,7 +59,7 @@ pub fn get_filesystem(file_path: &str) -> Result<u64, io::Error> {
     use winapi_util::file::information;
     use winapi_util::Handle;
 
-    let h = Handle::from_path(file_path)?;
+    let h = Handle::from_path_any(file_path)?;
     let info = information(&h)?;
     Ok(info.volume_serial_number())
 }
