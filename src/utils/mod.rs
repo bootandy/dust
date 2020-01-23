@@ -265,23 +265,59 @@ mod tests {
     #[test]
     fn test_simplify_dir_rm_subdir() {
         let mut correct = HashSet::new();
-        correct.insert("a/b".to_string());
+        correct.insert(
+            ["a", "b"]
+                .iter()
+                .collect::<std::path::PathBuf>()
+                .to_string_lossy()
+                .to_string(),
+        );
         assert_eq!(simplify_dir_names(vec!["a/b", "a/b/c", "a/b/d/f"]), correct);
     }
 
     #[test]
     fn test_simplify_dir_duplicates() {
         let mut correct = HashSet::new();
-        correct.insert("a/b".to_string());
+        correct.insert(
+            ["a", "b"]
+                .iter()
+                .collect::<std::path::PathBuf>()
+                .to_string_lossy()
+                .to_string(),
+        );
         correct.insert("c".to_string());
-        assert_eq!(simplify_dir_names(vec!["a/b", "a/b//", "c", "c/"]), correct);
+        assert_eq!(
+            simplify_dir_names(vec![
+                "a/b",
+                "a/b//",
+                "a/././b///",
+                "c",
+                "c/",
+                "c/.",
+                "c/././",
+                "c/././."
+            ]),
+            correct
+        );
     }
     #[test]
     fn test_simplify_dir_rm_subdir_and_not_substrings() {
         let mut correct = HashSet::new();
         correct.insert("b".to_string());
-        correct.insert("c/a/b".to_string());
-        correct.insert("a/b".to_string());
+        correct.insert(
+            ["c", "a", "b"]
+                .iter()
+                .collect::<std::path::PathBuf>()
+                .to_string_lossy()
+                .to_string(),
+        );
+        correct.insert(
+            ["a", "b"]
+                .iter()
+                .collect::<std::path::PathBuf>()
+                .to_string_lossy()
+                .to_string(),
+        );
         assert_eq!(simplify_dir_names(vec!["a/b", "c/a/b/", "b"]), correct);
     }
 
