@@ -2,6 +2,7 @@ use jwalk::DirEntry;
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::collections::HashSet;
+use std::path::{Path, PathBuf};
 
 use jwalk::WalkDir;
 
@@ -10,7 +11,7 @@ use self::platform::*;
 
 #[derive(Debug, Default, Eq)]
 pub struct Node {
-    pub name: String,
+    pub name: PathBuf,
     pub size: u64,
     pub children: Vec<Node>,
 }
@@ -37,15 +38,15 @@ impl PartialEq for Node {
     }
 }
 
-pub fn is_a_parent_of(parent: &str, child: &str) -> bool {
-    let path_parent = std::path::Path::new(parent);
-    let path_child = std::path::Path::new(child);
-    (path_child.starts_with(path_parent) && !path_parent.starts_with(path_child))
+pub fn is_a_parent_of<P: AsRef<Path>>(parent: P, child: P) -> bool {
+    let parent = parent.as_ref();
+    let child = child.as_ref();
+    (child.starts_with(parent) && !parent.starts_with(child))
 }
 
-pub fn simplify_dir_names(filenames: Vec<&str>) -> HashSet<String> {
-    let mut top_level_names: HashSet<String> = HashSet::with_capacity(filenames.len());
-    let mut to_remove: Vec<String> = Vec::with_capacity(filenames.len());
+pub fn simplify_dir_names<P: AsRef<Path>>(filenames: Vec<P>) -> HashSet<PathBuf> {
+    let mut top_level_names: HashSet<PathBuf> = HashSet::with_capacity(filenames.len());
+    let mut to_remove: Vec<PathBuf> = Vec::with_capacity(filenames.len());
 
     for t in filenames {
         let top_level_name = normalize_path(t);
@@ -53,7 +54,7 @@ pub fn simplify_dir_names(filenames: Vec<&str>) -> HashSet<String> {
 
         for tt in top_level_names.iter() {
             if is_a_parent_of(&top_level_name, tt) {
-                to_remove.push(tt.to_string());
+                to_remove.push(tt.to_path_buf());
             } else if is_a_parent_of(tt, &top_level_name) {
                 can_add = false;
             }
@@ -62,7 +63,7 @@ pub fn simplify_dir_names(filenames: Vec<&str>) -> HashSet<String> {
         top_level_names.retain(|tr| to_remove.binary_search(tr).is_err());
         to_remove.clear();
         if can_add {
-            top_level_names.insert(normalize_path(t).to_owned());
+            top_level_names.insert(top_level_name);
         }
     }
 
@@ -70,14 +71,14 @@ pub fn simplify_dir_names(filenames: Vec<&str>) -> HashSet<String> {
 }
 
 pub fn get_dir_tree(
-    top_level_names: &HashSet<String>,
-    ignore_directories: Option<Vec<&str>>,
+    top_level_names: &HashSet<PathBuf>,
+    ignore_directories: Option<Vec<PathBuf>>,
     apparent_size: bool,
     limit_filesystem: bool,
     threads: Option<usize>,
-) -> (bool, HashMap<String, u64>) {
+) -> (bool, HashMap<PathBuf, u64>) {
     let mut permissions = 0;
-    let mut data: HashMap<String, u64> = HashMap::new();
+    let mut data: HashMap<PathBuf, u64> = HashMap::new();
     let restricted_filesystems = if limit_filesystem {
         get_allowed_filesystems(top_level_names)
     } else {
@@ -86,7 +87,7 @@ pub fn get_dir_tree(
 
     for b in top_level_names.iter() {
         examine_dir(
-            &b,
+            b,
             apparent_size,
             &restricted_filesystems,
             &ignore_directories,
@@ -98,7 +99,7 @@ pub fn get_dir_tree(
     (permissions == 0, data)
 }
 
-fn get_allowed_filesystems(top_level_names: &HashSet<String>) -> Option<HashSet<u64>> {
+fn get_allowed_filesystems(top_level_names: &HashSet<PathBuf>) -> Option<HashSet<u64>> {
     let mut limit_filesystems: HashSet<u64> = HashSet::new();
     for file_name in top_level_names.iter() {
         if let Ok(a) = get_filesystem(file_name) {
@@ -108,26 +109,22 @@ fn get_allowed_filesystems(top_level_names: &HashSet<String>) -> Option<HashSet<
     Some(limit_filesystems)
 }
 
-pub fn normalize_path<P: AsRef<std::path::Path>>(path: P) -> std::string::String {
+pub fn normalize_path<P: AsRef<std::path::Path>>(path: P) -> PathBuf {
     // normalize path ...
     // 1. removing repeated separators
     // 2. removing interior '.' ("current directory") path segments
     // 3. removing trailing extra separators and '.' ("current directory") path segments
     // * `Path.components()` does all the above work; ref: <https://doc.rust-lang.org/std/path/struct.Path.html#method.components>
     // 4. changing to os preferred separator (automatically done by recollecting components back into a PathBuf)
-    path.as_ref()
-        .components()
-        .collect::<std::path::PathBuf>()
-        .to_string_lossy()
-        .to_string()
+    path.as_ref().components().collect::<PathBuf>()
 }
 
 fn examine_dir(
-    top_dir: &str,
+    top_dir: &PathBuf,
     apparent_size: bool,
     filesystems: &Option<HashSet<u64>>,
-    ignore_directories: &Option<Vec<&str>>,
-    data: &mut HashMap<String, u64>,
+    ignore_directories: &Option<Vec<PathBuf>>,
+    data: &mut HashMap<PathBuf, u64>,
     file_count_no_permission: &mut u64,
     threads: Option<usize>,
 ) {
@@ -141,9 +138,15 @@ fn examine_dir(
     'entry: for entry in iter {
         if let Ok(e) = entry {
             let maybe_size_and_inode = get_metadata(&e, apparent_size);
-            if let Some(d) = ignore_directories {
-                for s in d {
-                    if e.path().to_string_lossy().contains(*s) {
+            if let Some(dirs) = ignore_directories {
+                let path = e.path();
+                let parts = path.components().collect::<Vec<std::path::Component>>();
+                for d in dirs {
+                    let seq = d.components().collect::<Vec<std::path::Component>>();
+                    if parts
+                        .windows(seq.len())
+                        .any(|window| window.iter().collect::<PathBuf>() == *d)
+                    {
                         continue 'entry;
                     }
                 }
@@ -152,7 +155,7 @@ fn examine_dir(
             match maybe_size_and_inode {
                 Some((size, maybe_inode)) => {
                     if !should_ignore_file(apparent_size, filesystems, &mut inodes, maybe_inode) {
-                        process_file_with_size_and_inode(top_dir, data, e, size)
+                        process_file_with_size_and_inode(&top_dir, data, e, size)
                     }
                 }
                 None => *file_count_no_permission += 1,
@@ -191,28 +194,27 @@ fn should_ignore_file(
 }
 
 fn process_file_with_size_and_inode(
-    top_dir: &str,
-    data: &mut HashMap<String, u64>,
+    top_dir: &PathBuf,
+    data: &mut HashMap<PathBuf, u64>,
     e: DirEntry,
     size: u64,
 ) {
     // This path and all its parent paths have their counter incremented
-    for path_name in e.path().ancestors() {
+    for path in e.path().ancestors() {
         // This is required due to bug in Jwalk that adds '/' to all sub dir lists
         // see: https://github.com/jessegrosjean/jwalk/issues/13
-        if path_name.to_string_lossy() == "/" && top_dir != "/" {
+        if path.to_string_lossy() == "/" && top_dir.to_string_lossy() != "/" {
             continue;
         }
-        let path_name = path_name.to_string_lossy();
-        let s = data.entry(path_name.to_string()).or_insert(0);
+        let s = data.entry(normalize_path(path)).or_insert(0);
         *s += size;
-        if path_name == top_dir {
+        if path.starts_with(top_dir) && top_dir.starts_with(path) {
             break;
         }
     }
 }
 
-pub fn sort_by_size_first_name_second(a: &(String, u64), b: &(String, u64)) -> Ordering {
+pub fn sort_by_size_first_name_second(a: &(PathBuf, u64), b: &(PathBuf, u64)) -> Ordering {
     let result = b.1.cmp(&a.1);
     if result == Ordering::Equal {
         a.0.cmp(&b.0)
@@ -221,13 +223,13 @@ pub fn sort_by_size_first_name_second(a: &(String, u64), b: &(String, u64)) -> O
     }
 }
 
-pub fn sort(data: HashMap<String, u64>) -> Vec<(String, u64)> {
-    let mut new_l: Vec<(String, u64)> = data.iter().map(|(a, b)| (a.clone(), *b)).collect();
+pub fn sort(data: HashMap<PathBuf, u64>) -> Vec<(PathBuf, u64)> {
+    let mut new_l: Vec<(PathBuf, u64)> = data.iter().map(|(a, b)| (a.clone(), *b)).collect();
     new_l.sort_unstable_by(sort_by_size_first_name_second);
     new_l
 }
 
-pub fn find_big_ones(new_l: Vec<(String, u64)>, max_to_show: usize) -> Vec<(String, u64)> {
+pub fn find_big_ones(new_l: Vec<(PathBuf, u64)>, max_to_show: usize) -> Vec<(PathBuf, u64)> {
     if max_to_show > 0 && new_l.len() > max_to_show {
         new_l[0..max_to_show].to_vec()
     } else {
@@ -236,18 +238,31 @@ pub fn find_big_ones(new_l: Vec<(String, u64)>, max_to_show: usize) -> Vec<(Stri
 }
 
 pub fn trim_deep_ones(
-    input: Vec<(String, u64)>,
+    input: Vec<(PathBuf, u64)>,
     max_depth: u64,
-    top_level_names: &HashSet<String>,
-) -> Vec<(String, u64)> {
-    let mut result: Vec<(String, u64)> = Vec::with_capacity(input.len() * top_level_names.len());
+    top_level_names: &HashSet<PathBuf>,
+) -> Vec<(PathBuf, u64)> {
+    let mut result: Vec<(PathBuf, u64)> = Vec::with_capacity(input.len() * top_level_names.len());
 
     for name in top_level_names {
-        let my_max_depth = name.matches(std::path::is_separator).count() + max_depth as usize;
-        let name_ref: &str = name.as_ref();
+        let my_max_depth = name
+            .components()
+            .filter(|&c| match c {
+                std::path::Component::Prefix(_) => false,
+                _ => true,
+            })
+            .count()
+            + max_depth as usize;
 
         for &(ref k, ref v) in input.iter() {
-            if k.starts_with(name_ref) && k.matches(std::path::is_separator).count() <= my_max_depth
+            if k.starts_with(name)
+                && k.components()
+                    .filter(|&c| match c {
+                        std::path::Component::Prefix(_) => false,
+                        _ => true,
+                    })
+                    .count()
+                    <= my_max_depth
             {
                 result.push((k.clone(), *v));
             }
@@ -263,34 +278,22 @@ mod tests {
     #[test]
     fn test_simplify_dir() {
         let mut correct = HashSet::new();
-        correct.insert("a".to_string());
+        correct.insert(PathBuf::from("a"));
         assert_eq!(simplify_dir_names(vec!["a"]), correct);
     }
 
     #[test]
     fn test_simplify_dir_rm_subdir() {
         let mut correct = HashSet::new();
-        correct.insert(
-            ["a", "b"]
-                .iter()
-                .collect::<std::path::PathBuf>()
-                .to_string_lossy()
-                .to_string(),
-        );
+        correct.insert(["a", "b"].iter().collect::<PathBuf>());
         assert_eq!(simplify_dir_names(vec!["a/b", "a/b/c", "a/b/d/f"]), correct);
     }
 
     #[test]
     fn test_simplify_dir_duplicates() {
         let mut correct = HashSet::new();
-        correct.insert(
-            ["a", "b"]
-                .iter()
-                .collect::<std::path::PathBuf>()
-                .to_string_lossy()
-                .to_string(),
-        );
-        correct.insert("c".to_string());
+        correct.insert(["a", "b"].iter().collect::<PathBuf>());
+        correct.insert(PathBuf::from("c"));
         assert_eq!(
             simplify_dir_names(vec![
                 "a/b",
@@ -308,36 +311,24 @@ mod tests {
     #[test]
     fn test_simplify_dir_rm_subdir_and_not_substrings() {
         let mut correct = HashSet::new();
-        correct.insert("b".to_string());
-        correct.insert(
-            ["c", "a", "b"]
-                .iter()
-                .collect::<std::path::PathBuf>()
-                .to_string_lossy()
-                .to_string(),
-        );
-        correct.insert(
-            ["a", "b"]
-                .iter()
-                .collect::<std::path::PathBuf>()
-                .to_string_lossy()
-                .to_string(),
-        );
+        correct.insert(PathBuf::from("b"));
+        correct.insert(["c", "a", "b"].iter().collect::<PathBuf>());
+        correct.insert(["a", "b"].iter().collect::<PathBuf>());
         assert_eq!(simplify_dir_names(vec!["a/b", "c/a/b/", "b"]), correct);
     }
 
     #[test]
     fn test_simplify_dir_dots() {
         let mut correct = HashSet::new();
-        correct.insert("src".to_string());
+        correct.insert(PathBuf::from("src"));
         assert_eq!(simplify_dir_names(vec!["src/."]), correct);
     }
 
     #[test]
     fn test_simplify_dir_substring_names() {
         let mut correct = HashSet::new();
-        correct.insert("src".to_string());
-        correct.insert("src_v2".to_string());
+        correct.insert(PathBuf::from("src"));
+        correct.insert(PathBuf::from("src_v2"));
         assert_eq!(simplify_dir_names(vec!["src/", "src_v2"]), correct);
     }
 
