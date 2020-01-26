@@ -48,7 +48,7 @@ pub fn simplify_dir_names(filenames: Vec<&str>) -> HashSet<String> {
     let mut to_remove: Vec<String> = Vec::with_capacity(filenames.len());
 
     for t in filenames {
-        let top_level_name = strip_trailing_curdirs(t);
+        let top_level_name = normalize_path(t);
         let mut can_add = true;
 
         for tt in top_level_names.iter() {
@@ -62,7 +62,7 @@ pub fn simplify_dir_names(filenames: Vec<&str>) -> HashSet<String> {
         top_level_names.retain(|tr| to_remove.binary_search(tr).is_err());
         to_remove.clear();
         if can_add {
-            top_level_names.insert(strip_trailing_curdirs(t).to_owned());
+            top_level_names.insert(normalize_path(t).to_owned());
         }
     }
 
@@ -108,8 +108,13 @@ fn get_allowed_filesystems(top_level_names: &HashSet<String>) -> Option<HashSet<
     Some(limit_filesystems)
 }
 
-pub fn strip_trailing_curdirs<P: AsRef<std::path::Path>>(path: P) -> std::string::String {
-    // `Path.components()` normalizes the path (repeated separators, interior '.', and trailing slashes are removed); ref: <https://doc.rust-lang.org/std/path/struct.Path.html#method.components>
+pub fn normalize_path<P: AsRef<std::path::Path>>(path: P) -> std::string::String {
+    // normalize path ...
+    // 1. removing repeated separators
+    // 2. removing interior '.' ("current directory") path segments
+    // 3. removing trailing extra separators and '.' ("current directory") path segments
+    // * `Path.components()` does all the above work; ref: <https://doc.rust-lang.org/std/path/struct.Path.html#method.components>
+    // 4. changing to os preferred separator (automatically done by recollecting components back into a PathBuf)
     path.as_ref()
         .components()
         .collect::<std::path::PathBuf>()
