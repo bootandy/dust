@@ -146,7 +146,7 @@ fn main() {
     let simplified_dirs = simplify_dir_names(target_dirs);
     let (permissions, nodes) = get_dir_tree(
         &simplified_dirs,
-        ignore_directories,
+        &ignore_directories,
         use_apparent_size,
         limit_filesystem,
         threads,

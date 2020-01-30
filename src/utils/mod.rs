@@ -70,9 +70,9 @@ pub fn simplify_dir_names<P: AsRef<Path>>(filenames: Vec<P>) -> HashSet<PathBuf>
     top_level_names
 }
 
-pub fn get_dir_tree(
-    top_level_names: &HashSet<PathBuf>,
-    ignore_directories: Option<Vec<PathBuf>>,
+pub fn get_dir_tree<P: AsRef<Path>>(
+    top_level_names: &HashSet<P>,
+    ignore_directories: &Option<Vec<PathBuf>>,
     apparent_size: bool,
     limit_filesystem: bool,
     threads: Option<usize>,
@@ -90,7 +90,7 @@ pub fn get_dir_tree(
             b,
             apparent_size,
             &restricted_filesystems,
-            &ignore_directories,
+            ignore_directories,
             &mut data,
             &mut permissions,
             threads,
@@ -99,7 +99,7 @@ pub fn get_dir_tree(
     (permissions == 0, data)
 }
 
-fn get_allowed_filesystems(top_level_names: &HashSet<PathBuf>) -> Option<HashSet<u64>> {
+fn get_allowed_filesystems<P: AsRef<Path>>(top_level_names: &HashSet<P>) -> Option<HashSet<u64>> {
     let mut limit_filesystems: HashSet<u64> = HashSet::new();
     for file_name in top_level_names.iter() {
         if let Ok(a) = get_filesystem(file_name) {
@@ -109,7 +109,7 @@ fn get_allowed_filesystems(top_level_names: &HashSet<PathBuf>) -> Option<HashSet
     Some(limit_filesystems)
 }
 
-pub fn normalize_path<P: AsRef<std::path::Path>>(path: P) -> PathBuf {
+pub fn normalize_path<P: AsRef<Path>>(path: P) -> PathBuf {
     // normalize path ...
     // 1. removing repeated separators
     // 2. removing interior '.' ("current directory") path segments
@@ -119,8 +119,8 @@ pub fn normalize_path<P: AsRef<std::path::Path>>(path: P) -> PathBuf {
     path.as_ref().components().collect::<PathBuf>()
 }
 
-fn examine_dir(
-    top_dir: &PathBuf,
+fn examine_dir<P: AsRef<Path>>(
+    top_dir: P,
     apparent_size: bool,
     filesystems: &Option<HashSet<u64>>,
     ignore_directories: &Option<Vec<PathBuf>>,
@@ -128,6 +128,7 @@ fn examine_dir(
     file_count_no_permission: &mut u64,
     threads: Option<usize>,
 ) {
+    let top_dir = top_dir.as_ref();
     let mut inodes: HashSet<(u64, u64)> = HashSet::new();
     let mut iter = WalkDir::new(top_dir)
         .preload_metadata(true)
@@ -155,7 +156,7 @@ fn examine_dir(
             match maybe_size_and_inode {
                 Some((size, maybe_inode)) => {
                     if !should_ignore_file(apparent_size, filesystems, &mut inodes, maybe_inode) {
-                        process_file_with_size_and_inode(&top_dir, data, e, size)
+                        process_file_with_size_and_inode(top_dir, data, e, size)
                     }
                 }
                 None => *file_count_no_permission += 1,
@@ -193,12 +194,13 @@ fn should_ignore_file(
     false
 }
 
-fn process_file_with_size_and_inode(
-    top_dir: &PathBuf,
+fn process_file_with_size_and_inode<P: AsRef<Path>>(
+    top_dir: P,
     data: &mut HashMap<PathBuf, u64>,
     e: DirEntry,
     size: u64,
 ) {
+    let top_dir = top_dir.as_ref();
     // This path and all its parent paths have their counter incremented
     for path in e.path().ancestors() {
         // This is required due to bug in Jwalk that adds '/' to all sub dir lists
