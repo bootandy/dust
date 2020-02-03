@@ -71,6 +71,7 @@ Dust uses a parallel fetching implementation that greatly improves performance f
 ## Alternatives
 
 * [NCDU](https://dev.yorhel.nl/ncdu)
+* [dutree](https://github.com/nachoparker/dutree)
 * du -d 1 -h | sort -h
 
 Note: Apparent-size is calculated slightly differently in dust to gdu. In dust each hard link is counted as using file_length space. In gdu only the first entry is counted.
