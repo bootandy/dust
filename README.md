@@ -64,9 +64,6 @@ djin:git/dust> dust
  124M   └── deps
 ```
 
-## Performance
-
-Dust uses a parallel fetching implementation that greatly improves performance for directory trees with reasonable amount of files (read more than 20) compared to du. This can be as much as 7x faster than du on a clean cache.
 
 ## Alternatives
 
