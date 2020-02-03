@@ -38,8 +38,9 @@ impl PartialEq for Node {
 }
 
 pub fn is_a_parent_of(parent: &str, child: &str) -> bool {
-    (child.starts_with(parent) && child.chars().nth(parent.chars().count()) == Some('/'))
-        || parent == "/"
+    let path_parent = std::path::Path::new(parent);
+    let path_child = std::path::Path::new(child);
+    (path_child.starts_with(path_parent) && !path_parent.starts_with(path_child))
 }
 
 pub fn simplify_dir_names(filenames: Vec<&str>) -> HashSet<String> {
@@ -47,7 +48,7 @@ pub fn simplify_dir_names(filenames: Vec<&str>) -> HashSet<String> {
     let mut to_remove: Vec<String> = Vec::with_capacity(filenames.len());
 
     for t in filenames {
-        let top_level_name = strip_end_slash(t);
+        let top_level_name = normalize_path(t);
         let mut can_add = true;
 
         for tt in top_level_names.iter() {
@@ -61,7 +62,7 @@ pub fn simplify_dir_names(filenames: Vec<&str>) -> HashSet<String> {
         top_level_names.retain(|tr| to_remove.binary_search(tr).is_err());
         to_remove.clear();
         if can_add {
-            top_level_names.insert(strip_end_slash(t).to_owned());
+            top_level_names.insert(normalize_path(t).to_owned());
         }
     }
 
@@ -107,11 +108,18 @@ fn get_allowed_filesystems(top_level_names: &HashSet<String>) -> Option<HashSet<
     Some(limit_filesystems)
 }
 
-pub fn strip_end_slash(mut new_name: &str) -> &str {
-    while (new_name.ends_with('/') || new_name.ends_with("/.")) && new_name.len() > 1 {
-        new_name = &new_name[..new_name.len() - 1];
-    }
-    new_name
+pub fn normalize_path<P: AsRef<std::path::Path>>(path: P) -> std::string::String {
+    // normalize path ...
+    // 1. removing repeated separators
+    // 2. removing interior '.' ("current directory") path segments
+    // 3. removing trailing extra separators and '.' ("current directory") path segments
+    // * `Path.components()` does all the above work; ref: <https://doc.rust-lang.org/std/path/struct.Path.html#method.components>
+    // 4. changing to os preferred separator (automatically done by recollecting components back into a PathBuf)
+    path.as_ref()
+        .components()
+        .collect::<std::path::PathBuf>()
+        .to_string_lossy()
+        .to_string()
 }
 
 fn examine_dir(
@@ -235,11 +243,12 @@ pub fn trim_deep_ones(
     let mut result: Vec<(String, u64)> = Vec::with_capacity(input.len() * top_level_names.len());
 
     for name in top_level_names {
-        let my_max_depth = name.matches('/').count() + max_depth as usize;
+        let my_max_depth = name.matches(std::path::is_separator).count() + max_depth as usize;
         let name_ref: &str = name.as_ref();
 
         for &(ref k, ref v) in input.iter() {
-            if k.starts_with(name_ref) && k.matches('/').count() <= my_max_depth {
+            if k.starts_with(name_ref) && k.matches(std::path::is_separator).count() <= my_max_depth
+            {
                 result.push((k.clone(), *v));
             }
         }
@@ -261,23 +270,59 @@ mod tests {
     #[test]
     fn test_simplify_dir_rm_subdir() {
         let mut correct = HashSet::new();
-        correct.insert("a/b".to_string());
+        correct.insert(
+            ["a", "b"]
+                .iter()
+                .collect::<std::path::PathBuf>()
+                .to_string_lossy()
+                .to_string(),
+        );
         assert_eq!(simplify_dir_names(vec!["a/b", "a/b/c", "a/b/d/f"]), correct);
     }
 
     #[test]
     fn test_simplify_dir_duplicates() {
         let mut correct = HashSet::new();
-        correct.insert("a/b".to_string());
+        correct.insert(
+            ["a", "b"]
+                .iter()
+                .collect::<std::path::PathBuf>()
+                .to_string_lossy()
+                .to_string(),
+        );
         correct.insert("c".to_string());
-        assert_eq!(simplify_dir_names(vec!["a/b", "a/b//", "c", "c/"]), correct);
+        assert_eq!(
+            simplify_dir_names(vec![
+                "a/b",
+                "a/b//",
+                "a/././b///",
+                "c",
+                "c/",
+                "c/.",
+                "c/././",
+                "c/././."
+            ]),
+            correct
+        );
     }
     #[test]
     fn test_simplify_dir_rm_subdir_and_not_substrings() {
         let mut correct = HashSet::new();
         correct.insert("b".to_string());
-        correct.insert("c/a/b".to_string());
-        correct.insert("a/b".to_string());
+        correct.insert(
+            ["c", "a", "b"]
+                .iter()
+                .collect::<std::path::PathBuf>()
+                .to_string_lossy()
+                .to_string(),
+        );
+        correct.insert(
+            ["a", "b"]
+                .iter()
+                .collect::<std::path::PathBuf>()
+                .to_string_lossy()
+                .to_string(),
+        );
         assert_eq!(simplify_dir_names(vec!["a/b", "c/a/b/", "b"]), correct);
     }
 
@@ -300,13 +345,19 @@ mod tests {
     fn test_is_a_parent_of() {
         assert!(is_a_parent_of("/usr", "/usr/andy"));
         assert!(is_a_parent_of("/usr", "/usr/andy/i/am/descendant"));
+        assert!(!is_a_parent_of("/usr", "/usr/."));
+        assert!(!is_a_parent_of("/usr", "/usr/"));
+        assert!(!is_a_parent_of("/usr", "/usr"));
+        assert!(!is_a_parent_of("/usr/", "/usr"));
         assert!(!is_a_parent_of("/usr/andy", "/usr"));
         assert!(!is_a_parent_of("/usr/andy", "/usr/sibling"));
+        assert!(!is_a_parent_of("/usr/folder", "/usr/folder_not_a_child"));
     }
 
     #[test]
     fn test_is_a_parent_of_root() {
         assert!(is_a_parent_of("/", "/usr/andy"));
         assert!(is_a_parent_of("/", "/usr"));
+        assert!(!is_a_parent_of("/", "/"));
     }
 }

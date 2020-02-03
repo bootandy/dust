@@ -159,7 +159,10 @@ pub fn format_string(
 ) -> String {
     let printable_name = {
         if display_data.short_paths {
-            dir_name.split('/').last().unwrap_or(dir_name)
+            dir_name
+                .split(std::path::is_separator)
+                .last()
+                .unwrap_or(dir_name)
         } else {
             dir_name
         }
