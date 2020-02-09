@@ -3,7 +3,9 @@ extern crate ansi_term;
 use self::ansi_term::Colour::Fixed;
 use self::ansi_term::Style;
 use crate::utils::Node;
+use terminal_size::{Width, Height, terminal_size};
 
+use std::iter::repeat;
 use std::path::Path;
 
 static UNITS: [char; 4] = ['T', 'G', 'M', 'K'];
@@ -12,6 +14,7 @@ pub struct DisplayData {
     pub short_paths: bool,
     pub is_reversed: bool,
     pub colors_on: bool,
+    pub terminal_size: Option<(Width, Height)>,
 }
 
 impl DisplayData {
@@ -85,19 +88,29 @@ pub fn draw_it(
     if !permissions {
         eprintln!("Did not have permissions for all directories");
     }
+
+    // let size = terminal_size();
+    // if let Some((Width(w), Height(h))) = size {
+    //     println!("Your terminal is {} cols wide and {} lines tall", w, h);
+    // } else {
+    //     println!("Unable to get terminal size");
+    // }
     let display_data = DisplayData {
         short_paths: !use_full_path,
         is_reversed,
         colors_on: !no_colors,
+        terminal_size: terminal_size(),
     };
 
     for c in display_data.get_children_from_node(root_node) {
         let first_tree_chars = display_data.get_first_chars();
-        display_node(c, true, first_tree_chars, &display_data)
+        let base_size = c.size;
+        display_node(c, true, first_tree_chars, &display_data, base_size);
     }
 }
 
-fn display_node(node: Node, is_biggest: bool, indent: &str, display_data: &DisplayData) {
+// can we make 2 of these one for pre and post order traversal?
+fn display_node(node: Node, is_biggest: bool, indent: &str, display_data: &DisplayData, base_size: u64) {
     let mut num_siblings = node.children.len() as u64;
     let max_sibling = num_siblings;
     let new_indent = clean_indentation_string(indent);
@@ -105,19 +118,20 @@ fn display_node(node: Node, is_biggest: bool, indent: &str, display_data: &Displ
     let size = node.size;
 
     if !display_data.is_reversed {
-        print_this_node(&name, size, is_biggest, display_data, indent);
+        print_this_node(&name, size, is_biggest, display_data, indent, base_size);
     }
 
     for c in display_data.get_children_from_node(node) {
         num_siblings -= 1;
         let chars = display_data.get_tree_chars(num_siblings, max_sibling, !c.children.is_empty());
+        // can we just do is first ? + handle reverse mode. consider equal values
         let is_biggest = display_data.is_biggest(num_siblings, max_sibling);
         let full_indent = new_indent.clone() + chars;
-        display_node(c, is_biggest, &*full_indent, display_data)
+        display_node(c, is_biggest, &*full_indent, display_data, base_size)
     }
 
     if display_data.is_reversed {
-        print_this_node(&name, size, is_biggest, display_data, indent);
+        print_this_node(&name, size, is_biggest, display_data, indent, base_size);
     }
 }
 
@@ -144,11 +158,13 @@ fn print_this_node<P: AsRef<Path>>(
     is_biggest: bool,
     display_data: &DisplayData,
     indentation: &str,
+    base_size: u64,
 ) {
     let pretty_size = format!("{:>5}", human_readable_number(size),);
+    let percent_size = format!("{:.0}%", (size as f32/base_size as f32) * 100.0);
     println!(
         "{}",
-        format_string(name, is_biggest, display_data, &*pretty_size, indentation)
+        format_string(name, is_biggest, display_data, &*pretty_size, &*percent_size, indentation)
     )
 }
 
@@ -157,6 +173,7 @@ pub fn format_string<P: AsRef<Path>>(
     is_biggest: bool,
     display_data: &DisplayData,
     size: &str,
+    percent_size: &str,
     indentation: &str,
 ) -> String {
     let dir_name = dir_name.as_ref();
@@ -173,15 +190,28 @@ pub fn format_string<P: AsRef<Path>>(
             dir_name
         }
     };
+    let tree_and_path = format!("{} {}", indentation , printable_name.display());
+     
+    let ww = {
+        if let Some((Width(w), Height(h))) = display_data.terminal_size {
+            w
+        } else {
+            80
+        }
+    } - 13;
+
+    let printable_chars = tree_and_path.chars().count();
+    let tree_and_path = tree_and_path + &(repeat(" ").take(ww as usize - printable_chars).collect::<String>());
+    
     format!(
-        "{} {} {}",
+        "{} {} │ {:>4}",
         if is_biggest && display_data.colors_on {
             Fixed(196).paint(size)
         } else {
             Style::new().paint(size)
         },
-        indentation,
-        printable_name.display(),
+        tree_and_path,
+        percent_size,
     )
 }
 

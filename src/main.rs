@@ -6,11 +6,12 @@ use crate::utils::is_a_parent_of;
 use clap::{App, AppSettings, Arg};
 use std::path::PathBuf;
 use utils::{find_big_ones, get_dir_tree, simplify_dir_names, sort, trim_deep_ones, Node};
+use terminal_size::{Width, Height, terminal_size};
 
 mod display;
 mod utils;
 
-static DEFAULT_NUMBER_OF_LINES: usize = 20;
+static DEFAULT_NUMBER_OF_LINES: usize = 30;
 
 #[cfg(windows)]
 fn init_color() {
@@ -22,7 +23,16 @@ fn init_color() {}
 
 fn main() {
     init_color();
-    let def_num_str = DEFAULT_NUMBER_OF_LINES.to_string();
+
+    let default_height = {
+        if let Some((Width(_w), Height(h))) = terminal_size() {
+            h as usize
+        } else {
+            DEFAULT_NUMBER_OF_LINES
+        }
+    } - 10;
+    let def_num_str = default_height.to_string();
+
     let options = App::new("Dust")
         .about("Like du but more intuitive")
         .version(crate_version!())
@@ -102,7 +112,7 @@ fn main() {
         Ok(v) => v,
         Err(_) => {
             eprintln!("Ignoring bad value for number_of_lines");
-            DEFAULT_NUMBER_OF_LINES
+            default_height
         }
     };
 
@@ -131,7 +141,7 @@ fn main() {
             .map_err(|_| eprintln!("Ignoring bad value for depth"))
             .ok()
     });
-    if options.is_present("depth") && number_of_lines != DEFAULT_NUMBER_OF_LINES {
+    if options.is_present("depth") && number_of_lines != default_height {
         eprintln!("Use either -n or -d. Not both");
         return;
     }

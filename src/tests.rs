@@ -49,6 +49,7 @@ fn main_output(short_paths: bool) -> String {
         short_paths,
         is_reversed: false,
         colors_on: true,
+        terminal_size: None,
     };
     format!(
         "{}
@@ -68,16 +69,17 @@ fn main_output(short_paths: bool) -> String {
         short_paths,
         is_reversed: false,
         colors_on: true,
+        terminal_size: None,
     };
     format!(
         "{}
 {}
 {}
 {}",
-        format_string("src/test_dir", true, &d, "  12K", "─┬"),
-        format_string("src/test_dir/many", true, &d, " 8.0K", " └─┬",),
-        format_string("src/test_dir/many/hello_file", true, &d, " 4.0K", "   ├──",),
-        format_string("src/test_dir/many/a_file", false, &d, "   0B", "   └──",),
+        format_string("src/test_dir", true, &d, "  12K", "100%", "─┬"),
+        format_string("src/test_dir/many", true, &d, " 8.0K", "67%", " └─┬",),
+        format_string("src/test_dir/many/hello_file", true, &d, " 4.0K", "33%", "   ├──",),
+        format_string("src/test_dir/many/a_file", false, &d, "   0B", "0%", "   └──",),
     )
 }
 
@@ -87,6 +89,7 @@ fn main_output(short_paths: bool) -> String {
         short_paths,
         is_reversed: false,
         colors_on: true,
+        terminal_size: None,
     };
     format!(
         "{}
@@ -158,10 +161,11 @@ pub fn test_apparent_size() {
         short_paths: true,
         is_reversed: false,
         colors_on: true,
+        terminal_size: None,
     };
     let r = format!(
         "{}",
-        format_string("src/test_dir/many/hello_file", true, &d, "   6B", "   ├──",),
+        format_string("src/test_dir/many/hello_file", true, &d, "   6B", "100%", "   ├──",),
     );
 
     assert_cli::Assert::main_binary()
