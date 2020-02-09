@@ -154,8 +154,8 @@ fn examine_dir<P: AsRef<Path>>(
             }
 
             match maybe_size_and_inode {
-                Some((size, maybe_inode)) => {
-                    if !should_ignore_file(apparent_size, filesystems, &mut inodes, maybe_inode) {
+                Some((size, inode, device)) => {
+                    if !should_ignore_file(apparent_size, filesystems, &mut inodes, inode, device) {
                         process_file_with_size_and_inode(top_dir, data, e, size)
                     }
                 }
@@ -171,23 +171,22 @@ fn should_ignore_file(
     apparent_size: bool,
     restricted_filesystems: &Option<HashSet<u64>>,
     inodes: &mut HashSet<(u64, u64)>,
-    maybe_inode: Option<(u64, u64)>,
+    inode: u64,
+    device: u64,
 ) -> bool {
-    if let Some(inode_dev_pair) = maybe_inode {
-        // Ignore files on different devices (if flag applied)
-        if let Some(rs) = restricted_filesystems {
-            if !rs.contains(&inode_dev_pair.1) {
-                return true;
-            }
+    // Ignore files on different devices (if flag applied)
+    if let Some(rs) = restricted_filesystems {
+        if !rs.contains(&device) {
+            return true;
         }
+    }
 
-        if !apparent_size {
-            // Ignore files already visited or symlinked
-            if inodes.contains(&inode_dev_pair) {
-                return true;
-            }
-            inodes.insert(inode_dev_pair);
+    if !apparent_size {
+        // Ignore files already visited or symlinked
+        if inodes.contains(&(inode, device)) {
+            return true;
         }
+        inodes.insert((inode, device));
     }
     false
 }
@@ -353,15 +352,14 @@ mod tests {
         let mut files = HashSet::new();
         files.insert((10, 20));
 
-        assert!(!should_ignore_file(true, &None, &mut files, None));
+        assert!(!should_ignore_file(true, &None, &mut files, 0, 0));
 
         // New file is not known it will be inserted to the hashmp and should not be ignored
-        let new_fd = (11, 12);
-        assert!(!should_ignore_file(false, &None, &mut files, Some(new_fd)));
-        assert!(files.contains(&new_fd));
+        assert!(!should_ignore_file(false, &None, &mut files, 11, 12));
+        assert!(files.contains(&(11, 12)));
 
         // The same file will be ignored the second time
-        assert!(should_ignore_file(false, &None, &mut files, Some(new_fd)));
+        assert!(should_ignore_file(false, &None, &mut files, 11, 12));
     }
 
     #[test]
@@ -375,12 +373,11 @@ mod tests {
 
         // If we are looking at a different device (disk) and the device flag is set
         // then apparent_size is irrelevant - we ignore files on other devices
-        let new_file = (11, 12);
-        assert!(should_ignore_file(false, &od, &mut files, Some(new_file)));
-        assert!(should_ignore_file(true, &od, &mut files, Some(new_file)));
+        assert!(should_ignore_file(false, &od, &mut files, 11, 12));
+        assert!(should_ignore_file(true, &od, &mut files, 11, 12));
 
         // We do not ignore files on the same device
-        assert!(!should_ignore_file(false, &od, &mut files, Some((2, 99))));
-        assert!(!should_ignore_file(true, &od, &mut files, Some((2, 99))));
+        assert!(!should_ignore_file(false, &od, &mut files, 2, 99));
+        assert!(!should_ignore_file(true, &od, &mut files, 2, 99));
     }
 }
