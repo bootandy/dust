@@ -1,0 +1,6 @@
+# ----------- To do a release ---------
+# tag a commit and push:
+#   git tag v0.4.5
+#   git push origin v0.4.5
+
+# cargo publish to put it in crates.io
