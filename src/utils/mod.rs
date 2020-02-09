@@ -173,17 +173,15 @@ fn should_ignore_file(
     inodes: &mut HashSet<(u64, u64)>,
     maybe_inode: Option<(u64, u64)>,
 ) -> bool {
-    if !apparent_size {
-        if let Some(inode_dev_pair) = maybe_inode {
-            // Ignore files on different devices (if flag applied)
-            if restricted_filesystems.is_some()
-                && !restricted_filesystems
-                    .as_ref()
-                    .unwrap()
-                    .contains(&inode_dev_pair.1)
-            {
+    if let Some(inode_dev_pair) = maybe_inode {
+        // Ignore files on different devices (if flag applied)
+        if let Some(rs) = restricted_filesystems {
+            if !rs.contains(&inode_dev_pair.1) {
                 return true;
             }
+        }
+
+        if !apparent_size {
             // Ignore files already visited or symlinked
             if inodes.contains(&inode_dev_pair) {
                 return true;
@@ -239,6 +237,17 @@ pub fn find_big_ones(new_l: Vec<(PathBuf, u64)>, max_to_show: usize) -> Vec<(Pat
     }
 }
 
+fn depth_of_path(name: &PathBuf) -> usize {
+    // Filter required as paths can have some odd preliminary
+    // ("Prefix") bits (for example, from windows, "\\?\" or "\\UNC\")
+    name.components()
+        .filter(|&c| match c {
+            std::path::Component::Prefix(_) => false,
+            _ => true,
+        })
+        .count()
+}
+
 pub fn trim_deep_ones(
     input: Vec<(PathBuf, u64)>,
     max_depth: u64,
@@ -247,25 +256,10 @@ pub fn trim_deep_ones(
     let mut result: Vec<(PathBuf, u64)> = Vec::with_capacity(input.len() * top_level_names.len());
 
     for name in top_level_names {
-        let my_max_depth = name
-            .components()
-            .filter(|&c| match c {
-                std::path::Component::Prefix(_) => false,
-                _ => true,
-            })
-            .count()
-            + max_depth as usize;
+        let my_max_depth = depth_of_path(name) + max_depth as usize;
 
         for &(ref k, ref v) in input.iter() {
-            if k.starts_with(name)
-                && k.components()
-                    .filter(|&c| match c {
-                        std::path::Component::Prefix(_) => false,
-                        _ => true,
-                    })
-                    .count()
-                    <= my_max_depth
-            {
+            if k.starts_with(name) && depth_of_path(k) <= my_max_depth {
                 result.push((k.clone(), *v));
             }
         }
@@ -352,5 +346,41 @@ mod tests {
         assert!(is_a_parent_of("/", "/usr/andy"));
         assert!(is_a_parent_of("/", "/usr"));
         assert!(!is_a_parent_of("/", "/"));
+    }
+
+    #[test]
+    fn test_should_ignore_file() {
+        let mut files = HashSet::new();
+        files.insert((10, 20));
+
+        assert!(!should_ignore_file(true, &None, &mut files, None));
+
+        // New file is not known it will be inserted to the hashmp and should not be ignored
+        let new_fd = (11, 12);
+        assert!(!should_ignore_file(false, &None, &mut files, Some(new_fd)));
+        assert!(files.contains(&new_fd));
+
+        // The same file will be ignored the second time
+        assert!(should_ignore_file(false, &None, &mut files, Some(new_fd)));
+    }
+
+    #[test]
+    fn test_should_ignore_file_on_different_device() {
+        let mut files = HashSet::new();
+        files.insert((10, 20));
+
+        let mut devices = HashSet::new();
+        devices.insert(99);
+        let od = Some(devices);
+
+        // If we are looking at a different device (disk) and the device flag is set
+        // then apparent_size is irrelevant - we ignore files on other devices
+        let new_file = (11, 12);
+        assert!(should_ignore_file(false, &od, &mut files, Some(new_file)));
+        assert!(should_ignore_file(true, &od, &mut files, Some(new_file)));
+
+        // We do not ignore files on the same device
+        assert!(!should_ignore_file(false, &od, &mut files, Some((2, 99))));
+        assert!(!should_ignore_file(true, &od, &mut files, Some((2, 99))));
     }
 }

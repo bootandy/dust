@@ -41,7 +41,7 @@ Usage: dust -n 30  <dir>  (Shows 30 directories not 20)
 Usage: dust -d 3  <dir>  (Shows 3 levels of subdirectories)
 Usage: dust -r  <dir>  (Reverse order of output, with root at the lowest)
 Usage: dust -x  <dir>  (Only show directories on same filesystem)
-Usage: dust -X ignore  <dir>  (Ignore all files and directories containing the string 'ignore')
+Usage: dust -X ignore  <dir>  (Ignore all files and directories with the name 'ignore')
 ```
 
 ```
