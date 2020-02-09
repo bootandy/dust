@@ -173,17 +173,19 @@ fn should_ignore_file(
     inodes: &mut HashSet<(u64, u64)>,
     maybe_inode: Option<(u64, u64)>,
 ) -> bool {
-    if !apparent_size {
-        if let Some(inode_dev_pair) = maybe_inode {
-            // Ignore files on different devices (if flag applied)
-            if restricted_filesystems.is_some()
-                && !restricted_filesystems
-                    .as_ref()
-                    .unwrap()
-                    .contains(&inode_dev_pair.1)
-            {
-                return true;
-            }
+
+    if let Some(inode_dev_pair) = maybe_inode {
+        // Ignore files on different devices (if flag applied)
+        if restricted_filesystems.is_some()
+            && !restricted_filesystems
+                .as_ref()
+                .unwrap()
+                .contains(&inode_dev_pair.1)
+        {
+            return true;
+        }
+
+        if !apparent_size {
             // Ignore files already visited or symlinked
             if inodes.contains(&inode_dev_pair) {
                 return true;
