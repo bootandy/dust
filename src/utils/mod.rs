@@ -239,6 +239,17 @@ pub fn find_big_ones(new_l: Vec<(PathBuf, u64)>, max_to_show: usize) -> Vec<(Pat
     }
 }
 
+fn depth_of_path(name: &PathBuf) -> usize {
+    // Filter required as paths can have some odd preliminary
+    // ("Prefix") bits (for example, from windows, "\\?\" or "\\UNC\")
+    name.components()
+        .filter(|&c| match c {
+            std::path::Component::Prefix(_) => false,
+            _ => true,
+        })
+        .count()
+}
+
 pub fn trim_deep_ones(
     input: Vec<(PathBuf, u64)>,
     max_depth: u64,
@@ -247,25 +258,10 @@ pub fn trim_deep_ones(
     let mut result: Vec<(PathBuf, u64)> = Vec::with_capacity(input.len() * top_level_names.len());
 
     for name in top_level_names {
-        let my_max_depth = name
-            .components()
-            .filter(|&c| match c {
-                std::path::Component::Prefix(_) => false,
-                _ => true,
-            })
-            .count()
-            + max_depth as usize;
+        let my_max_depth = depth_of_path(name) + max_depth as usize;
 
         for &(ref k, ref v) in input.iter() {
-            if k.starts_with(name)
-                && k.components()
-                    .filter(|&c| match c {
-                        std::path::Component::Prefix(_) => false,
-                        _ => true,
-                    })
-                    .count()
-                    <= my_max_depth
-            {
+            if k.starts_with(name) && depth_of_path(k) <= my_max_depth {
                 result.push((k.clone(), *v));
             }
         }
