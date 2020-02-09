@@ -173,16 +173,12 @@ fn should_ignore_file(
     inodes: &mut HashSet<(u64, u64)>,
     maybe_inode: Option<(u64, u64)>,
 ) -> bool {
-
     if let Some(inode_dev_pair) = maybe_inode {
         // Ignore files on different devices (if flag applied)
-        if restricted_filesystems.is_some()
-            && !restricted_filesystems
-                .as_ref()
-                .unwrap()
-                .contains(&inode_dev_pair.1)
-        {
-            return true;
+        if let Some(rs) = restricted_filesystems {
+            if !rs.contains(&inode_dev_pair.1) {
+                return true;
+            }
         }
 
         if !apparent_size {
@@ -382,5 +378,9 @@ mod tests {
         let new_file = (11, 12);
         assert!(should_ignore_file(false, &od, &mut files, Some(new_file)));
         assert!(should_ignore_file(true, &od, &mut files, Some(new_file)));
+
+        // We do not ignore files on the same device
+        assert!(!should_ignore_file(false, &od, &mut files, Some((2, 99))));
+        assert!(!should_ignore_file(true, &od, &mut files, Some((2, 99))));
     }
 }
