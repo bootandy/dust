@@ -7,6 +7,7 @@ use terminal_size::{Width, Height, terminal_size};
 
 use std::iter::repeat;
 use std::path::Path;
+use std::cmp::max;
 
 static UNITS: [char; 4] = ['T', 'G', 'M', 'K'];
 
@@ -89,12 +90,6 @@ pub fn draw_it(
         eprintln!("Did not have permissions for all directories");
     }
 
-    // let size = terminal_size();
-    // if let Some((Width(w), Height(h))) = size {
-    //     println!("Your terminal is {} cols wide and {} lines tall", w, h);
-    // } else {
-    //     println!("Unable to get terminal size");
-    // }
     let display_data = DisplayData {
         short_paths: !use_full_path,
         is_reversed,
@@ -102,15 +97,36 @@ pub fn draw_it(
         terminal_size: terminal_size(),
     };
 
+    let longest_str_length = root_node.children.iter().map(|c| 
+        find_longest_dir_name(c, &display_data.get_first_chars(), &display_data)
+    ).max();
+
+    let longest_str = 
+        match longest_str_length {
+            Some(l) => l,
+            None => 40, //FIX ME
+        };
+
     for c in display_data.get_children_from_node(root_node) {
         let first_tree_chars = display_data.get_first_chars();
         let base_size = c.size;
-        display_node(c, true, first_tree_chars, &display_data, base_size);
+        display_node(c, true, first_tree_chars, &display_data, base_size, longest_str);
     }
 }
 
+fn find_longest_dir_name(node: &Node, indent: &str, display_data: &DisplayData) -> usize {
+    let mut longest = get_printable_name(node.name.clone(), display_data, indent).chars().count();
+
+    for c in node.children.iter() {
+        // each tree drawing is 3 chars
+        let full_indent :String = indent.to_string() + "   ";
+        longest = max(longest, find_longest_dir_name(c, &*full_indent, display_data));
+    }
+    longest
+}
+
 // can we make 2 of these one for pre and post order traversal?
-fn display_node(node: Node, is_biggest: bool, indent: &str, display_data: &DisplayData, base_size: u64) {
+fn display_node(node: Node, is_biggest: bool, indent: &str, display_data: &DisplayData, base_size: u64, longest_string_length: usize) {
     let mut num_siblings = node.children.len() as u64;
     let max_sibling = num_siblings;
     let new_indent = clean_indentation_string(indent);
@@ -118,7 +134,7 @@ fn display_node(node: Node, is_biggest: bool, indent: &str, display_data: &Displ
     let size = node.size;
 
     if !display_data.is_reversed {
-        print_this_node(&name, size, is_biggest, display_data, indent, base_size);
+        print_this_node(&name, size, is_biggest, display_data, indent, base_size, longest_string_length);
     }
 
     for c in display_data.get_children_from_node(node) {
@@ -127,11 +143,11 @@ fn display_node(node: Node, is_biggest: bool, indent: &str, display_data: &Displ
         // can we just do is first ? + handle reverse mode. consider equal values
         let is_biggest = display_data.is_biggest(num_siblings, max_sibling);
         let full_indent = new_indent.clone() + chars;
-        display_node(c, is_biggest, &*full_indent, display_data, base_size)
+        display_node(c, is_biggest, &*full_indent, display_data, base_size, longest_string_length);
     }
 
     if display_data.is_reversed {
-        print_this_node(&name, size, is_biggest, display_data, indent, base_size);
+        print_this_node(&name, size, is_biggest, display_data, indent, base_size, longest_string_length);
     }
 }
 
@@ -159,21 +175,19 @@ fn print_this_node<P: AsRef<Path>>(
     display_data: &DisplayData,
     indentation: &str,
     base_size: u64,
+    longest_string_length: usize,
 ) {
     let pretty_size = format!("{:>5}", human_readable_number(size),);
     let percent_size = format!("{:.0}%", (size as f32/base_size as f32) * 100.0);
     println!(
         "{}",
-        format_string(name, is_biggest, display_data, &*pretty_size, &*percent_size, indentation)
+        format_string(name, is_biggest, display_data, &*pretty_size, &*percent_size, indentation, longest_string_length)
     )
 }
 
-pub fn format_string<P: AsRef<Path>>(
+fn get_printable_name<P: AsRef<Path>>(
     dir_name: P,
-    is_biggest: bool,
     display_data: &DisplayData,
-    size: &str,
-    percent_size: &str,
     indentation: &str,
 ) -> String {
     let dir_name = dir_name.as_ref();
@@ -190,7 +204,20 @@ pub fn format_string<P: AsRef<Path>>(
             dir_name
         }
     };
-    let tree_and_path = format!("{} {}", indentation , printable_name.display());
+    format!("{} {}", indentation , printable_name.display())
+}
+
+pub fn format_string<P: AsRef<Path>>(
+    dir_name: P,
+    is_biggest: bool,
+    display_data: &DisplayData,
+    size: &str,
+    percent_size: &str,
+    indentation: &str,
+    longest_string_length: usize,
+) -> String {
+    let dir_name = dir_name.as_ref();
+    let tree_and_path = get_printable_name(dir_name, display_data, indentation);
      
     let ww = {
         if let Some((Width(w), Height(h))) = display_data.terminal_size {
@@ -201,7 +228,8 @@ pub fn format_string<P: AsRef<Path>>(
     } - 13;
 
     let printable_chars = tree_and_path.chars().count();
-    let tree_and_path = tree_and_path + &(repeat(" ").take(ww as usize - printable_chars).collect::<String>());
+    let tree_and_path = tree_and_path + &(repeat(" ").take(longest_string_length - printable_chars).collect::<String>());
+    //let tree_and_path = tree_and_path + &(repeat(" ").take(ww as usize - printable_chars).collect::<String>());
     
     format!(
         "{} {} │ {:>4}",
