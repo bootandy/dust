@@ -178,10 +178,10 @@ fn print_this_node<P: AsRef<Path>>(
     longest_string_length: usize,
 ) {
     let pretty_size = format!("{:>5}", human_readable_number(size),);
-    let percent_size = format!("{:.0}%", (size as f32/base_size as f32) * 100.0);
+    let percent_size = size as f32 / base_size as f32;
     println!(
         "{}",
-        format_string(name, is_biggest, display_data, &*pretty_size, &*percent_size, indentation, longest_string_length)
+        format_string(name, is_biggest, display_data, &*pretty_size, percent_size, indentation, longest_string_length)
     )
 }
 
@@ -212,10 +212,13 @@ pub fn format_string<P: AsRef<Path>>(
     is_biggest: bool,
     display_data: &DisplayData,
     size: &str,
-    percent_size: &str,
+    percent_size: f32,
     indentation: &str,
     longest_string_length: usize,
 ) -> String {
+
+    let percent_size_str = format!("{:.0}%", percent_size * 100.0);
+
     let dir_name = dir_name.as_ref();
     let tree_and_path = get_printable_name(dir_name, display_data, indentation);
      
@@ -225,21 +228,26 @@ pub fn format_string<P: AsRef<Path>>(
         } else {
             80
         }
-    } - 13;
+    } - 16;
 
     let printable_chars = tree_and_path.chars().count();
     let tree_and_path = tree_and_path + &(repeat(" ").take(longest_string_length - printable_chars).collect::<String>());
-    //let tree_and_path = tree_and_path + &(repeat(" ").take(ww as usize - printable_chars).collect::<String>());
+
+    let max_bar_length = ww as usize - longest_string_length;
+    let num_bars = (max_bar_length as f32 * percent_size) as usize;
+    let num_spaces = max_bar_length - num_bars;
+    let markers = (repeat(" ").take(num_spaces).collect::<String>()) + &(repeat("▇").take(num_bars).collect::<String>());
     
     format!(
-        "{} {} │ {:>4}",
+        "{} {} | {} │ {:>4}",
         if is_biggest && display_data.colors_on {
             Fixed(196).paint(size)
         } else {
             Style::new().paint(size)
         },
         tree_and_path,
-        percent_size,
+        markers,
+        percent_size_str,
     )
 }
 
