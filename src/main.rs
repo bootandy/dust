@@ -4,6 +4,7 @@ extern crate clap;
 use self::display::draw_it;
 use crate::utils::is_a_parent_of;
 use clap::{App, AppSettings, Arg};
+use std::path::PathBuf;
 use utils::{find_big_ones, get_dir_tree, simplify_dir_names, sort, trim_deep_ones, Node};
 
 mod display;
@@ -137,12 +138,15 @@ fn main() {
 
     let use_apparent_size = options.is_present("display_apparent_size");
     let limit_filesystem = options.is_present("limit_filesystem");
-    let ignore_directories = options.values_of("ignore_directory").map(|r| r.collect());
+    let ignore_directories = match options.values_of("ignore_directory") {
+        Some(i) => Some(i.map(PathBuf::from).collect()),
+        None => None,
+    };
 
     let simplified_dirs = simplify_dir_names(target_dirs);
     let (permissions, nodes) = get_dir_tree(
         &simplified_dirs,
-        ignore_directories,
+        &ignore_directories,
         use_apparent_size,
         limit_filesystem,
         threads,
@@ -165,7 +169,7 @@ fn main() {
     );
 }
 
-fn build_tree(biggest_ones: Vec<(String, u64)>, depth: Option<u64>) -> Node {
+fn build_tree(biggest_ones: Vec<(PathBuf, u64)>, depth: Option<u64>) -> Node {
     let mut top_parent = Node::default();
 
     // assume sorted order

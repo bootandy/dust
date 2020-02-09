@@ -4,6 +4,8 @@ use self::ansi_term::Colour::Fixed;
 use self::ansi_term::Style;
 use crate::utils::Node;
 
+use std::path::Path;
+
 static UNITS: [char; 4] = ['T', 'G', 'M', 'K'];
 
 pub struct DisplayData {
@@ -103,7 +105,7 @@ fn display_node(node: Node, is_biggest: bool, indent: &str, display_data: &Displ
     let size = node.size;
 
     if !display_data.is_reversed {
-        print_this_node(&*name, size, is_biggest, display_data, indent);
+        print_this_node(&name, size, is_biggest, display_data, indent);
     }
 
     for c in display_data.get_children_from_node(node) {
@@ -115,7 +117,7 @@ fn display_node(node: Node, is_biggest: bool, indent: &str, display_data: &Displ
     }
 
     if display_data.is_reversed {
-        print_this_node(&*name, size, is_biggest, display_data, indent);
+        print_this_node(&name, size, is_biggest, display_data, indent);
     }
 }
 
@@ -136,8 +138,8 @@ fn clean_indentation_string(s: &str) -> String {
     is
 }
 
-fn print_this_node(
-    name: &str,
+fn print_this_node<P: AsRef<Path>>(
+    name: P,
     size: u64,
     is_biggest: bool,
     display_data: &DisplayData,
@@ -150,19 +152,23 @@ fn print_this_node(
     )
 }
 
-pub fn format_string(
-    dir_name: &str,
+pub fn format_string<P: AsRef<Path>>(
+    dir_name: P,
     is_biggest: bool,
     display_data: &DisplayData,
     size: &str,
     indentation: &str,
 ) -> String {
+    let dir_name = dir_name.as_ref();
     let printable_name = {
         if display_data.short_paths {
-            dir_name
-                .split(std::path::is_separator)
-                .last()
-                .unwrap_or(dir_name)
+            match dir_name.parent() {
+                Some(prefix) => match dir_name.strip_prefix(prefix) {
+                    Ok(base) => base,
+                    Err(_) => dir_name,
+                },
+                None => dir_name,
+            }
         } else {
             dir_name
         }
@@ -175,7 +181,7 @@ pub fn format_string(
             Style::new().paint(size)
         },
         indentation,
-        printable_name,
+        printable_name.display(),
     )
 }
 

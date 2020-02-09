@@ -2,6 +2,7 @@ use jwalk::DirEntry;
 #[allow(unused_imports)]
 use std::fs;
 use std::io;
+use std::path::Path;
 
 #[cfg(target_family = "unix")]
 fn get_block_size() -> u64 {
@@ -48,14 +49,14 @@ pub fn get_metadata(d: &DirEntry, _apparent: bool) -> Option<(u64, Option<(u64, 
 }
 
 #[cfg(target_family = "unix")]
-pub fn get_filesystem(file_path: &str) -> Result<u64, io::Error> {
+pub fn get_filesystem<P: AsRef<Path>>(file_path: P) -> Result<u64, io::Error> {
     use std::os::unix::fs::MetadataExt;
     let metadata = fs::metadata(file_path)?;
     Ok(metadata.dev())
 }
 
 #[cfg(target_family = "windows")]
-pub fn get_filesystem(file_path: &str) -> Result<u64, io::Error> {
+pub fn get_filesystem<P: AsRef<Path>>(file_path: P) -> Result<u64, io::Error> {
     use winapi_util::file::information;
     use winapi_util::Handle;
 
