@@ -349,4 +349,36 @@ mod tests {
         assert!(is_a_parent_of("/", "/usr"));
         assert!(!is_a_parent_of("/", "/"));
     }
+
+    #[test]
+    fn test_should_ignore_file() {
+        let mut files = HashSet::new();
+        files.insert((10, 20));
+
+        assert!(!should_ignore_file(true, &None, &mut files, None));
+
+        // New file is not known it will be inserted to the hashmp and should not be ignored
+        let new_fd = (11, 12);
+        assert!(!should_ignore_file(false, &None, &mut files, Some(new_fd)));
+        assert!(files.contains(&new_fd));
+
+        // The same file will be ignored the second time
+        assert!(should_ignore_file(false, &None, &mut files, Some(new_fd)));
+    }
+
+    #[test]
+    fn test_should_ignore_file_on_different_device() {
+        let mut files = HashSet::new();
+        files.insert((10, 20));
+
+        let mut devices = HashSet::new();
+        devices.insert(99);
+        let od = Some(devices);
+
+        // If we are looking at a different device (disk) and the device flag is set
+        // then apparent_size is irrelevant - we ignore files on other devices
+        let new_file = (11, 12);
+        assert!(should_ignore_file(false, &od, &mut files, Some(new_file)));
+        assert!(should_ignore_file(true, &od, &mut files, Some(new_file)));
+    }
 }
