@@ -62,7 +62,7 @@ fn main() {
                 .takes_value(true)
                 .number_of_values(1)
                 .multiple(true)
-                .help("Exclude any file or directory with contains this substring."),
+                .help("Exclude any file or directory with this name."),
         )
         .arg(
             Arg::with_name("limit_filesystem")
