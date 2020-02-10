@@ -5,8 +5,8 @@ use self::display::draw_it;
 use crate::utils::is_a_parent_of;
 use clap::{App, AppSettings, Arg};
 use std::path::PathBuf;
+use terminal_size::{terminal_size, Height, Width};
 use utils::{find_big_ones, get_dir_tree, simplify_dir_names, sort, trim_deep_ones, Node};
-use terminal_size::{Width, Height, terminal_size};
 
 mod display;
 mod utils;
