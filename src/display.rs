@@ -12,7 +12,7 @@ use std::path::Path;
 static UNITS: [char; 4] = ['T', 'G', 'M', 'K'];
 static BLOCKS: [char; 5] = ['█', '▓', '▒', '░', ' '];
 
-pub struct DisplayData {
+struct DisplayData {
     pub short_paths: bool,
     pub is_reversed: bool,
     pub colors_on: bool,
@@ -56,19 +56,19 @@ impl DisplayData {
         }
     }
 
-    fn is_biggest(&self, num_siblings: u64, max_siblings: u64) -> bool {
+    fn is_biggest(&self, count: usize, max_siblings: u64) -> bool {
         if self.is_reversed {
-            num_siblings == 0
+            count == 0
         } else {
-            num_siblings == max_siblings - 1
+            count == (max_siblings - 1) as usize
         }
     }
 
-    fn is_last(&self, num_siblings: u64, max_siblings: u64) -> bool {
+    fn is_last(&self, count: usize, max_siblings: u64) -> bool {
         if self.is_reversed {
-            num_siblings == max_siblings - 1
+            count == (max_siblings - 1) as usize
         } else {
-            num_siblings == 0
+            count == 0
         }
     }
 
@@ -89,6 +89,13 @@ impl DisplayData {
             node.children.into_iter()
         }
     }
+
+struct DrawData {
+    is_biggest: bool,
+    was_i_last: bool,
+    indent: String,
+    percent_bar: String,
+}
 
 pub fn draw_it(
     permissions: bool,
