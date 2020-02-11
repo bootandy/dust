@@ -12,7 +12,7 @@ use std::path::Path;
 static UNITS: [char; 4] = ['T', 'G', 'M', 'K'];
 static BLOCKS: [char; 5] = ['█', '▓', '▒', '░', ' '];
 
-struct DisplayData {
+pub struct DisplayData {
     pub short_paths: bool,
     pub is_reversed: bool,
     pub colors_on: bool,
@@ -22,13 +22,13 @@ struct DisplayData {
 }
 
 impl DisplayData {
+    fn get_new_indent(&self, indent: &str, was_i_last: bool, has_children: bool) -> String {
+        let chars = self.get_tree_chars(was_i_last, has_children);
+        return indent.to_string() + chars;
+    }
 
     #[allow(clippy::collapsible_if)]
-    fn get_tree_chars(
-        &self,
-        was_i_last: bool,
-        has_children: bool,
-    ) -> &'static str {
+    fn get_tree_chars(&self, was_i_last: bool, has_children: bool) -> &'static str {
         if self.is_reversed {
             if was_i_last {
                 if has_children {
@@ -58,37 +58,29 @@ impl DisplayData {
 
     fn is_biggest(&self, count: usize, max_siblings: u64) -> bool {
         if self.is_reversed {
-            count == 0
-        } else {
             count == (max_siblings - 1) as usize
+        } else {
+            count == 0
         }
     }
 
     fn is_last(&self, count: usize, max_siblings: u64) -> bool {
         if self.is_reversed {
-            count == (max_siblings - 1) as usize
-        } else {
             count == 0
-        }
-    }
-
-    fn get_children_from_node(&self, node: Node) -> impl Iterator<Item = Node> {
-        if self.is_reversed {
-            let n: Vec<Node> = node.children.into_iter().rev().map(|a| a).collect();
-            n.into_iter()
         } else {
-            node.children.into_iter()
+            count == (max_siblings - 1) as usize
         }
     }
 }
-    fn get_children_from_node_dup(node: Node, is_reversed: bool) -> impl Iterator<Item = Node> {
-        if is_reversed {
-            let n: Vec<Node> = node.children.into_iter().rev().map(|a| a).collect();
-            n.into_iter()
-        } else {
-            node.children.into_iter()
-        }
+
+fn get_children_from_node(node: Node, is_reversed: bool) -> impl Iterator<Item = Node> {
+    if is_reversed {
+        let n: Vec<Node> = node.children.into_iter().rev().map(|a| a).collect();
+        n.into_iter()
+    } else {
+        node.children.into_iter()
     }
+}
 
 struct DrawData {
     is_biggest: bool,
@@ -118,7 +110,7 @@ pub fn draw_it(
         }
     } - 16;
 
-    for c in get_children_from_node_dup(root_node, is_reversed) {
+    for c in get_children_from_node(root_node, is_reversed) {
         let max_bar_length = ww as usize - longest_string_length;
         let bar_text = repeat(BLOCKS[0]).take(max_bar_length).collect::<String>();
 
@@ -130,89 +122,63 @@ pub fn draw_it(
             base_size: c.size,
             longest_string_length,
         };
-
-        display_node(
-            c,
-            true,
-            true,
-            "".to_string(),
-            &display_data,
-            bar_text,
-        );
+        let draw_data = DrawData {
+            is_biggest: true,
+            was_i_last: true,
+            indent: "".to_string(),
+            percent_bar: bar_text,
+        };
+        display_node(c, draw_data, &display_data);
     }
 }
 
 fn find_longest_dir_name(node: &Node, indent: &str, long_paths: bool) -> usize {
-    let mut longest = get_printable_name(node.name.clone(), long_paths, indent)
+    // Fix by calculating display width instead of number of chars
+    let mut longest = get_printable_name(&node.name, long_paths, indent)
         .chars()
         .count();
 
     for c in node.children.iter() {
         // each tree drawing is 3 chars
         let full_indent: String = indent.to_string() + "   ";
-        longest = max(
-            longest,
-            find_longest_dir_name(c, &*full_indent, long_paths),
-        );
+        longest = max(longest, find_longest_dir_name(c, &*full_indent, long_paths));
     }
     longest
 }
 
-// can we make 2 of these one for pre and post order traversal?
-fn display_node(
-    node: Node,
-    is_biggest: bool,
-    was_i_last: bool,
-    new_indent: String,
-    display_data: &DisplayData,
-    parent_bar: String,
-) {
-    let name = node.name.clone();
-    let size = node.size;
+fn display_node(node: Node, draw_data: DrawData, display_data: &DisplayData) {
+    let indent2 = display_data.get_new_indent(&*draw_data.indent, draw_data.was_i_last, !node.children.is_empty());
 
-    let chars = display_data.get_tree_chars(was_i_last, !node.children.is_empty());
-    let indent2 = new_indent.clone() + chars;
+    let percent_size = node.size as f32 / display_data.base_size as f32;
+    let bar_text = generate_bar(draw_data.percent_bar.clone(), percent_size);
 
-    let percent_size = size as f32 / display_data.base_size as f32;
-    let bar_text = generate_bar(parent_bar, percent_size);
+    let to_print = format_string(
+        &node,
+        indent2.as_ref(),
+        bar_text.as_ref(),
+        draw_data.is_biggest,
+        display_data,
+    );
 
     if !display_data.is_reversed {
-        print_this_node(
-            &name,
-            size,
-            is_biggest,
-            display_data,
-            &*indent2,
-            bar_text.as_ref(),
-        );
+        println!("{}", to_print)
     }
 
-    let mut num_siblings = node.children.len() as u64;
-    let max_sibling = num_siblings;
-    for c in display_data.get_children_from_node(node) {
-        num_siblings -= 1;
-        // can we just do is first ? + handle reverse mode. consider equal values
-        let is_biggest = display_data.is_biggest(num_siblings, max_sibling);
-        let is_last = display_data.is_last(num_siblings, max_sibling);
-        display_node(
-            c,
-            is_biggest,
-            is_last,
-            clean_indentation_string(&*indent2),
-            display_data,
-            bar_text.clone()
-        );
+    let indent = clean_indentation_string(&*indent2);
+    let num_siblings = node.children.len() as u64;
+
+    for (count, c) in get_children_from_node(node, display_data.is_reversed).enumerate() {
+        let dd = DrawData {
+            is_biggest: display_data.is_biggest(count, num_siblings),
+            was_i_last: display_data.is_last(count, num_siblings),
+            indent: indent.clone(),
+            percent_bar: bar_text.clone(),
+        };
+        display_node(c, dd, display_data);
     }
 
     if display_data.is_reversed {
-        print_this_node(
-            &name,
-            size,
-            is_biggest,
-            display_data,
-            &*indent2,
-            bar_text.as_ref(),
-        );
+        println!("{}", to_print)
     }
 }
 
@@ -233,32 +199,7 @@ fn clean_indentation_string(s: &str) -> String {
     is
 }
 
-fn print_this_node<P: AsRef<Path>>(
-    name: P,
-    size: u64,
-    is_biggest: bool,
-    display_data: &DisplayData,
-    indentation: &str,
-    bar_text: &str,
-) {
-    println!(
-        "{}",
-        format_string(
-            name,
-            is_biggest,
-            display_data,
-            size,
-            indentation,
-            bar_text,
-        )
-    )
-}
-
-fn get_printable_name<P: AsRef<Path>>(
-    dir_name: P,
-    long_paths: bool,
-    indentation: &str,
-) -> String {
+fn get_printable_name<P: AsRef<Path>>(dir_name: &P, long_paths: bool, indentation: &str) -> String {
     let dir_name = dir_name.as_ref();
     let printable_name = {
         if long_paths {
@@ -276,62 +217,52 @@ fn get_printable_name<P: AsRef<Path>>(
     format!("{} {}", indentation, printable_name.display())
 }
 
-fn generate_bar(
-    parent_bar: String,
-    percent_size: f32,
-) -> String {
+fn generate_bar(parent_bar: String, percent_size: f32) -> String {
     let num_bars = (parent_bar.chars().count() as f32 * percent_size) as usize;
     let mut num_not_my_bar = (parent_bar.chars().count() - num_bars) as i32;
 
     // recall darkest seen so far
     // while bright convert to darkest. if we have reached point then no conversion needed.
     let mut new_bar = "".to_string();
-    let mut to_push = BLOCKS[4]; 
+    let mut to_push = BLOCKS[4];
 
     for c in parent_bar.chars() {
         num_not_my_bar -= 1;
         if num_not_my_bar <= 0 {
             new_bar.push(BLOCKS[0]);
-        }
-        else if c == BLOCKS[0] {
-            //push second darkest seen
+        } else if c == BLOCKS[0] {
             new_bar.push(to_push);
-        }
-        else if c == BLOCKS[4] {
+        // Else: set to_push to be the second darkest block seen so far
+        } else if c == BLOCKS[4] {
             to_push = BLOCKS[3];
             new_bar.push(c);
-        }
-        else if c == BLOCKS[3] {
+        } else if c == BLOCKS[3] {
             to_push = BLOCKS[2];
             new_bar.push(c);
-        }
-        else if c == BLOCKS[2] {
+        } else if c == BLOCKS[2] {
             to_push = BLOCKS[1];
             new_bar.push(c);
-        }
-        else if c == BLOCKS[1] {
+        } else if c == BLOCKS[1] {
             new_bar.push(c);
         }
     }
     new_bar
 }
 
+//to_print = format_string(&node, indent2, bar_text, draw_data.is_biggest, display_data);
 // move inside display data?
-pub fn format_string<P: AsRef<Path>>(
-    dir_name: P,
+pub fn format_string(
+    node: &Node,
+    indent: &str,
+    percent_bar: &str,
     is_biggest: bool,
     display_data: &DisplayData,
-    size: u64,
-    indentation: &str,
-    bar_text: &str,
 ) -> String {
-
-    let pretty_size = format!("{:>5}", human_readable_number(size),);
-    let percent_size = size as f32 / display_data.base_size as f32;
+    let pretty_size = format!("{:>5}", human_readable_number(node.size),);
+    let percent_size = node.size as f32 / display_data.base_size as f32;
     let percent_size_str = format!("{:.0}%", percent_size * 100.0);
 
-    let dir_name = dir_name.as_ref();
-    let tree_and_path = get_printable_name(dir_name, display_data.short_paths, indentation);
+    let tree_and_path = get_printable_name(&node.name, display_data.short_paths, &*indent);
 
     let printable_chars = tree_and_path.chars().count();
     let tree_and_path = tree_and_path
@@ -347,7 +278,7 @@ pub fn format_string<P: AsRef<Path>>(
             Style::new().paint(pretty_size)
         },
         tree_and_path,
-        bar_text,
+        percent_bar,
         percent_size_str,
     )
 }
