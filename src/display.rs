@@ -31,12 +31,11 @@ impl DisplayData {
     #[allow(clippy::collapsible_if)]
     fn get_tree_chars(
         &self,
-        num_siblings: u64,
-        max_siblings: u64,
+        was_i_last: bool,
         has_children: bool,
     ) -> &'static str {
         if self.is_reversed {
-            if num_siblings == max_siblings - 1 {
+            if was_i_last {
                 if has_children {
                     "┌─┴"
                 } else {
@@ -48,7 +47,7 @@ impl DisplayData {
                 "├──"
             }
         } else {
-            if num_siblings == 0 {
+            if was_i_last {
                 if has_children {
                     "└─┬"
                 } else {
@@ -67,6 +66,14 @@ impl DisplayData {
             num_siblings == 0
         } else {
             num_siblings == max_siblings - 1
+        }
+    }
+
+    fn is_last(&self, num_siblings: u64, max_siblings: u64) -> bool {
+        if self.is_reversed {
+            num_siblings == max_siblings - 1
+        } else {
+            num_siblings == 0
         }
     }
 
@@ -126,7 +133,9 @@ pub fn draw_it(
         display_node(
             c,
             true,
-            first_tree_chars,
+            true,
+            "".to_string(),
+            //first_tree_chars.to_string(),
             &display_data,
             base_size,
             longest_str,
@@ -155,18 +164,19 @@ fn find_longest_dir_name(node: &Node, indent: &str, display_data: &DisplayData) 
 fn display_node(
     node: Node,
     is_biggest: bool,
-    indent: &str,
+    was_i_last: bool,
+    new_indent: String,
     display_data: &DisplayData,
     base_size: u64,
     longest_string_length: usize,
     parent_bar: String,
 ) {
-    let mut num_siblings = node.children.len() as u64;
-    let max_sibling = num_siblings;
-    let new_indent = clean_indentation_string(indent);
     let name = node.name.clone();
     let size = node.size;
     let percent_size = size as f32 / base_size as f32;
+
+    let chars = display_data.get_tree_chars(was_i_last, !node.children.is_empty());
+    let indent2 = new_indent.clone() + chars;
 
     let bar_text = generate_bar(parent_bar, percent_size);
     if !display_data.is_reversed {
@@ -176,22 +186,25 @@ fn display_node(
             percent_size,
             is_biggest,
             display_data,
-            indent,
+            &*indent2,
             bar_text.as_ref(),
             longest_string_length,
         );
     }
 
+    let mut num_siblings = node.children.len() as u64;
+    let max_sibling = num_siblings;
     for c in display_data.get_children_from_node(node) {
         num_siblings -= 1;
-        let chars = display_data.get_tree_chars(num_siblings, max_sibling, !c.children.is_empty());
         // can we just do is first ? + handle reverse mode. consider equal values
         let is_biggest = display_data.is_biggest(num_siblings, max_sibling);
-        let full_indent = new_indent.clone() + chars;
+        let is_last = display_data.is_last(num_siblings, max_sibling);
         display_node(
             c,
             is_biggest,
-            &*full_indent,
+            is_last,
+            //(num_siblings==0),
+            clean_indentation_string(&*indent2),
             display_data,
             base_size,
             longest_string_length,
@@ -206,7 +219,7 @@ fn display_node(
             percent_size,
             is_biggest,
             display_data,
-            indent,
+            &*indent2,
             bar_text.as_ref(),
             longest_string_length,
         );
