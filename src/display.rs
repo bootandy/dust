@@ -17,16 +17,11 @@ pub struct DisplayData {
     pub is_reversed: bool,
     pub colors_on: bool,
     pub terminal_size: Option<(Width, Height)>,
+    pub base_size: u64,
+    pub longest_string_length: usize,
 }
 
 impl DisplayData {
-    fn get_first_chars(&self) -> &str {
-        if self.is_reversed {
-            "─┴"
-        } else {
-            "─┬"
-        }
-    }
 
     #[allow(clippy::collapsible_if)]
     fn get_tree_chars(
@@ -86,6 +81,14 @@ impl DisplayData {
         }
     }
 }
+    fn get_children_from_node_dup(node: Node, is_reversed: bool) -> impl Iterator<Item = Node> {
+        if is_reversed {
+            let n: Vec<Node> = node.children.into_iter().rev().map(|a| a).collect();
+            n.into_iter()
+        } else {
+            node.children.into_iter()
+        }
+    }
 
 pub fn draw_it(
     permissions: bool,
@@ -98,54 +101,42 @@ pub fn draw_it(
         eprintln!("Did not have permissions for all directories");
     }
 
-    let display_data = DisplayData {
-        short_paths: !use_full_path,
-        is_reversed,
-        colors_on: !no_colors,
-        terminal_size: terminal_size(),
-    };
-
-    let longest_str_length = root_node
-        .children
-        .iter()
-        .map(|c| find_longest_dir_name(c, &display_data.get_first_chars(), &display_data))
-        .max();
-
-    let longest_str = match longest_str_length {
-        Some(l) => l,
-        None => 40, //FIX ME
-    };
+    let longest_string_length = find_longest_dir_name(&root_node, "", !use_full_path);
 
     let ww = {
-        if let Some((Width(w), Height(_h))) = display_data.terminal_size {
+        if let Some((Width(w), Height(_h))) = terminal_size() {
             w
         } else {
             80
         }
     } - 16;
 
-    for c in display_data.get_children_from_node(root_node) {
-        let first_tree_chars = display_data.get_first_chars();
-        let base_size = c.size;
-
-        let max_bar_length = ww as usize - longest_str;
+    for c in get_children_from_node_dup(root_node, is_reversed) {
+        let max_bar_length = ww as usize - longest_string_length;
         let bar_text = repeat(BLOCKS[0]).take(max_bar_length).collect::<String>();
+
+        let display_data = DisplayData {
+            short_paths: !use_full_path,
+            is_reversed,
+            colors_on: !no_colors,
+            terminal_size: terminal_size(),
+            base_size: c.size,
+            longest_string_length,
+        };
+
         display_node(
             c,
             true,
             true,
             "".to_string(),
-            //first_tree_chars.to_string(),
             &display_data,
-            base_size,
-            longest_str,
             bar_text,
         );
     }
 }
 
-fn find_longest_dir_name(node: &Node, indent: &str, display_data: &DisplayData) -> usize {
-    let mut longest = get_printable_name(node.name.clone(), display_data, indent)
+fn find_longest_dir_name(node: &Node, indent: &str, long_paths: bool) -> usize {
+    let mut longest = get_printable_name(node.name.clone(), long_paths, indent)
         .chars()
         .count();
 
@@ -154,7 +145,7 @@ fn find_longest_dir_name(node: &Node, indent: &str, display_data: &DisplayData) 
         let full_indent: String = indent.to_string() + "   ";
         longest = max(
             longest,
-            find_longest_dir_name(c, &*full_indent, display_data),
+            find_longest_dir_name(c, &*full_indent, long_paths),
         );
     }
     longest
@@ -167,28 +158,25 @@ fn display_node(
     was_i_last: bool,
     new_indent: String,
     display_data: &DisplayData,
-    base_size: u64,
-    longest_string_length: usize,
     parent_bar: String,
 ) {
     let name = node.name.clone();
     let size = node.size;
-    let percent_size = size as f32 / base_size as f32;
 
     let chars = display_data.get_tree_chars(was_i_last, !node.children.is_empty());
     let indent2 = new_indent.clone() + chars;
 
+    let percent_size = size as f32 / display_data.base_size as f32;
     let bar_text = generate_bar(parent_bar, percent_size);
+
     if !display_data.is_reversed {
         print_this_node(
             &name,
             size,
-            percent_size,
             is_biggest,
             display_data,
             &*indent2,
             bar_text.as_ref(),
-            longest_string_length,
         );
     }
 
@@ -203,11 +191,8 @@ fn display_node(
             c,
             is_biggest,
             is_last,
-            //(num_siblings==0),
             clean_indentation_string(&*indent2),
             display_data,
-            base_size,
-            longest_string_length,
             bar_text.clone()
         );
     }
@@ -216,12 +201,10 @@ fn display_node(
         print_this_node(
             &name,
             size,
-            percent_size,
             is_biggest,
             display_data,
             &*indent2,
             bar_text.as_ref(),
-            longest_string_length,
         );
     }
 }
@@ -246,37 +229,32 @@ fn clean_indentation_string(s: &str) -> String {
 fn print_this_node<P: AsRef<Path>>(
     name: P,
     size: u64,
-    percent_size: f32,
     is_biggest: bool,
     display_data: &DisplayData,
     indentation: &str,
     bar_text: &str,
-    longest_str_length: usize,
 ) {
-    let pretty_size = format!("{:>5}", human_readable_number(size),);
     println!(
         "{}",
         format_string(
             name,
             is_biggest,
             display_data,
-            &*pretty_size,
-            percent_size,
+            size,
             indentation,
             bar_text,
-            longest_str_length
         )
     )
 }
 
 fn get_printable_name<P: AsRef<Path>>(
     dir_name: P,
-    display_data: &DisplayData,
+    long_paths: bool,
     indentation: &str,
 ) -> String {
     let dir_name = dir_name.as_ref();
     let printable_name = {
-        if display_data.short_paths {
+        if long_paths {
             match dir_name.parent() {
                 Some(prefix) => match dir_name.strip_prefix(prefix) {
                     Ok(base) => base,
@@ -331,33 +309,35 @@ fn generate_bar(
     new_bar
 }
 
+// move inside display data?
 pub fn format_string<P: AsRef<Path>>(
     dir_name: P,
     is_biggest: bool,
     display_data: &DisplayData,
-    size: &str,
-    percent_size: f32,
+    size: u64,
     indentation: &str,
     bar_text: &str,
-    longest_str_length: usize,
 ) -> String {
+
+    let pretty_size = format!("{:>5}", human_readable_number(size),);
+    let percent_size = size as f32 / display_data.base_size as f32;
     let percent_size_str = format!("{:.0}%", percent_size * 100.0);
 
     let dir_name = dir_name.as_ref();
-    let tree_and_path = get_printable_name(dir_name, display_data, indentation);
+    let tree_and_path = get_printable_name(dir_name, display_data.short_paths, indentation);
 
     let printable_chars = tree_and_path.chars().count();
     let tree_and_path = tree_and_path
         + &(repeat(" ")
-            .take(longest_str_length - printable_chars)
+            .take(display_data.longest_string_length - printable_chars)
             .collect::<String>());
 
     format!(
         "{} {} │ {} │ {:>4}",
         if is_biggest && display_data.colors_on {
-            Fixed(196).paint(size)
+            Fixed(196).paint(pretty_size)
         } else {
-            Style::new().paint(size)
+            Style::new().paint(pretty_size)
         },
         tree_and_path,
         bar_text,
