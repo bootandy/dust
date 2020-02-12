@@ -16,17 +16,11 @@ pub struct DisplayData {
     pub short_paths: bool,
     pub is_reversed: bool,
     pub colors_on: bool,
-    pub terminal_size: Option<(Width, Height)>,
     pub base_size: u64,
     pub longest_string_length: usize,
 }
 
 impl DisplayData {
-    fn get_new_indent(&self, indent: &str, was_i_last: bool, has_children: bool) -> String {
-        let chars = self.get_tree_chars(was_i_last, has_children);
-        return indent.to_string() + chars;
-    }
-
     #[allow(clippy::collapsible_if)]
     fn get_tree_chars(&self, was_i_last: bool, has_children: bool) -> &'static str {
         if self.is_reversed {
@@ -82,11 +76,58 @@ fn get_children_from_node(node: Node, is_reversed: bool) -> impl Iterator<Item =
     }
 }
 
-struct DrawData {
+struct DrawData<'a> {
     is_biggest: bool,
     was_i_last: bool,
     indent: String,
     percent_bar: String,
+    display_data: &'a DisplayData,
+}
+
+impl DrawData<'_> {
+    fn get_new_indent(&self, has_children: bool) -> String {
+        let chars = self
+            .display_data
+            .get_tree_chars(self.was_i_last, has_children);
+        return self.indent.to_string() + chars;
+    }
+
+    fn percent_size(&self, node: &Node) -> f32 {
+        node.size as f32 / self.display_data.base_size as f32
+    }
+
+    // bug in bars: see target and target/debug
+    fn generate_bar(&self, node: &Node) -> String {
+        let num_bars = (self.percent_bar.chars().count() as f32 * self.percent_size(node)) as usize;
+        let mut num_not_my_bar = (self.percent_bar.chars().count() - num_bars) as i32;
+
+        // recall darkest seen so far
+        // while bright convert to darkest. if we have reached point then no conversion needed.
+        let mut new_bar = "".to_string();
+        let mut to_push = BLOCKS[4];
+
+        for c in self.percent_bar.chars() {
+            num_not_my_bar -= 1;
+            if num_not_my_bar <= 0 {
+                new_bar.push(BLOCKS[0]);
+            } else if c == BLOCKS[0] {
+                new_bar.push(to_push);
+            // Else: set to_push to be the second darkest block seen so far
+            } else if c == BLOCKS[4] {
+                to_push = BLOCKS[3];
+                new_bar.push(c);
+            } else if c == BLOCKS[3] {
+                to_push = BLOCKS[2];
+                new_bar.push(c);
+            } else if c == BLOCKS[2] {
+                to_push = BLOCKS[1];
+                new_bar.push(c);
+            } else if c == BLOCKS[1] {
+                new_bar.push(c);
+            }
+        }
+        new_bar
+    }
 }
 
 pub fn draw_it(
@@ -109,16 +150,14 @@ pub fn draw_it(
             80
         }
     } - 16;
+    let max_bar_length = ww as usize - longest_string_length;
+    let bar_text = repeat(BLOCKS[0]).take(max_bar_length).collect::<String>();
 
     for c in get_children_from_node(root_node, is_reversed) {
-        let max_bar_length = ww as usize - longest_string_length;
-        let bar_text = repeat(BLOCKS[0]).take(max_bar_length).collect::<String>();
-
         let display_data = DisplayData {
             short_paths: !use_full_path,
             is_reversed,
             colors_on: !no_colors,
-            terminal_size: terminal_size(),
             base_size: c.size,
             longest_string_length,
         };
@@ -126,9 +165,10 @@ pub fn draw_it(
             is_biggest: true,
             was_i_last: true,
             indent: "".to_string(),
-            percent_bar: bar_text,
+            percent_bar: bar_text.clone(),
+            display_data: &display_data,
         };
-        display_node(c, draw_data, &display_data);
+        display_node(c, draw_data);
     }
 }
 
@@ -146,38 +186,37 @@ fn find_longest_dir_name(node: &Node, indent: &str, long_paths: bool) -> usize {
     longest
 }
 
-fn display_node(node: Node, draw_data: DrawData, display_data: &DisplayData) {
-    let indent2 = display_data.get_new_indent(&*draw_data.indent, draw_data.was_i_last, !node.children.is_empty());
-
-    let percent_size = node.size as f32 / display_data.base_size as f32;
-    let bar_text = generate_bar(draw_data.percent_bar.clone(), percent_size);
+fn display_node(node: Node, draw_data: DrawData) {
+    let indent2 = draw_data.get_new_indent(!node.children.is_empty());
+    let bar_text = draw_data.generate_bar(&node);
 
     let to_print = format_string(
         &node,
         indent2.as_ref(),
         bar_text.as_ref(),
         draw_data.is_biggest,
-        display_data,
+        draw_data.display_data,
     );
 
-    if !display_data.is_reversed {
+    if !draw_data.display_data.is_reversed {
         println!("{}", to_print)
     }
 
     let indent = clean_indentation_string(&*indent2);
     let num_siblings = node.children.len() as u64;
 
-    for (count, c) in get_children_from_node(node, display_data.is_reversed).enumerate() {
+    for (count, c) in get_children_from_node(node, draw_data.display_data.is_reversed).enumerate() {
         let dd = DrawData {
-            is_biggest: display_data.is_biggest(count, num_siblings),
-            was_i_last: display_data.is_last(count, num_siblings),
+            is_biggest: draw_data.display_data.is_biggest(count, num_siblings),
+            was_i_last: draw_data.display_data.is_last(count, num_siblings),
             indent: indent.clone(),
             percent_bar: bar_text.clone(),
+            display_data: draw_data.display_data,
         };
-        display_node(c, dd, display_data);
+        display_node(c, dd);
     }
 
-    if display_data.is_reversed {
+    if draw_data.display_data.is_reversed {
         println!("{}", to_print)
     }
 }
@@ -217,40 +256,6 @@ fn get_printable_name<P: AsRef<Path>>(dir_name: &P, long_paths: bool, indentatio
     format!("{} {}", indentation, printable_name.display())
 }
 
-fn generate_bar(parent_bar: String, percent_size: f32) -> String {
-    let num_bars = (parent_bar.chars().count() as f32 * percent_size) as usize;
-    let mut num_not_my_bar = (parent_bar.chars().count() - num_bars) as i32;
-
-    // recall darkest seen so far
-    // while bright convert to darkest. if we have reached point then no conversion needed.
-    let mut new_bar = "".to_string();
-    let mut to_push = BLOCKS[4];
-
-    for c in parent_bar.chars() {
-        num_not_my_bar -= 1;
-        if num_not_my_bar <= 0 {
-            new_bar.push(BLOCKS[0]);
-        } else if c == BLOCKS[0] {
-            new_bar.push(to_push);
-        // Else: set to_push to be the second darkest block seen so far
-        } else if c == BLOCKS[4] {
-            to_push = BLOCKS[3];
-            new_bar.push(c);
-        } else if c == BLOCKS[3] {
-            to_push = BLOCKS[2];
-            new_bar.push(c);
-        } else if c == BLOCKS[2] {
-            to_push = BLOCKS[1];
-            new_bar.push(c);
-        } else if c == BLOCKS[1] {
-            new_bar.push(c);
-        }
-    }
-    new_bar
-}
-
-//to_print = format_string(&node, indent2, bar_text, draw_data.is_biggest, display_data);
-// move inside display data?
 pub fn format_string(
     node: &Node,
     indent: &str,
