@@ -6,6 +6,7 @@ use crate::utils::Node;
 use terminal_size::{terminal_size, Height, Width};
 
 use std::cmp::max;
+use std::cmp::min;
 use std::iter::repeat;
 use std::path::Path;
 
@@ -93,32 +94,20 @@ impl DrawData<'_> {
     }
 
     // bug in bars: see target and target/debug
-    fn generate_bar(&self, node: &Node) -> String {
+    fn generate_bar(&self, node: &Node, level: usize) -> String {
         let num_bars = (self.percent_bar.chars().count() as f32 * self.percent_size(node)) as usize;
         let mut num_not_my_bar = (self.percent_bar.chars().count() - num_bars) as i32;
 
-        // recall darkest seen so far
-        // while bright convert to darkest. if we have reached point then no conversion needed.
         let mut new_bar = "".to_string();
-        let mut to_push = BLOCKS[4];
+        let idx = 5 - min(5, max(1, level));
 
         for c in self.percent_bar.chars() {
             num_not_my_bar -= 1;
             if num_not_my_bar <= 0 {
                 new_bar.push(BLOCKS[0]);
             } else if c == BLOCKS[0] {
-                new_bar.push(to_push);
-            // Else: set to_push to be the second darkest block seen so far
-            } else if c == BLOCKS[4] {
-                to_push = BLOCKS[3];
-                new_bar.push(c);
-            } else if c == BLOCKS[3] {
-                to_push = BLOCKS[2];
-                new_bar.push(c);
-            } else if c == BLOCKS[2] {
-                to_push = BLOCKS[1];
-                new_bar.push(c);
-            } else if c == BLOCKS[1] {
+                new_bar.push(BLOCKS[idx]);
+            } else {
                 new_bar.push(c);
             }
         }
@@ -183,7 +172,9 @@ fn find_longest_dir_name(node: &Node, indent: &str, long_paths: bool) -> usize {
 
 fn display_node(node: Node, draw_data: &DrawData, is_biggest: bool, is_last: bool) {
     let indent2 = draw_data.get_new_indent(!node.children.is_empty(), is_last);
-    let bar_text = draw_data.generate_bar(&node);
+    // hacky way of working out how deep we are in the tree
+    let level = ((indent2.chars().count() - 1) / 2) - 1;
+    let bar_text = draw_data.generate_bar(&node, level);
 
     let to_print = format_string(
         &node,
@@ -270,7 +261,7 @@ pub fn format_string(
             .collect::<String>());
 
     format!(
-        "{} {} │ {} │ {:>4}",
+        "{} {} │{} │ {:>4}",
         if is_biggest && display_data.colors_on {
             Fixed(196).paint(pretty_size)
         } else {
