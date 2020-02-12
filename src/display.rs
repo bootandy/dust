@@ -77,18 +77,14 @@ fn get_children_from_node(node: Node, is_reversed: bool) -> impl Iterator<Item =
 }
 
 struct DrawData<'a> {
-    is_biggest: bool,
-    was_i_last: bool,
     indent: String,
     percent_bar: String,
     display_data: &'a DisplayData,
 }
 
 impl DrawData<'_> {
-    fn get_new_indent(&self, has_children: bool) -> String {
-        let chars = self
-            .display_data
-            .get_tree_chars(self.was_i_last, has_children);
+    fn get_new_indent(&self, has_children: bool, was_i_last: bool) -> String {
+        let chars = self.display_data.get_tree_chars(was_i_last, has_children);
         return self.indent.to_string() + chars;
     }
 
@@ -162,16 +158,15 @@ pub fn draw_it(
             longest_string_length,
         };
         let draw_data = DrawData {
-            is_biggest: true,
-            was_i_last: true,
             indent: "".to_string(),
             percent_bar: bar_text.clone(),
             display_data: &display_data,
         };
-        display_node(c, draw_data);
+        display_node(c, &draw_data, true, true);
     }
 }
 
+// can probably pass depth instead of indent down here.
 fn find_longest_dir_name(node: &Node, indent: &str, long_paths: bool) -> usize {
     // Fix by calculating display width instead of number of chars
     let mut longest = get_printable_name(&node.name, long_paths, indent)
@@ -186,15 +181,15 @@ fn find_longest_dir_name(node: &Node, indent: &str, long_paths: bool) -> usize {
     longest
 }
 
-fn display_node(node: Node, draw_data: DrawData) {
-    let indent2 = draw_data.get_new_indent(!node.children.is_empty());
+fn display_node(node: Node, draw_data: &DrawData, is_biggest: bool, is_last: bool) {
+    let indent2 = draw_data.get_new_indent(!node.children.is_empty(), is_last);
     let bar_text = draw_data.generate_bar(&node);
 
     let to_print = format_string(
         &node,
-        indent2.as_ref(),
-        bar_text.as_ref(),
-        draw_data.is_biggest,
+        &*indent2,
+        &*bar_text,
+        is_biggest,
         draw_data.display_data,
     );
 
@@ -202,18 +197,17 @@ fn display_node(node: Node, draw_data: DrawData) {
         println!("{}", to_print)
     }
 
-    let indent = clean_indentation_string(&*indent2);
+    let dd = DrawData {
+        indent: clean_indentation_string(&*indent2),
+        percent_bar: bar_text,
+        display_data: draw_data.display_data,
+    };
     let num_siblings = node.children.len() as u64;
 
     for (count, c) in get_children_from_node(node, draw_data.display_data.is_reversed).enumerate() {
-        let dd = DrawData {
-            is_biggest: draw_data.display_data.is_biggest(count, num_siblings),
-            was_i_last: draw_data.display_data.is_last(count, num_siblings),
-            indent: indent.clone(),
-            percent_bar: bar_text.clone(),
-            display_data: draw_data.display_data,
-        };
-        display_node(c, dd);
+        let is_biggest = dd.display_data.is_biggest(count, num_siblings);
+        let was_i_last = dd.display_data.is_last(count, num_siblings);
+        display_node(c, &dd, is_biggest, was_i_last);
     }
 
     if draw_data.display_data.is_reversed {
