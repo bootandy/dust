@@ -1,5 +1,7 @@
 #[macro_use]
 extern crate clap;
+extern crate unicode_segmentation;
+extern crate unicode_width;
 
 use self::display::draw_it;
 use crate::utils::is_a_parent_of;

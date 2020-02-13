@@ -3,7 +3,10 @@ extern crate ansi_term;
 use self::ansi_term::Colour::Fixed;
 use self::ansi_term::Style;
 use crate::utils::Node;
+
 use terminal_size::{terminal_size, Height, Width};
+
+use unicode_width::UnicodeWidthStr;
 
 use std::cmp::max;
 use std::cmp::min;
@@ -158,9 +161,7 @@ pub fn draw_it(
 // can probably pass depth instead of indent down here.
 fn find_longest_dir_name(node: &Node, indent: &str, long_paths: bool) -> usize {
     // Fix by calculating display width instead of number of chars
-    let mut longest = get_printable_name(&node.name, long_paths, indent)
-        .chars()
-        .count();
+    let mut longest = UnicodeWidthStr::width(&*get_printable_name(&node.name, long_paths, indent));
 
     for c in node.children.iter() {
         // each tree drawing is 3 chars
@@ -254,7 +255,7 @@ pub fn format_string(
 
     let tree_and_path = get_printable_name(&node.name, display_data.short_paths, &*indent);
 
-    let printable_chars = tree_and_path.chars().count();
+    let printable_chars = UnicodeWidthStr::width(&*tree_and_path);
     let tree_and_path = tree_and_path
         + &(repeat(" ")
             .take(display_data.longest_string_length - printable_chars)
