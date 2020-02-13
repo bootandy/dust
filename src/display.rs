@@ -15,6 +15,7 @@ use std::path::Path;
 
 static UNITS: [char; 4] = ['T', 'G', 'M', 'K'];
 static BLOCKS: [char; 5] = ['█', '▓', '▒', '░', ' '];
+static DEFAULT_TERMINAL_WIDTH: u16 = 80;
 
 pub struct DisplayData {
     pub short_paths: bool,
@@ -89,7 +90,7 @@ struct DrawData<'a> {
 impl DrawData<'_> {
     fn get_new_indent(&self, has_children: bool, was_i_last: bool) -> String {
         let chars = self.display_data.get_tree_chars(was_i_last, has_children);
-        return self.indent.to_string() + chars;
+        self.indent.to_string() + chars
     }
 
     fn percent_size(&self, node: &Node) -> f32 {
@@ -118,6 +119,22 @@ impl DrawData<'_> {
     }
 }
 
+fn get_width_of_terminal() -> u16 {
+    // Windows CI runners detect a very low terminal width
+    let default_width = {
+        if let Some((Width(w), Height(_h))) = terminal_size() {
+            w
+        } else {
+            0
+        }
+    };
+    if default_width < DEFAULT_TERMINAL_WIDTH {
+        DEFAULT_TERMINAL_WIDTH
+    } else {
+        default_width
+    }
+}
+
 pub fn draw_it(
     permissions: bool,
     use_full_path: bool,
@@ -131,14 +148,8 @@ pub fn draw_it(
 
     let longest_string_length = find_longest_dir_name(&root_node, "", !use_full_path);
 
-    let ww = {
-        if let Some((Width(w), Height(_h))) = terminal_size() {
-            w
-        } else {
-            80
-        }
-    } - 16;
-    let max_bar_length = ww as usize - longest_string_length;
+    // handle usize error also add do not show fancy output option
+    let max_bar_length = (get_width_of_terminal() - 16) as usize - longest_string_length;
     let bar_text = repeat(BLOCKS[0]).take(max_bar_length).collect::<String>();
 
     for c in get_children_from_node(root_node, is_reversed) {
@@ -249,7 +260,7 @@ pub fn format_string(
     is_biggest: bool,
     display_data: &DisplayData,
 ) -> String {
-    let pretty_size = format!("{:>5}", human_readable_number(node.size),);
+    let pretty_size = format!("{:>5}", human_readable_number(node.size));
     let percent_size = node.size as f32 / display_data.base_size as f32;
     let percent_size_str = format!("{:.0}%", percent_size * 100.0);
 

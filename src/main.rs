@@ -1,6 +1,5 @@
 #[macro_use]
 extern crate clap;
-extern crate unicode_segmentation;
 extern crate unicode_width;
 
 use self::display::draw_it;
@@ -13,7 +12,7 @@ use utils::{find_big_ones, get_dir_tree, simplify_dir_names, sort, trim_deep_one
 mod display;
 mod utils;
 
-static DEFAULT_NUMBER_OF_LINES: usize = 30;
+static DEFAULT_NUMBER_OF_LINES: usize = 20;
 
 #[cfg(windows)]
 fn init_color() {
@@ -23,16 +22,26 @@ fn init_color() {
 #[cfg(not(windows))]
 fn init_color() {}
 
-fn main() {
-    init_color();
-
+fn get_height_of_terminal() -> usize {
+    // Windows CI runners detect a terminal height of 0
     let default_height = {
         if let Some((Width(_w), Height(h))) = terminal_size() {
             h as usize
         } else {
-            DEFAULT_NUMBER_OF_LINES
+            0
         }
-    } - 10;
+    };
+    if default_height < DEFAULT_NUMBER_OF_LINES {
+        DEFAULT_NUMBER_OF_LINES
+    } else {
+        default_height - 10
+    }
+}
+
+fn main() {
+    init_color();
+
+    let default_height = get_height_of_terminal();
     let def_num_str = default_height.to_string();
 
     let options = App::new("Dust")
@@ -92,7 +101,7 @@ fn main() {
             Arg::with_name("reverse")
                 .short("r")
                 .long("reverse")
-                .help("If applied tree will be printed upside down (biggest lowest)"),
+                .help("If applied tree will be printed upside down (biggest highest)"),
         )
         .arg(
             Arg::with_name("no_colors")
@@ -175,7 +184,7 @@ fn main() {
     draw_it(
         permissions,
         options.is_present("display_full_paths"),
-        options.is_present("reverse"),
+        !options.is_present("reverse"),
         options.is_present("no_colors"),
         tree,
     );
@@ -212,6 +221,3 @@ fn recursively_build_tree(parent_node: &mut Node, new_node: Node, depth: Option<
         parent_node.children.push(new_node);
     }
 }
-
-#[cfg(test)]
-mod tests;
