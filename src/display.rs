@@ -140,6 +140,7 @@ pub fn draw_it(
     use_full_path: bool,
     is_reversed: bool,
     no_colors: bool,
+    no_percents: bool,
     root_node: Node,
 ) {
     if !permissions {
@@ -176,7 +177,7 @@ fn find_longest_dir_name(node: &Node, indent: &str, long_paths: bool) -> usize {
 
     for c in node.children.iter() {
         // each tree drawing is 3 chars
-        let full_indent: String = indent.to_string() + "   ";
+        let full_indent: String = indent.to_string() + "  ";
         longest = max(longest, find_longest_dir_name(c, &*full_indent, long_paths));
     }
     longest
@@ -272,16 +273,21 @@ pub fn format_string(
             .take(display_data.longest_string_length - printable_chars)
             .collect::<String>());
 
+    let percents = if percent_bar != "" {
+        format!("│{} │ {:>4}", percent_bar, percent_size_str)
+    } else {
+        "".into()
+    };
+
     format!(
-        "{} {} │{} │ {:>4}",
+        "{} {}{}",
         if is_biggest && display_data.colors_on {
             Fixed(196).paint(pretty_size)
         } else {
             Style::new().paint(pretty_size)
         },
         tree_and_path,
-        percent_bar,
-        percent_size_str,
+        percents,
     )
 }
 

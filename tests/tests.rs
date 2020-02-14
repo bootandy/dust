@@ -85,7 +85,7 @@ fn main_output_long_paths() -> String {
  4.0K   ┌─┴ src/test_dir/many                │██████████████████████████ │ 100%
  4.0K ┌─┴ src/test_dir                       │██████████████████████████ │ 100%  
  "#
-        .to_string()
+    .to_string()
 }
 
 #[cfg(target_os = "linux")]
@@ -194,7 +194,15 @@ fn no_substring_of_names_output() -> String {
 
 #[cfg(target_os = "macos")]
 fn no_substring_of_names_output() -> String {
-    "PRs".into()
+    "
+ 4.0K     ┌── hello         │                            ███████████████ │  33%
+ 4.0K   ┌─┴ dir_substring   │                            ███████████████ │  33%
+ 4.0K   ├── dir_name_clash  │                            ███████████████ │  33%
+ 4.0K   │ ┌── hello         │                            ███████████████ │  33%
+ 4.0K   ├─┴ dir             │                            ███████████████ │  33%
+  12K ┌─┴ test_dir2         │███████████████████████████████████████████ │ 100%
+  "
+    .into()
 }
 
 #[cfg(target_os = "windows")]

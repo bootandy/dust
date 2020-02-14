@@ -109,6 +109,12 @@ fn main() {
                 .long("no_colors")
                 .help("If applied no colors will be printed (normally largest directories are marked in red"),
         )
+        .arg(
+            Arg::with_name("no_bars")
+                .short("b")
+                .long("no_percent_bars")
+                .help("If applied no percent bars or percents will be displayed"),
+        )
         .arg(Arg::with_name("inputs").multiple(true))
         .get_matches();
 
@@ -186,6 +192,7 @@ fn main() {
         options.is_present("display_full_paths"),
         !options.is_present("reverse"),
         options.is_present("no_colors"),
+        options.is_present("no_bars"),
         tree,
     );
 }
