@@ -146,11 +146,22 @@ pub fn draw_it(
     if !permissions {
         eprintln!("Did not have permissions for all directories");
     }
+    let mut longest_string_length = 0;
+    for c in root_node.children.iter() {
+        longest_string_length = max(
+            longest_string_length,
+            find_longest_dir_name(&c, "   ", !use_full_path),
+        );
+    }
+    let terminal_width = get_width_of_terminal() - 16;
 
-    let longest_string_length = find_longest_dir_name(&root_node, "", !use_full_path);
+    let max_bar_length = if no_percents || longest_string_length >= terminal_width as usize {
+        0
+    } else {
+        terminal_width as usize - longest_string_length
+    };
 
     // handle usize error also add do not show fancy output option
-    let max_bar_length = (get_width_of_terminal() - 16) as usize - longest_string_length;
     let bar_text = repeat(BLOCKS[0]).take(max_bar_length).collect::<String>();
 
     for c in get_children_from_node(root_node, is_reversed) {
@@ -173,10 +184,11 @@ pub fn draw_it(
 // can probably pass depth instead of indent down here.
 fn find_longest_dir_name(node: &Node, indent: &str, long_paths: bool) -> usize {
     // Fix by calculating display width instead of number of chars
+    //println!("{:?} {:?}", indent, node.name);
     let mut longest = UnicodeWidthStr::width(&*get_printable_name(&node.name, long_paths, indent));
 
     for c in node.children.iter() {
-        // each tree drawing is 3 chars
+        // each tree drawing is 2 chars
         let full_indent: String = indent.to_string() + "  ";
         longest = max(longest, find_longest_dir_name(c, &*full_indent, long_paths));
     }
