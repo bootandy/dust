@@ -100,6 +100,8 @@ impl DrawData<'_> {
     fn generate_bar(&self, node: &Node, level: usize) -> String {
         // temporary hack around rounding bug
         let num_bars = self.percent_bar.chars().count() as f32 * self.percent_size(node);
+        println!("{:?}", (self.percent_bar.chars().count() ) );
+        println!("{:?}", (num_bars ) );
         let mut num_not_my_bar = (self.percent_bar.chars().count() as i32) - num_bars as i32;
 
         let mut new_bar = "".to_string();
