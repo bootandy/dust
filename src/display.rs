@@ -55,19 +55,19 @@ impl DisplayData {
         }
     }
 
-    fn is_biggest(&self, count: usize, max_siblings: u64) -> bool {
+    fn is_biggest(&self, num_siblings: usize, max_siblings: u64) -> bool {
         if self.is_reversed {
-            count == (max_siblings - 1) as usize
+            num_siblings == (max_siblings - 1) as usize
         } else {
-            count == 0
+            num_siblings == 0
         }
     }
 
-    fn is_last(&self, count: usize, max_siblings: u64) -> bool {
+    fn is_last(&self, num_siblings: usize, max_siblings: u64) -> bool {
         if self.is_reversed {
-            count == 0
+            num_siblings == 0
         } else {
-            count == (max_siblings - 1) as usize
+            num_siblings == (max_siblings - 1) as usize
         }
     }
 }
