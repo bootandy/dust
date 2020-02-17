@@ -7,6 +7,7 @@ use tempfile::Builder;
 use tempfile::TempDir;
 
 // File sizes differ on both platform and on the format of the disk.
+// Windows: `ln` is not usually an available command; creation of symbolic links requires special enhanced permissions
 
 fn build_temp_file(dir: &TempDir) -> PathBuf {
     let file_path = dir.path().join("notes.txt");
@@ -15,8 +16,6 @@ fn build_temp_file(dir: &TempDir) -> PathBuf {
     file_path
 }
 
-// fix! [rivy; 2020-01-22] possible on "windows"?; `ln` is not usually an available command; creation of symbolic links requires special enhanced permissions
-//  ... ref: <https://superuser.com/questions/343074/directory-junction-vs-directory-symbolic-link> @@ <https://archive.is/gpTLE>
 #[cfg_attr(target_os = "windows", ignore)]
 #[test]
 pub fn test_soft_sym_link() {
@@ -49,8 +48,6 @@ pub fn test_soft_sym_link() {
         .unwrap();
 }
 
-// Hard links are ignored as the inode is the same as the file
-// fix! [rivy; 2020-01-22] may fail on "usual" windows hosts as `ln` is not usually an available command
 #[cfg_attr(target_os = "windows", ignore)]
 #[test]
 pub fn test_hard_sym_link() {
@@ -93,8 +90,6 @@ pub fn test_hard_sym_link() {
     }
 }
 
-// Check we don't recurse down an infinite symlink tree
-// fix! [rivy; 2020-01-22] possible on "windows"?; `ln` is not usually an available command; creation of symbolic links requires special enhanced permissions
 #[cfg_attr(target_os = "windows", ignore)]
 #[test]
 pub fn test_recursive_sym_link() {
