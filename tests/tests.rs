@@ -211,6 +211,43 @@ fn no_substring_of_names_output() -> String {
     "PRs".into()
 }
 
+// fix! [rivy; 2020-22-01] "windows" result data can vary by host (size seems to be variable by one byte); fix code vs test and re-enable
+#[cfg_attr(target_os = "windows", ignore)]
+#[test]
+pub fn test_unicode_directories() {
+    assert_cli::Assert::main_binary()
+        .with_args(&["-c", "src/test_dir3"])
+        .stdout()
+        .is(unicode_dir().as_str())
+        .unwrap();
+}
+
+#[cfg(target_os = "linux")]
+fn unicode_dir() -> String {
+    // The way unicode & asian characters are rendered on the terminal should make this line up
+    "
+   0B   ┌── 👩.unicode                │                               █ │   0%
+   0B   ├── ラウトは難しいです！.japan│                               █ │   0%
+ 4.0K ┌─┴ test_dir3                   │████████████████████████████████ │ 100%
+    "
+    .into()
+}
+
+#[cfg(target_os = "macos")]
+fn unicode_dir() -> String {
+    "
+ 4.0K   ┌── 👩.unicode                │████████████████████████████████ │ 100%
+ 4.0K   ├── ラウトは難しいです！.japan│████████████████████████████████ │ 100%
+ 4.0K ┌─┴ test_dir3                   │████████████████████████████████ │ 100%
+    "
+    .into()
+}
+
+#[cfg(target_os = "windows")]
+fn unicode_dir() -> String {
+    "".into()
+}
+
 // Check against directories and files whos names are substrings of each other
 #[test]
 pub fn test_ignore_dir() {

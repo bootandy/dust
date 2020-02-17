@@ -187,8 +187,6 @@ pub fn draw_it(
 
 // can probably pass depth instead of indent down here.
 fn find_longest_dir_name(node: &Node, indent: &str, long_paths: bool) -> usize {
-    // Fix by calculating display width instead of number of chars
-    //println!("{:?} {:?}", indent, node.name);
     let mut longest = UnicodeWidthStr::width(&*get_printable_name(&node.name, long_paths, indent));
 
     for c in node.children.iter() {
