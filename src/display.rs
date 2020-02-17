@@ -70,6 +70,15 @@ impl DisplayData {
             num_siblings == (max_siblings - 1) as usize
         }
     }
+
+    fn percent_size(&self, node: &Node) -> f32 {
+        let result = node.size as f32 / self.base_size as f32;
+        if result.is_normal() {
+            result
+        } else {
+            0.0
+        }
+    }
 }
 
 fn get_children_from_node(node: Node, is_reversed: bool) -> impl Iterator<Item = Node> {
@@ -93,17 +102,8 @@ impl DrawData<'_> {
         self.indent.to_string() + chars
     }
 
-    fn percent_size(&self, node: &Node) -> f32 {
-        let result = node.size as f32 / self.display_data.base_size as f32;
-        if result.is_normal() {
-            result
-        } else {
-            0.0
-        }
-    }
-
     fn generate_bar(&self, node: &Node, level: usize) -> String {
-        let num_bars = self.percent_bar.chars().count() as f32 * self.percent_size(node);
+        let num_bars = self.percent_bar.chars().count() as f32 * self.display_data.percent_size(node);
         let mut num_not_my_bar = (self.percent_bar.chars().count() as i32) - num_bars as i32;
 
         let mut new_bar = "".to_string();
@@ -276,7 +276,9 @@ pub fn format_string(
     display_data: &DisplayData,
 ) -> String {
     let pretty_size = format!("{:>5}", human_readable_number(node.size));
-    let percent_size = node.size as f32 / display_data.base_size as f32;
+
+    let percent_size = display_data.percent_size(node);
+    //let percent_size = node.size as f32 / display_data.base_size as f32;
     let percent_size_str = format!("{:.0}%", percent_size * 100.0);
 
     let tree_and_path = get_printable_name(&node.name, display_data.short_paths, &*indent);
