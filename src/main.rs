@@ -1,16 +1,19 @@
 #[macro_use]
 extern crate clap;
+extern crate unicode_width;
 
 use self::display::draw_it;
 use crate::utils::is_a_parent_of;
 use clap::{App, AppSettings, Arg};
+use std::cmp::max;
 use std::path::PathBuf;
+use terminal_size::{terminal_size, Height, Width};
 use utils::{find_big_ones, get_dir_tree, simplify_dir_names, sort, trim_deep_ones, Node};
 
 mod display;
 mod utils;
 
-static DEFAULT_NUMBER_OF_LINES: usize = 20;
+static DEFAULT_NUMBER_OF_LINES: usize = 30;
 
 #[cfg(windows)]
 fn init_color() {
@@ -20,9 +23,21 @@ fn init_color() {
 #[cfg(not(windows))]
 fn init_color() {}
 
+fn get_height_of_terminal() -> usize {
+    // Windows CI runners detect a terminal height of 0
+    if let Some((Width(_w), Height(h))) = terminal_size() {
+        max(h as usize, DEFAULT_NUMBER_OF_LINES) - 10
+    } else {
+        DEFAULT_NUMBER_OF_LINES - 10
+    }
+}
+
 fn main() {
     init_color();
-    let def_num_str = DEFAULT_NUMBER_OF_LINES.to_string();
+
+    let default_height = get_height_of_terminal();
+    let def_num_str = default_height.to_string();
+
     let options = App::new("Dust")
         .about("Like du but more intuitive")
         .version(crate_version!())
@@ -80,13 +95,19 @@ fn main() {
             Arg::with_name("reverse")
                 .short("r")
                 .long("reverse")
-                .help("If applied tree will be printed upside down (biggest lowest)"),
+                .help("If applied tree will be printed upside down (biggest highest)"),
         )
         .arg(
             Arg::with_name("no_colors")
                 .short("c")
                 .long("no_colors")
                 .help("If applied no colors will be printed (normally largest directories are marked in red"),
+        )
+        .arg(
+            Arg::with_name("no_bars")
+                .short("b")
+                .long("no_percent_bars")
+                .help("If applied no percent bars or percents will be displayed"),
         )
         .arg(Arg::with_name("inputs").multiple(true))
         .get_matches();
@@ -102,7 +123,7 @@ fn main() {
         Ok(v) => v,
         Err(_) => {
             eprintln!("Ignoring bad value for number_of_lines");
-            DEFAULT_NUMBER_OF_LINES
+            default_height
         }
     };
 
@@ -131,7 +152,7 @@ fn main() {
             .map_err(|_| eprintln!("Ignoring bad value for depth"))
             .ok()
     });
-    if options.is_present("depth") && number_of_lines != DEFAULT_NUMBER_OF_LINES {
+    if options.is_present("depth") && number_of_lines != default_height {
         eprintln!("Use either -n or -d. Not both");
         return;
     }
@@ -163,8 +184,9 @@ fn main() {
     draw_it(
         permissions,
         options.is_present("display_full_paths"),
-        options.is_present("reverse"),
+        !options.is_present("reverse"),
         options.is_present("no_colors"),
+        options.is_present("no_bars"),
         tree,
     );
 }
@@ -200,6 +222,3 @@ fn recursively_build_tree(parent_node: &mut Node, new_node: Node, depth: Option<
         parent_node.children.push(new_node);
     }
 }
-
-#[cfg(test)]
-mod tests;

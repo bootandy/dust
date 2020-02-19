@@ -21,7 +21,7 @@ du + rust = dust. Like du but more intuitive
 
 Dust is meant to give you an instant overview of which directories are using disk space without requiring sort or head. Dust will print a maximum of 1 'Did not have permissions message'.
 
-Dust will list the 20 biggest sub directories or files and will smartly recurse down the tree to find the larger ones. There is no need for a '-d' flag or a '-h' flag. The largest sub directory will have its size shown in *red*
+Dust will list the terminal height - 10 biggest sub directories or files and will smartly recurse down the tree to find the larger ones. There is no need for a '-d' flag or a '-h' flag. The largest sub directory will have its size shown in *red*
 
 ## Why?
 
@@ -42,26 +42,43 @@ Usage: dust -d 3  <dir>  (Shows 3 levels of subdirectories)
 Usage: dust -r  <dir>  (Reverse order of output, with root at the lowest)
 Usage: dust -x  <dir>  (Only show directories on same filesystem)
 Usage: dust -X ignore  <dir>  (Ignore all files and directories with the name 'ignore')
+Usage: dust -b <dir>  (Do not show percentages or draw the ASCII bars)
 ```
 
 ```
-djin:git/dust> dust
- 1.2G  target
- 622M ├─┬ debug
- 445M │ ├── deps
-  70M │ ├── incremental
-  56M │ └── build
- 262M ├─┬ rls
- 262M │ └─┬ debug
- 203M │   ├── deps
-  56M │   └── build
- 165M ├─┬ package
- 165M │ └─┬ du-dust-0.2.4
- 165M │   └─┬ target
- 165M │     └─┬ debug
- 131M │       └── deps
- 165M └─┬ release
- 124M   └── deps
+$ dust  target
+  15M     ┌── build                                    │                       ░█ │   2%
+  25M     ├── deps                                     │                       ░█ │   4%
+  45M   ┌─┴ release                                    │                       ██ │   7%
+  84M   │   ┌── build                                  │                ▒▒▒▒▒████ │  13%
+ 7.6M   │   │ ┌── libsynstructure-f7552412787ad339.rlib│                ▒▒▒▓▓▓▓▓█ │   1%
+  16M   │   │ ├── libfailure_derive-e18365d3e6be2e2c.so│                ▒▒▒▓▓▓▓▓█ │   2%
+  18M   │   │ ├── libsyn-9ad95b745845d5dd.rlib         │                ▒▒▒▓▓▓▓▓█ │   3%
+  19M   │   │ ├── libsyn-d4a3458fcb1c592c.rlib         │                ▒▒▒▓▓▓▓▓█ │   3%
+ 135M   │   ├─┴ deps                                   │                ▒▒▒██████ │  20%
+ 228M   │ ┌─┴ debug                                    │                █████████ │  34%
+ 228M   ├─┴ rls                                        │                █████████ │  34%
+  18M   │ ┌── dust                                     │          ░░░░░░░░░░░░░░█ │   3%
+  22M   │ ├── dust-a0c31c4633c5fc8b                    │          ░░░░░░░░░░░░░░█ │   3%
+ 7.4M   │ │   ┌── s-fkrj3vfncf-19aj951-1fv3o6tzvr348   │          ░░░░░░░░░░░░░▒█ │   1%
+ 7.4M   │ │ ┌─┴ dust-1i3xquz5fns51                     │          ░░░░░░░░░░░░░▒█ │   1%
+  40M   │ ├─┴ incremental                              │          ░░░░░░░░░░░░░██ │   6%
+  41M   │ ├── build                                    │          ░░░░░░░░░░░░░██ │   6%
+ 7.6M   │ │ ┌── libsynstructure-f7552412787ad339.rlib  │          ░░░░▒▒▒▒▒▒▒▒▒▒█ │   1%
+ 8.2M   │ │ ├── libserde-ab4b407a415bc8fc.rmeta        │          ░░░░▒▒▒▒▒▒▒▒▒▒█ │   1%
+ 9.4M   │ │ ├── libserde-ab4b407a415bc8fc.rlib         │          ░░░░▒▒▒▒▒▒▒▒▒▒█ │   1%
+  11M   │ │ ├── tests_symlinks-bf063461b7be6a99        │          ░░░░▒▒▒▒▒▒▒▒▒▒█ │   2%
+  11M   │ │ ├── integration-08f999d253e3b70c           │          ░░░░▒▒▒▒▒▒▒▒▒▒█ │   2%
+  15M   │ │ ├── dust-1c6e63725d641738                  │          ░░░░▒▒▒▒▒▒▒▒▒▒█ │   2%
+  16M   │ │ ├── libfailure_derive-e18365d3e6be2e2c.so  │          ░░░░▒▒▒▒▒▒▒▒▒▒█ │   2%
+  18M   │ │ ├── dust-3a419f62b84d73c1                  │          ░░░░▒▒▒▒▒▒▒▒▒▒█ │   3%
+  18M   │ │ ├── dust-2bdf724d4a721d31                  │          ░░░░▒▒▒▒▒▒▒▒▒▒█ │   3%
+  18M   │ │ ├── libsyn-9ad95b745845d5dd.rlib           │          ░░░░▒▒▒▒▒▒▒▒▒▒█ │   3%
+  23M   │ │ ├── libclap-0dedc35af3ef0670.rlib          │          ░░░░▒▒▒▒▒▒▒▒▒▒█ │   3%
+ 267M   │ ├─┴ deps                                     │          ░░░░███████████ │  40%
+ 392M   ├─┴ debug                                      │          ███████████████ │  59%
+ 667M ┌─┴ target                                       │█████████████████████████ │ 100%
+
 ```
 
 

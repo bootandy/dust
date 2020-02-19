@@ -25,6 +25,8 @@ ansi_term = "=0.12"
 clap = "=2.33"
 jwalk = "0.4.0"
 num_cpus = "1.12"
+terminal_size = "0.1.10"
+unicode-width = "0.1.7"
 
 [target.'cfg(windows)'.dependencies]
 winapi-util = "0.1"
@@ -32,3 +34,8 @@ winapi-util = "0.1"
 [dev-dependencies]
 assert_cli = "=0.6"
 tempfile = "=3"
+
+
+[[test]]
+name = "integration"
+path = "tests/tests.rs"
