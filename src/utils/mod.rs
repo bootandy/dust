@@ -85,15 +85,20 @@ pub fn get_dir_tree<P: AsRef<Path>>(
         None
     };
 
+    let mut fake_inode_counter = u64::max_value();
+    let mut examine_dir_args = ExamineDirMutArsg {
+        data: &mut data,
+        fake_inode_counter: &mut fake_inode_counter,
+        file_count_no_permission: &mut permissions,
+    };
     for b in top_level_names.iter() {
         examine_dir(
             b,
             apparent_size,
             &restricted_filesystems,
             ignore_directories,
-            &mut data,
-            &mut permissions,
             threads,
+            &mut examine_dir_args,
         );
     }
     (permissions == 0, data)
@@ -119,14 +124,19 @@ pub fn normalize_path<P: AsRef<Path>>(path: P) -> PathBuf {
     path.as_ref().components().collect::<PathBuf>()
 }
 
+struct ExamineDirMutArsg<'a> {
+    data: &'a mut HashMap<PathBuf, u64>,
+    file_count_no_permission: &'a mut u64,
+    fake_inode_counter: &'a mut u64,
+}
+
 fn examine_dir<P: AsRef<Path>>(
     top_dir: P,
     apparent_size: bool,
     filesystems: &Option<HashSet<u64>>,
     ignore_directories: &Option<Vec<PathBuf>>,
-    data: &mut HashMap<PathBuf, u64>,
-    file_count_no_permission: &mut u64,
     threads: Option<usize>,
+    mut_args: &mut ExamineDirMutArsg,
 ) {
     let top_dir = top_dir.as_ref();
     let mut inodes: HashSet<(u64, u64)> = HashSet::new();
@@ -136,9 +146,12 @@ fn examine_dir<P: AsRef<Path>>(
     if let Some(threads_to_start) = threads {
         iter = iter.num_threads(threads_to_start);
     }
+
     'entry: for entry in iter {
         if let Ok(e) = entry {
-            let maybe_size_and_inode = get_metadata(&e, apparent_size);
+            let maybe_size_and_inode =
+                get_metadata(&e, apparent_size, &mut mut_args.fake_inode_counter);
+
             if let Some(dirs) = ignore_directories {
                 let path = e.path();
                 let parts = path.components().collect::<Vec<std::path::Component>>();
@@ -156,13 +169,13 @@ fn examine_dir<P: AsRef<Path>>(
             match maybe_size_and_inode {
                 Some((size, inode, device)) => {
                     if !should_ignore_file(apparent_size, filesystems, &mut inodes, inode, device) {
-                        process_file_with_size_and_inode(top_dir, data, e, size)
+                        process_file_with_size_and_inode(top_dir, mut_args.data, e, size)
                     }
                 }
-                None => *file_count_no_permission += 1,
+                None => *mut_args.file_count_no_permission += 1,
             }
         } else {
-            *file_count_no_permission += 1
+            *mut_args.file_count_no_permission += 1
         }
     }
 }
