@@ -12,27 +12,19 @@ fn get_block_size() -> u64 {
 }
 
 #[cfg(target_family = "unix")]
-pub fn get_metadata(
-    d: &DirEntry,
-    use_apparent_size: bool,
-    _fake_inode_counter: &mut u64,
-) -> Option<(u64, u64, u64)> {
+pub fn get_metadata(d: &DirEntry, use_apparent_size: bool) -> Option<(u64, Option<(u64, u64)>)> {
     use std::os::unix::fs::MetadataExt;
     d.metadata.as_ref().unwrap().as_ref().ok().map(|md| {
         if use_apparent_size {
-            (md.len(), md.ino(), md.dev())
+            (md.len(), Some((md.ino(), md.dev())))
         } else {
-            (md.blocks() * get_block_size(), md.ino(), md.dev())
+            (md.blocks() * get_block_size(), Some((md.ino(), md.dev())))
         }
     })
 }
 
 #[cfg(target_family = "windows")]
-pub fn get_metadata(
-    d: &DirEntry,
-    _use_apparent_size: bool,
-    fake_inode_counter: &mut u64,
-) -> Option<(u64, u64, u64)> {
+pub fn get_metadata(d: &DirEntry, _use_apparent_size: bool) -> Option<(u64, Option<(u64, u64)>)> {
     // On windows opening the file to get size, file ID and volume can be very
     // expensive because 1) it causes a few system calls, and more importantly 2) it can cause
     // windows defender to scan the file.
@@ -69,7 +61,7 @@ pub fn get_metadata(
     // Consistently opening the file: 30 minutes.
     // With this optimization:         8 sec.
 
-    fn get_metadata_expensive(d: &DirEntry) -> Option<(u64, u64, u64)> {
+    fn get_metadata_expensive(d: &DirEntry) -> Option<(u64, Option<(u64, u64)>)> {
         use winapi_util::file::information;
         use winapi_util::Handle;
 
@@ -78,8 +70,7 @@ pub fn get_metadata(
 
         Some((
             info.file_size(),
-            info.file_index(),
-            info.volume_serial_number(),
+            Some((info.file_index(), info.volume_serial_number())),
         ))
     }
 
@@ -99,8 +90,7 @@ pub fn get_metadata(
                 || attr_filtered == FILE_ATTRIBUTE_DIRECTORY
                 || md.file_attributes() == FILE_ATTRIBUTE_NORMAL
             {
-                *fake_inode_counter -= 1;
-                Some((md.len(), *fake_inode_counter, 0xcafe_cafe_u64))
+                Some((md.len(), None))
             } else {
                 get_metadata_expensive(&d)
             }
