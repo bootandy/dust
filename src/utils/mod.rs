@@ -85,10 +85,8 @@ pub fn get_dir_tree<P: AsRef<Path>>(
         None
     };
 
-    let mut fake_inode_counter = u64::max_value();
     let mut examine_dir_args = ExamineDirMutArsg {
         data: &mut data,
-        fake_inode_counter: &mut fake_inode_counter,
         file_count_no_permission: &mut permissions,
     };
     for b in top_level_names.iter() {
@@ -127,7 +125,6 @@ pub fn normalize_path<P: AsRef<Path>>(path: P) -> PathBuf {
 struct ExamineDirMutArsg<'a> {
     data: &'a mut HashMap<PathBuf, u64>,
     file_count_no_permission: &'a mut u64,
-    fake_inode_counter: &'a mut u64,
 }
 
 fn examine_dir<P: AsRef<Path>>(
@@ -149,8 +146,7 @@ fn examine_dir<P: AsRef<Path>>(
 
     'entry: for entry in iter {
         if let Ok(e) = entry {
-            let maybe_size_and_inode =
-                get_metadata(&e, apparent_size, &mut mut_args.fake_inode_counter);
+            let maybe_size_and_inode = get_metadata(&e, apparent_size);
 
             if let Some(dirs) = ignore_directories {
                 let path = e.path();
@@ -167,8 +163,9 @@ fn examine_dir<P: AsRef<Path>>(
             }
 
             match maybe_size_and_inode {
-                Some((size, inode, device)) => {
-                    if !should_ignore_file(apparent_size, filesystems, &mut inodes, inode, device) {
+                Some(data) => {
+                    let (size, inode_device) = data;
+                    if !should_ignore_file(apparent_size, filesystems, &mut inodes, inode_device) {
                         process_file_with_size_and_inode(top_dir, mut_args.data, e, size)
                     }
                 }
@@ -184,24 +181,29 @@ fn should_ignore_file(
     apparent_size: bool,
     restricted_filesystems: &Option<HashSet<u64>>,
     inodes: &mut HashSet<(u64, u64)>,
-    inode: u64,
-    device: u64,
+    maybe_inode_device: Option<(u64, u64)>,
 ) -> bool {
-    // Ignore files on different devices (if flag applied)
-    if let Some(rs) = restricted_filesystems {
-        if !rs.contains(&device) {
-            return true;
-        }
-    }
+    match maybe_inode_device {
+        None => false,
+        Some(data) => {
+            let (inode, device) = data;
+            // Ignore files on different devices (if flag applied)
+            if let Some(rs) = restricted_filesystems {
+                if !rs.contains(&device) {
+                    return true;
+                }
+            }
 
-    if !apparent_size {
-        // Ignore files already visited or symlinked
-        if inodes.contains(&(inode, device)) {
-            return true;
+            if !apparent_size {
+                // Ignore files already visited or symlinked
+                if inodes.contains(&(inode, device)) {
+                    return true;
+                }
+                inodes.insert((inode, device));
+            }
+            false
         }
-        inodes.insert((inode, device));
     }
-    false
 }
 
 fn process_file_with_size_and_inode<P: AsRef<Path>>(
@@ -365,14 +367,19 @@ mod tests {
         let mut files = HashSet::new();
         files.insert((10, 20));
 
-        assert!(!should_ignore_file(true, &None, &mut files, 0, 0));
+        assert!(!should_ignore_file(true, &None, &mut files, Some((0, 0))));
 
         // New file is not known it will be inserted to the hashmp and should not be ignored
-        assert!(!should_ignore_file(false, &None, &mut files, 11, 12));
+        assert!(!should_ignore_file(
+            false,
+            &None,
+            &mut files,
+            Some((11, 12))
+        ));
         assert!(files.contains(&(11, 12)));
 
         // The same file will be ignored the second time
-        assert!(should_ignore_file(false, &None, &mut files, 11, 12));
+        assert!(should_ignore_file(false, &None, &mut files, Some((11, 12))));
     }
 
     #[test]
@@ -386,11 +393,11 @@ mod tests {
 
         // If we are looking at a different device (disk) and the device flag is set
         // then apparent_size is irrelevant - we ignore files on other devices
-        assert!(should_ignore_file(false, &od, &mut files, 11, 12));
-        assert!(should_ignore_file(true, &od, &mut files, 11, 12));
+        assert!(should_ignore_file(false, &od, &mut files, Some((11, 12))));
+        assert!(should_ignore_file(true, &od, &mut files, Some((11, 12))));
 
         // We do not ignore files on the same device
-        assert!(!should_ignore_file(false, &od, &mut files, 2, 99));
-        assert!(!should_ignore_file(true, &od, &mut files, 2, 99));
+        assert!(!should_ignore_file(false, &od, &mut files, Some((2, 99))));
+        assert!(!should_ignore_file(true, &od, &mut files, Some((2, 99))));
     }
 }
