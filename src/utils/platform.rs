@@ -61,11 +61,36 @@ pub fn get_metadata(d: &DirEntry, _use_apparent_size: bool) -> Option<(u64, Opti
     // Consistently opening the file: 30 minutes.
     // With this optimization:         8 sec.
 
+    use winapi_util::Handle;
+    fn handle_from_path_limited<P: AsRef<Path>>(path: P) -> io::Result<Handle> {
+        use std::fs::OpenOptions;
+        use std::os::windows::fs::OpenOptionsExt;
+        const FILE_READ_ATTRIBUTES: u32 = 0x0080;
+
+        // So, it seems that it does does have to be that expensive to open
+        // files to get their info: Avoiding opening the file with the full
+        // GENERIC_READ is key:
+
+        // https://docs.microsoft.com/en-us/windows/win32/secauthz/generic-access-rights:
+        // "For example, a Windows file object maps the GENERIC_READ bit to the
+        // READ_CONTROL and SYNCHRONIZE standard access rights and to the
+        // FILE_READ_DATA, FILE_READ_EA, and FILE_READ_ATTRIBUTES
+        // object-specific access rights"
+
+        // The flag FILE_READ_DATA seems to be the expensive one, so we'll avoid
+        // that, and a most of the other ones. Simply because it seems that we
+        // don't need them.
+
+        let file = OpenOptions::new()
+            .access_mode(FILE_READ_ATTRIBUTES)
+            .open(path)?;
+        Ok(Handle::from_file(file))
+    }
+
     fn get_metadata_expensive(d: &DirEntry) -> Option<(u64, Option<(u64, u64)>)> {
         use winapi_util::file::information;
-        use winapi_util::Handle;
 
-        let h = Handle::from_path_any(d.path()).ok()?;
+        let h = handle_from_path_limited(d.path()).ok()?;
         let info = information(&h).ok()?;
 
         Some((
