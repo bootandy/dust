@@ -78,7 +78,7 @@ fn main() {
             Arg::with_name("display_full_paths")
                 .short("p")
                 .long("full-paths")
-                .help("If set sub directories will not have their path shortened"),
+                .help("Subdirectories will not have their path shortened"),
         )
         .arg(
             Arg::with_name("ignore_directory")
@@ -87,37 +87,37 @@ fn main() {
                 .takes_value(true)
                 .number_of_values(1)
                 .multiple(true)
-                .help("Exclude any file or directory with this name."),
+                .help("Exclude any file or directory with this name"),
         )
         .arg(
             Arg::with_name("limit_filesystem")
                 .short("x")
                 .long("limit-filesystem")
-                .help("Only count the files and directories in the same filesystem as the supplied directory"),
+                .help("Only count the files and directories on the same filesystem as the supplied directory"),
         )
         .arg(
             Arg::with_name("display_apparent_size")
                 .short("s")
                 .long("apparent-size")
-                .help("If set will use file length. Otherwise we use blocks"),
+                .help("Use file length instead of blocks"),
         )
         .arg(
             Arg::with_name("reverse")
                 .short("r")
                 .long("reverse")
-                .help("If applied tree will be printed upside down (biggest highest)"),
+                .help("Print tree upside down (biggest highest)"),
         )
         .arg(
             Arg::with_name("no_colors")
                 .short("c")
-                .long("no_colors")
-                .help("If applied no colors will be printed (normally largest directories are marked in red"),
+                .long("no-colors")
+                .help("No colors will be printed (normally largest directories are colored)"),
         )
         .arg(
             Arg::with_name("no_bars")
                 .short("b")
-                .long("no_percent_bars")
-                .help("If applied no percent bars or percents will be displayed"),
+                .long("no-percent-bars")
+                .help("No percent bars or percentages will be displayed"),
         )
         .arg(Arg::with_name("inputs").multiple(true))
         .get_matches();
