@@ -1,7 +1,6 @@
 extern crate ansi_term;
 
 use self::ansi_term::Colour::Fixed;
-use self::ansi_term::Style;
 use crate::utils::Node;
 
 use terminal_size::{terminal_size, Height, Width};
@@ -287,16 +286,13 @@ pub fn format_string(
         "".into()
     };
 
-    format!(
-        "{} {}{}",
-        if is_biggest && display_data.colors_on {
-            Fixed(196).paint(pretty_size)
-        } else {
-            Style::new().paint(pretty_size)
-        },
-        tree_and_path,
-        percents,
-    )
+    let pretty_size = if is_biggest && display_data.colors_on {
+        format!("{}", Fixed(196).paint(pretty_size))
+    } else {
+        pretty_size
+    };
+
+    format!("{} {}{}", pretty_size, tree_and_path, percents)
 }
 
 fn human_readable_number(size: u64) -> String {
