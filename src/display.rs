@@ -1,7 +1,8 @@
 extern crate ansi_term;
 
-use self::ansi_term::Colour::Fixed;
 use crate::utils::Node;
+
+use lscolors::{LsColors, Style};
 
 use terminal_size::{terminal_size, Height, Width};
 
@@ -287,7 +288,12 @@ pub fn format_string(
     };
 
     let pretty_size = if is_biggest && display_data.colors_on {
-        format!("{}", Fixed(196).paint(pretty_size))
+        let lscolors = LsColors::from_env().unwrap_or_default();
+        let directory_color = lscolors.style_for_indicator(lscolors::Indicator::Directory);
+        let ansi_style = directory_color
+            .map(Style::to_ansi_term_style)
+            .unwrap_or_default();
+        format!("{}", ansi_style.paint(pretty_size))
     } else {
         pretty_size
     };
