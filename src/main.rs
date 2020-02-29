@@ -16,12 +16,24 @@ mod utils;
 static DEFAULT_NUMBER_OF_LINES: usize = 30;
 
 #[cfg(windows)]
-fn init_color() {
-    ansi_term::enable_ansi_support().expect("Couldn't enable color support");
+fn init_color(no_color: bool) -> bool {
+    // Required for windows 10
+    // Fails to resolve for windows 8 so disable color
+    match ansi_term::enable_ansi_support() {
+        Ok(_) => no_color,
+        Err(_) => {
+            eprintln!(
+                "This version of Windows does not support ANSI colors, setting no_color flag"
+            );
+            true
+        }
+    }
 }
 
 #[cfg(not(windows))]
-fn init_color() {}
+fn init_color(no_color: bool) -> bool {
+    no_color
+}
 
 fn get_height_of_terminal() -> usize {
     // Windows CI runners detect a terminal height of 0
@@ -33,8 +45,6 @@ fn get_height_of_terminal() -> usize {
 }
 
 fn main() {
-    init_color();
-
     let default_height = get_height_of_terminal();
     let def_num_str = default_height.to_string();
 
@@ -157,6 +167,7 @@ fn main() {
         return;
     }
 
+    let no_colors = init_color(options.is_present("no_colors"));
     let use_apparent_size = options.is_present("display_apparent_size");
     let limit_filesystem = options.is_present("limit_filesystem");
     let ignore_directories = match options.values_of("ignore_directory") {
@@ -185,7 +196,7 @@ fn main() {
         permissions,
         options.is_present("display_full_paths"),
         !options.is_present("reverse"),
-        options.is_present("no_colors"),
+        no_colors,
         options.is_present("no_bars"),
         tree,
     );
