@@ -41,7 +41,7 @@ impl PartialEq for Node {
 pub fn is_a_parent_of<P: AsRef<Path>>(parent: P, child: P) -> bool {
     let parent = parent.as_ref();
     let child = child.as_ref();
-    (child.starts_with(parent) && !parent.starts_with(child))
+    child.starts_with(parent) && !parent.starts_with(child)
 }
 
 pub fn simplify_dir_names<P: AsRef<Path>>(filenames: Vec<P>) -> HashSet<PathBuf> {
