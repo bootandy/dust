@@ -2,6 +2,7 @@ extern crate ansi_term;
 
 use crate::utils::Node;
 
+use self::ansi_term::Colour::Fixed;
 use lscolors::{LsColors, Style};
 
 use terminal_size::{terminal_size, Height, Width};
@@ -10,6 +11,7 @@ use unicode_width::UnicodeWidthStr;
 
 use std::cmp::max;
 use std::cmp::min;
+use std::fs;
 use std::iter::repeat;
 use std::path::Path;
 
@@ -23,6 +25,7 @@ pub struct DisplayData {
     pub colors_on: bool,
     pub base_size: u64,
     pub longest_string_length: usize,
+    pub ls_colors: LsColors,
 }
 
 impl DisplayData {
@@ -167,6 +170,7 @@ pub fn draw_it(
             colors_on: !no_colors,
             base_size: c.size,
             longest_string_length,
+            ls_colors: LsColors::from_env().unwrap_or_default(),
         };
         let draw_data = DrawData {
             indent: "".to_string(),
@@ -180,7 +184,8 @@ pub fn draw_it(
 // We can probably pass depth instead of indent here.
 // It is ugly to feed in '  ' instead of the actual tree characters but we don't need them yet.
 fn find_longest_dir_name(node: &Node, indent: &str, long_paths: bool) -> usize {
-    let longest = UnicodeWidthStr::width(&*get_printable_name(&node.name, long_paths, indent));
+    let printable_name = get_printable_name(&node.name, long_paths);
+    let longest = get_unicode_width_of_indent_and_name(indent, &printable_name);
 
     // each none root tree drawing is 2 chars
     let full_indent: String = indent.to_string() + "  ";
@@ -243,7 +248,7 @@ fn clean_indentation_string(s: &str) -> String {
     is
 }
 
-fn get_printable_name<P: AsRef<Path>>(dir_name: &P, long_paths: bool, indentation: &str) -> String {
+fn get_printable_name<P: AsRef<Path>>(dir_name: &P, long_paths: bool) -> String {
     let dir_name = dir_name.as_ref();
     let printable_name = {
         if long_paths {
@@ -258,7 +263,12 @@ fn get_printable_name<P: AsRef<Path>>(dir_name: &P, long_paths: bool, indentatio
             dir_name
         }
     };
-    format!("{} {}", indentation, printable_name.display())
+    printable_name.display().to_string()
+}
+
+fn get_unicode_width_of_indent_and_name(indent: &str, name: &str) -> usize {
+    let indent_and_name = format!("{} {}", indent, name);
+    UnicodeWidthStr::width(&*indent_and_name)
 }
 
 pub fn format_string(
@@ -270,15 +280,14 @@ pub fn format_string(
 ) -> String {
     let pretty_size = format!("{:>5}", human_readable_number(node.size));
 
-    let percent_size = display_data.percent_size(node);
-    let percent_size_str = format!("{:.0}%", percent_size * 100.0);
+    let percent_size_str = format!("{:.0}%", display_data.percent_size(node) * 100.0);
 
-    let tree_and_path = get_printable_name(&node.name, display_data.short_paths, &*indent);
+    let name = get_printable_name(&node.name, display_data.short_paths);
+    let width = get_unicode_width_of_indent_and_name(indent, &name);
 
-    let printable_chars = UnicodeWidthStr::width(&*tree_and_path);
-    let tree_and_path = tree_and_path
+    let name_and_padding = name
         + &(repeat(" ")
-            .take(display_data.longest_string_length - printable_chars)
+            .take(display_data.longest_string_length - width)
             .collect::<String>());
 
     let percents = if percent_bar != "" {
@@ -288,17 +297,25 @@ pub fn format_string(
     };
 
     let pretty_size = if is_biggest && display_data.colors_on {
-        let lscolors = LsColors::from_env().unwrap_or_default();
-        let directory_color = lscolors.style_for_indicator(lscolors::Indicator::Directory);
-        let ansi_style = directory_color
-            .map(Style::to_ansi_term_style)
-            .unwrap_or_default();
-        format!("{}", ansi_style.paint(pretty_size))
+        format!("{}", Fixed(196).paint(pretty_size))
     } else {
         pretty_size
     };
 
-    format!("{} {}{}", pretty_size, tree_and_path, percents)
+    let pretty_name = if display_data.colors_on {
+        let meta_result = fs::metadata(node.name.clone());
+        let directory_color = display_data
+            .ls_colors
+            .style_for_path_with_metadata(node.name.clone(), meta_result.as_ref().ok());
+        let ansi_style = directory_color
+            .map(Style::to_ansi_term_style)
+            .unwrap_or_default();
+        format!("{}", ansi_style.paint(name_and_padding))
+    } else {
+        name_and_padding
+    };
+
+    format!("{} {} {}{}", pretty_size, indent, pretty_name, percents)
 }
 
 fn human_readable_number(size: u64) -> String {

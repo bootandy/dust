@@ -38,7 +38,7 @@ pub fn test_soft_sym_link() {
     let a = format!("─┴ {}", dir_s);
 
     assert_cli::Assert::main_binary()
-        .with_args(&["-p", &dir_s])
+        .with_args(&["-p", "-c", &dir_s])
         .stdout()
         .contains(a.as_str())
         .stdout()
@@ -72,7 +72,7 @@ pub fn test_hard_sym_link() {
     // we cannot guarantee which version will appear first.
     let result = panic::catch_unwind(|| {
         assert_cli::Assert::main_binary()
-            .with_args(&["-p", dir_s])
+            .with_args(&["-p", "-c", dir_s])
             .stdout()
             .contains(a.as_str())
             .stdout()
@@ -81,7 +81,7 @@ pub fn test_hard_sym_link() {
     });
     if result.is_err() {
         assert_cli::Assert::main_binary()
-            .with_args(&["-p", dir_s])
+            .with_args(&["-p", "-c", dir_s])
             .stdout()
             .contains(a.as_str())
             .stdout()
@@ -110,7 +110,7 @@ pub fn test_recursive_sym_link() {
     let b = format!("  └── {}", link_name_s);
 
     assert_cli::Assert::main_binary()
-        .with_args(&["-r", "-p", dir_s])
+        .with_args(&["-c", "-r", "-p", dir_s])
         .stdout()
         .contains(a.as_str())
         .stdout()
