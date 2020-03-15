@@ -1,4 +1,3 @@
-use jwalk::DirEntry;
 #[allow(unused_imports)]
 use std::fs;
 use std::io;
@@ -12,9 +11,9 @@ fn get_block_size() -> u64 {
 }
 
 #[cfg(target_family = "unix")]
-pub fn get_metadata(d: &DirEntry, use_apparent_size: bool) -> Option<(u64, Option<(u64, u64)>)> {
+pub fn get_metadata(d: &Path, use_apparent_size: bool) -> Option<(u64, Option<(u64, u64)>)> {
     use std::os::unix::fs::MetadataExt;
-    d.metadata.as_ref().unwrap().as_ref().ok().map(|md| {
+    fs::metadata(d).ok().map(|md| {
         if use_apparent_size {
             (md.len(), Some((md.ino(), md.dev())))
         } else {
@@ -24,7 +23,7 @@ pub fn get_metadata(d: &DirEntry, use_apparent_size: bool) -> Option<(u64, Optio
 }
 
 #[cfg(target_family = "windows")]
-pub fn get_metadata(d: &DirEntry, _use_apparent_size: bool) -> Option<(u64, Option<(u64, u64)>)> {
+pub fn get_metadata(d: &Path, _use_apparent_size: bool) -> Option<(u64, Option<(u64, u64)>)> {
     // On windows opening the file to get size, file ID and volume can be very
     // expensive because 1) it causes a few system calls, and more importantly 2) it can cause
     // windows defender to scan the file.
@@ -87,10 +86,10 @@ pub fn get_metadata(d: &DirEntry, _use_apparent_size: bool) -> Option<(u64, Opti
         Ok(Handle::from_file(file))
     }
 
-    fn get_metadata_expensive(d: &DirEntry) -> Option<(u64, Option<(u64, u64)>)> {
+    fn get_metadata_expensive(d: &Path) -> Option<(u64, Option<(u64, u64)>)> {
         use winapi_util::file::information;
 
-        let h = handle_from_path_limited(d.path()).ok()?;
+        let h = handle_from_path_limited(d).ok()?;
         let info = information(&h).ok()?;
 
         Some((
@@ -99,8 +98,8 @@ pub fn get_metadata(d: &DirEntry, _use_apparent_size: bool) -> Option<(u64, Opti
         ))
     }
 
-    match d.metadata {
-        Some(Ok(ref md)) => {
+    match fs::metadata(d) {
+        Ok(ref md) => {
             use std::os::windows::fs::MetadataExt;
             const FILE_ATTRIBUTE_ARCHIVE: u32 = 0x20u32;
             const FILE_ATTRIBUTE_READONLY: u32 = 0x1u32;
@@ -117,10 +116,10 @@ pub fn get_metadata(d: &DirEntry, _use_apparent_size: bool) -> Option<(u64, Opti
             {
                 Some((md.len(), None))
             } else {
-                get_metadata_expensive(&d)
+                get_metadata_expensive(d)
             }
         }
-        _ => get_metadata_expensive(&d),
+        _ => get_metadata_expensive(d),
     }
 }
 

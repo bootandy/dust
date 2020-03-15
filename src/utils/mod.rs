@@ -1,9 +1,9 @@
-use jwalk::DirEntry;
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
+use jwalk::Parallelism;
 use jwalk::WalkDir;
 
 mod platform;
@@ -137,16 +137,18 @@ fn examine_dir<P: AsRef<Path>>(
 ) {
     let top_dir = top_dir.as_ref();
     let mut inodes: HashSet<(u64, u64)> = HashSet::new();
-    let mut iter = WalkDir::new(top_dir)
-        .preload_metadata(true)
-        .skip_hidden(false);
-    if let Some(threads_to_start) = threads {
-        iter = iter.num_threads(threads_to_start);
-    }
 
-    'entry: for entry in iter {
+    let temp = WalkDir::new(top_dir).skip_hidden(false).follow_links(true);
+
+    let temp = if let Some(threads_to_start) = threads {
+        temp.parallelism(Parallelism::RayonNewPool(threads_to_start))
+    } else {
+        temp
+    };
+
+    'entry: for entry in temp {
         if let Ok(e) = entry {
-            let maybe_size_and_inode = get_metadata(&e, apparent_size);
+            let maybe_size_and_inode = get_metadata(&e.path(), apparent_size);
 
             if let Some(dirs) = ignore_directories {
                 let path = e.path();
@@ -166,7 +168,7 @@ fn examine_dir<P: AsRef<Path>>(
                 Some(data) => {
                     let (size, inode_device) = data;
                     if !should_ignore_file(apparent_size, filesystems, &mut inodes, inode_device) {
-                        process_file_with_size_and_inode(top_dir, mut_args.data, e, size)
+                        process_file_with_size_and_inode(top_dir, mut_args.data, &e.path(), size)
                     }
                 }
                 None => *mut_args.file_count_no_permission += 1,
@@ -209,12 +211,12 @@ fn should_ignore_file(
 fn process_file_with_size_and_inode<P: AsRef<Path>>(
     top_dir: P,
     data: &mut HashMap<PathBuf, u64>,
-    e: DirEntry,
+    e: &Path,
     size: u64,
 ) {
     let top_dir = top_dir.as_ref();
     // This path and all its parent paths have their counter incremented
-    for path in e.path().ancestors() {
+    for path in e.ancestors() {
         // This is required due to bug in Jwalk that adds '/' to all sub dir lists
         // see: https://github.com/jessegrosjean/jwalk/issues/13
         if path.to_string_lossy() == "/" && top_dir.to_string_lossy() != "/" {

@@ -137,23 +137,12 @@ fn main() {
         }
     };
 
-    let temp_threads = options.value_of("threads").and_then(|threads| {
+    let threads = options.value_of("threads").and_then(|threads| {
         threads
             .parse::<usize>()
             .map_err(|_| eprintln!("Ignoring bad value for threads: {:?}", threads))
             .ok()
     });
-    // Bug in JWalk
-    // https://github.com/jessegrosjean/jwalk/issues/15
-    // We force it to use 2 threads if there is only 1 cpu
-    // as JWalk breaks if it tries to run on a single cpu
-    let threads = {
-        if temp_threads.is_none() && num_cpus::get() == 1 {
-            Some(2)
-        } else {
-            temp_threads
-        }
-    };
 
     let depth = options.value_of("depth").and_then(|depth| {
         depth

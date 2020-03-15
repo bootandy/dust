@@ -38,7 +38,7 @@ pub fn test_soft_sym_link() {
     let a = format!("─┴ {}", dir_s);
 
     assert_cli::Assert::main_binary()
-        .with_args(&["-p", "-c", &dir_s])
+        .with_args(&["-s", "-p", "-c", &dir_s])
         .stdout()
         .contains(a.as_str())
         .stdout()
@@ -106,13 +106,10 @@ pub fn test_recursive_sym_link() {
         .output();
     assert!(c.is_ok());
 
-    let a = format!("─┬ {}", dir_s);
-    let b = format!("  └── {}", link_name_s);
+    let b = format!(" └── {}", dir_s);
 
     assert_cli::Assert::main_binary()
-        .with_args(&["-c", "-r", "-p", dir_s])
-        .stdout()
-        .contains(a.as_str())
+        .with_args(&["-s", "-c", "-r", "-p", dir_s])
         .stdout()
         .contains(b.as_str())
         .unwrap();
