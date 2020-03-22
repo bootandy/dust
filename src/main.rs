@@ -1,6 +1,9 @@
 #[macro_use]
 extern crate clap;
+extern crate crossbeam_channel as channel;
+extern crate ignore;
 extern crate unicode_width;
+extern crate walkdir;
 
 use self::display::draw_it;
 use crate::utils::is_a_parent_of;
@@ -8,7 +11,7 @@ use clap::{App, AppSettings, Arg};
 use std::cmp::max;
 use std::path::PathBuf;
 use terminal_size::{terminal_size, Height, Width};
-use utils::{find_big_ones, get_dir_tree, simplify_dir_names, sort, trim_deep_ones, Node};
+use utils::{find_big_ones, get_dir_tree, simplify_dir_names, sort, Node};
 
 mod display;
 mod utils;
@@ -137,27 +140,9 @@ fn main() {
         }
     };
 
-    let temp_threads = options.value_of("threads").and_then(|threads| {
-        threads
-            .parse::<usize>()
-            .map_err(|_| eprintln!("Ignoring bad value for threads: {:?}", threads))
-            .ok()
-    });
-    // Bug in JWalk
-    // https://github.com/jessegrosjean/jwalk/issues/15
-    // We force it to use 2 threads if there is only 1 cpu
-    // as JWalk breaks if it tries to run on a single cpu
-    let threads = {
-        if temp_threads.is_none() && num_cpus::get() == 1 {
-            Some(2)
-        } else {
-            temp_threads
-        }
-    };
-
     let depth = options.value_of("depth").and_then(|depth| {
         depth
-            .parse::<u64>()
+            .parse::<usize>()
             .map(|v| v + 1)
             .map_err(|_| eprintln!("Ignoring bad value for depth"))
             .ok()
@@ -181,13 +166,13 @@ fn main() {
         &ignore_directories,
         use_apparent_size,
         limit_filesystem,
-        threads,
+        depth,
     );
     let sorted_data = sort(nodes);
     let biggest_ones = {
         match depth {
             None => find_big_ones(sorted_data, number_of_lines + simplified_dirs.len()),
-            Some(d) => trim_deep_ones(sorted_data, d, &simplified_dirs),
+            Some(_) => sorted_data,
         }
     };
     let tree = build_tree(biggest_ones, depth);
@@ -202,7 +187,7 @@ fn main() {
     );
 }
 
-fn build_tree(biggest_ones: Vec<(PathBuf, u64)>, depth: Option<u64>) -> Node {
+fn build_tree(biggest_ones: Vec<(PathBuf, u64)>, depth: Option<usize>) -> Node {
     let mut top_parent = Node::default();
 
     // assume sorted order
@@ -217,7 +202,7 @@ fn build_tree(biggest_ones: Vec<(PathBuf, u64)>, depth: Option<u64>) -> Node {
     top_parent
 }
 
-fn recursively_build_tree(parent_node: &mut Node, new_node: Node, depth: Option<u64>) {
+fn recursively_build_tree(parent_node: &mut Node, new_node: Node, depth: Option<usize>) {
     let new_depth = match depth {
         None => None,
         Some(0) => return,

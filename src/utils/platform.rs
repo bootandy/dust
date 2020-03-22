@@ -1,8 +1,6 @@
-use jwalk::DirEntry;
+use ignore::DirEntry;
 #[allow(unused_imports)]
 use std::fs;
-use std::io;
-use std::path::Path;
 
 #[cfg(target_family = "unix")]
 fn get_block_size() -> u64 {
@@ -14,13 +12,12 @@ fn get_block_size() -> u64 {
 #[cfg(target_family = "unix")]
 pub fn get_metadata(d: &DirEntry, use_apparent_size: bool) -> Option<(u64, Option<(u64, u64)>)> {
     use std::os::unix::fs::MetadataExt;
-    d.metadata.as_ref().unwrap().as_ref().ok().map(|md| {
-        if use_apparent_size {
-            (md.len(), Some((md.ino(), md.dev())))
-        } else {
-            (md.blocks() * get_block_size(), Some((md.ino(), md.dev())))
-        }
-    })
+    let md = d.metadata().unwrap();
+    if use_apparent_size {
+        Some((md.len(), Some((md.ino(), md.dev()))))
+    } else {
+        Some((md.blocks() * get_block_size(), Some((md.ino(), md.dev()))))
+    }
 }
 
 #[cfg(target_family = "windows")]
@@ -61,6 +58,8 @@ pub fn get_metadata(d: &DirEntry, _use_apparent_size: bool) -> Option<(u64, Opti
     // Consistently opening the file: 30 minutes.
     // With this optimization:         8 sec.
 
+    use std::io;
+    use std::path::Path;
     use winapi_util::Handle;
     fn handle_from_path_limited<P: AsRef<Path>>(path: P) -> io::Result<Handle> {
         use std::fs::OpenOptions;
@@ -99,9 +98,9 @@ pub fn get_metadata(d: &DirEntry, _use_apparent_size: bool) -> Option<(u64, Opti
         ))
     }
 
-    match d.metadata {
-        Some(Ok(ref md)) => {
-            use std::os::windows::fs::MetadataExt;
+    use std::os::windows::fs::MetadataExt;
+    match d.metadata() {
+        Ok(ref md) => {
             const FILE_ATTRIBUTE_ARCHIVE: u32 = 0x20u32;
             const FILE_ATTRIBUTE_READONLY: u32 = 0x1u32;
             const FILE_ATTRIBUTE_HIDDEN: u32 = 0x2u32;
@@ -122,21 +121,4 @@ pub fn get_metadata(d: &DirEntry, _use_apparent_size: bool) -> Option<(u64, Opti
         }
         _ => get_metadata_expensive(&d),
     }
-}
-
-#[cfg(target_family = "unix")]
-pub fn get_filesystem<P: AsRef<Path>>(file_path: P) -> Result<u64, io::Error> {
-    use std::os::unix::fs::MetadataExt;
-    let metadata = fs::metadata(file_path)?;
-    Ok(metadata.dev())
-}
-
-#[cfg(target_family = "windows")]
-pub fn get_filesystem<P: AsRef<Path>>(file_path: P) -> Result<u64, io::Error> {
-    use winapi_util::file::information;
-    use winapi_util::Handle;
-
-    let h = Handle::from_path_any(file_path)?;
-    let info = information(&h)?;
-    Ok(info.volume_serial_number())
 }
