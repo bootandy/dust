@@ -35,7 +35,7 @@ walkdir="2.3"
 winapi-util = "0.1"
 
 [dev-dependencies]
-assert_cli = "=0.6"
+assert_cmd ="0.12"
 tempfile = "=3"
 
 
