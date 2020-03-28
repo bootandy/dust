@@ -138,6 +138,8 @@ fn main_output_long_paths() -> String {
 #[cfg_attr(target_os = "windows", ignore)]
 #[test]
 pub fn test_apparent_size() {
+    copy_test_data("src/test_dir");
+
     let mut cmd = Command::cargo_bin("dust").unwrap();
     let assert = cmd.arg("-c").arg("-s").arg("src/test_dir").unwrap().stdout;
     let output = str::from_utf8(&assert).unwrap();
