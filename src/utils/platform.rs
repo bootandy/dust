@@ -12,11 +12,15 @@ fn get_block_size() -> u64 {
 #[cfg(target_family = "unix")]
 pub fn get_metadata(d: &DirEntry, use_apparent_size: bool) -> Option<(u64, Option<(u64, u64)>)> {
     use std::os::unix::fs::MetadataExt;
-    let md = d.metadata().unwrap();
-    if use_apparent_size {
-        Some((md.len(), Some((md.ino(), md.dev()))))
-    } else {
-        Some((md.blocks() * get_block_size(), Some((md.ino(), md.dev()))))
+    match d.metadata() {
+        Ok(md) => {
+            if use_apparent_size {
+                Some((md.len(), Some((md.ino(), md.dev()))))
+            } else {
+                Some((md.blocks() * get_block_size(), Some((md.ino(), md.dev()))))
+            }
+        }
+        Err(_e) => None,
     }
 }
 

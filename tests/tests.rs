@@ -275,3 +275,11 @@ pub fn test_ignore_dir() {
     let output = str::from_utf8(&output).unwrap();
     assert!(!output.contains("dir_substring"));
 }
+
+#[test]
+pub fn test_with_bad_param() {
+    let mut cmd = Command::cargo_bin("dust").unwrap();
+    let stderr = cmd.arg("-").unwrap().stderr;
+    let stderr = str::from_utf8(&stderr).unwrap();
+    assert!(stderr.contains("Did not have permissions for all directories"));
+}
