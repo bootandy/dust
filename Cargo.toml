@@ -23,17 +23,19 @@ path = "src/main.rs"
 [dependencies]
 ansi_term = "=0.12"
 clap = "=2.33"
-jwalk = "0.4.0"
 lscolors = "0.6.0"
 num_cpus = "1.12"
 terminal_size = "0.1.10"
 unicode-width = "0.1.7"
+ignore="0.4.12"
+crossbeam-channel = "0.4.2"
+walkdir="2.3"
 
 [target.'cfg(windows)'.dependencies]
 winapi-util = "0.1"
 
 [dev-dependencies]
-assert_cli = "=0.6"
+assert_cmd ="0.12"
 tempfile = "=3"
 
 

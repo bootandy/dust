@@ -1,13 +1,21 @@
-use jwalk::DirEntry;
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::collections::HashSet;
+use std::iter::FromIterator;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::AtomicBool;
 
-use jwalk::WalkDir;
+use channel::Receiver;
+use std::thread::JoinHandle;
+
+use ignore::{WalkBuilder, WalkState};
+use std::sync::atomic;
+use std::thread;
 
 mod platform;
 use self::platform::*;
+
+type PathData = (PathBuf, u64, Option<(u64, u64)>);
 
 #[derive(Debug, Default, Eq)]
 pub struct Node {
@@ -70,46 +78,121 @@ pub fn simplify_dir_names<P: AsRef<Path>>(filenames: Vec<P>) -> HashSet<PathBuf>
     top_level_names
 }
 
+fn prepare_walk_dir_builder<P: AsRef<Path>>(
+    top_level_names: &HashSet<P>,
+    limit_filesystem: bool,
+    max_depth: Option<usize>,
+) -> WalkBuilder {
+    let mut it = top_level_names.iter();
+    let mut builder = WalkBuilder::new(it.next().unwrap());
+    builder.follow_links(false);
+    builder.ignore(false);
+    builder.git_global(false);
+    builder.git_ignore(false);
+    builder.git_exclude(false);
+    builder.hidden(false);
+
+    if limit_filesystem {
+        builder.same_file_system(true);
+    }
+
+    builder.max_depth(max_depth);
+
+    for b in it {
+        builder.add(b);
+    }
+    builder
+}
+
 pub fn get_dir_tree<P: AsRef<Path>>(
     top_level_names: &HashSet<P>,
     ignore_directories: &Option<Vec<PathBuf>>,
     apparent_size: bool,
     limit_filesystem: bool,
-    threads: Option<usize>,
+    max_depth: Option<usize>,
 ) -> (bool, HashMap<PathBuf, u64>) {
-    let mut permissions = 0;
-    let mut data: HashMap<PathBuf, u64> = HashMap::new();
-    let restricted_filesystems = if limit_filesystem {
-        get_allowed_filesystems(top_level_names)
-    } else {
-        None
-    };
+    let (tx, rx) = channel::bounded::<PathData>(1000);
 
-    let mut examine_dir_args = ExamineDirMutArsg {
-        data: &mut data,
-        file_count_no_permission: &mut permissions,
-    };
-    for b in top_level_names.iter() {
-        examine_dir(
-            b,
-            apparent_size,
-            &restricted_filesystems,
-            ignore_directories,
-            threads,
-            &mut examine_dir_args,
-        );
-    }
-    (permissions == 0, data)
+    let permissions_flag = AtomicBool::new(true);
+
+    let t2 = HashSet::from_iter(top_level_names.iter().map(|p| p.as_ref().to_path_buf()));
+
+    let t = create_reader_thread(rx, t2, apparent_size);
+    let walk_dir_builder = prepare_walk_dir_builder(top_level_names, limit_filesystem, max_depth);
+
+    walk_dir_builder.build_parallel().run(|| {
+        let txc = tx.clone();
+        let pf = &permissions_flag;
+        Box::new(move |path| {
+            match path {
+                Ok(p) => {
+                    if let Some(dirs) = ignore_directories {
+                        let path = p.path();
+                        let parts = path.components().collect::<Vec<std::path::Component>>();
+                        for d in dirs {
+                            let seq = d.components().collect::<Vec<std::path::Component>>();
+                            if parts
+                                .windows(seq.len())
+                                .any(|window| window.iter().collect::<PathBuf>() == *d)
+                            {
+                                return WalkState::Continue;
+                            }
+                        }
+                    }
+
+                    let maybe_size_and_inode = get_metadata(&p, apparent_size);
+
+                    match maybe_size_and_inode {
+                        Some(data) => {
+                            let (size, inode_device) = data;
+                            txc.send((p.into_path(), size, inode_device)).unwrap();
+                        }
+                        None => {
+                            pf.store(false, atomic::Ordering::Relaxed);
+                        }
+                    }
+                }
+                Err(_) => {
+                    pf.store(false, atomic::Ordering::Relaxed);
+                }
+            };
+            WalkState::Continue
+        })
+    });
+
+    drop(tx);
+    let data = t.join().unwrap();
+    (permissions_flag.load(atomic::Ordering::SeqCst), data)
 }
 
-fn get_allowed_filesystems<P: AsRef<Path>>(top_level_names: &HashSet<P>) -> Option<HashSet<u64>> {
-    let mut limit_filesystems: HashSet<u64> = HashSet::new();
-    for file_name in top_level_names.iter() {
-        if let Ok(a) = get_filesystem(file_name) {
-            limit_filesystems.insert(a);
+fn create_reader_thread(
+    rx: Receiver<PathData>,
+    top_level_names: HashSet<PathBuf>,
+    apparent_size: bool,
+) -> JoinHandle<HashMap<PathBuf, u64>> {
+    // Receiver thread
+    thread::spawn(move || {
+        let mut hash: HashMap<PathBuf, u64> = HashMap::new();
+        let mut inodes: HashSet<(u64, u64)> = HashSet::new();
+
+        for dent in rx {
+            let (path, size, maybe_inode_device) = dent;
+
+            if should_ignore_file(apparent_size, &mut inodes, maybe_inode_device) {
+                continue;
+            } else {
+                for p in path.ancestors() {
+                    let s = hash.entry(p.to_path_buf()).or_insert(0);
+                    *s += size;
+
+                    if top_level_names.contains(p) {
+                        break;
+                    }
+                }
+            }
         }
-    }
-    Some(limit_filesystems)
+        hash
+    })
 }
 
 pub fn normalize_path<P: AsRef<Path>>(path: P) -> PathBuf {
@@ -122,64 +205,8 @@ pub fn normalize_path<P: AsRef<Path>>(path: P) -> PathBuf {
     path.as_ref().components().collect::<PathBuf>()
 }
 
-struct ExamineDirMutArsg<'a> {
-    data: &'a mut HashMap<PathBuf, u64>,
-    file_count_no_permission: &'a mut u64,
-}
-
-fn examine_dir<P: AsRef<Path>>(
-    top_dir: P,
-    apparent_size: bool,
-    filesystems: &Option<HashSet<u64>>,
-    ignore_directories: &Option<Vec<PathBuf>>,
-    threads: Option<usize>,
-    mut_args: &mut ExamineDirMutArsg,
-) {
-    let top_dir = top_dir.as_ref();
-    let mut inodes: HashSet<(u64, u64)> = HashSet::new();
-    let mut iter = WalkDir::new(top_dir)
-        .preload_metadata(true)
-        .skip_hidden(false);
-    if let Some(threads_to_start) = threads {
-        iter = iter.num_threads(threads_to_start);
-    }
-
-    'entry: for entry in iter {
-        if let Ok(e) = entry {
-            let maybe_size_and_inode = get_metadata(&e, apparent_size);
-
-            if let Some(dirs) = ignore_directories {
-                let path = e.path();
-                let parts = path.components().collect::<Vec<std::path::Component>>();
-                for d in dirs {
-                    let seq = d.components().collect::<Vec<std::path::Component>>();
-                    if parts
-                        .windows(seq.len())
-                        .any(|window| window.iter().collect::<PathBuf>() == *d)
-                    {
-                        continue 'entry;
-                    }
-                }
-            }
-
-            match maybe_size_and_inode {
-                Some(data) => {
-                    let (size, inode_device) = data;
-                    if !should_ignore_file(apparent_size, filesystems, &mut inodes, inode_device) {
-                        process_file_with_size_and_inode(top_dir, mut_args.data, e, size)
-                    }
-                }
-                None => *mut_args.file_count_no_permission += 1,
-            }
-        } else {
-            *mut_args.file_count_no_permission += 1
-        }
-    }
-}
-
 fn should_ignore_file(
     apparent_size: bool,
-    restricted_filesystems: &Option<HashSet<u64>>,
     inodes: &mut HashSet<(u64, u64)>,
     maybe_inode_device: Option<(u64, u64)>,
 ) -> bool {
@@ -187,13 +214,6 @@ fn should_ignore_file(
         None => false,
         Some(data) => {
             let (inode, device) = data;
-            // Ignore files on different devices (if flag applied)
-            if let Some(rs) = restricted_filesystems {
-                if !rs.contains(&device) {
-                    return true;
-                }
-            }
-
             if !apparent_size {
                 // Ignore files already visited or symlinked
                 if inodes.contains(&(inode, device)) {
@@ -202,28 +222,6 @@ fn should_ignore_file(
                 inodes.insert((inode, device));
             }
             false
-        }
-    }
-}
-
-fn process_file_with_size_and_inode<P: AsRef<Path>>(
-    top_dir: P,
-    data: &mut HashMap<PathBuf, u64>,
-    e: DirEntry,
-    size: u64,
-) {
-    let top_dir = top_dir.as_ref();
-    // This path and all its parent paths have their counter incremented
-    for path in e.path().ancestors() {
-        // This is required due to bug in Jwalk that adds '/' to all sub dir lists
-        // see: https://github.com/jessegrosjean/jwalk/issues/13
-        if path.to_string_lossy() == "/" && top_dir.to_string_lossy() != "/" {
-            continue;
-        }
-        let s = data.entry(normalize_path(path)).or_insert(0);
-        *s += size;
-        if path.starts_with(top_dir) && top_dir.starts_with(path) {
-            break;
         }
     }
 }
@@ -249,36 +247,6 @@ pub fn find_big_ones(new_l: Vec<(PathBuf, u64)>, max_to_show: usize) -> Vec<(Pat
     } else {
         new_l
     }
-}
-
-fn depth_of_path(name: &PathBuf) -> usize {
-    // Filter required as paths can have some odd preliminary
-    // ("Prefix") bits (for example, from windows, "\\?\" or "\\UNC\")
-    name.components()
-        .filter(|&c| match c {
-            std::path::Component::Prefix(_) => false,
-            _ => true,
-        })
-        .count()
-}
-
-pub fn trim_deep_ones(
-    input: Vec<(PathBuf, u64)>,
-    max_depth: u64,
-    top_level_names: &HashSet<PathBuf>,
-) -> Vec<(PathBuf, u64)> {
-    let mut result: Vec<(PathBuf, u64)> = Vec::with_capacity(input.len() * top_level_names.len());
-
-    for name in top_level_names {
-        let my_max_depth = depth_of_path(name) + max_depth as usize;
-
-        for &(ref k, ref v) in input.iter() {
-            if k.starts_with(name) && depth_of_path(k) <= my_max_depth {
-                result.push((k.clone(), *v));
-            }
-        }
-    }
-    result
 }
 
 mod tests {
@@ -367,19 +335,14 @@ mod tests {
         let mut files = HashSet::new();
         files.insert((10, 20));
 
-        assert!(!should_ignore_file(true, &None, &mut files, Some((0, 0))));
+        assert!(!should_ignore_file(true, &mut files, Some((0, 0))));
 
         // New file is not known it will be inserted to the hashmp and should not be ignored
-        assert!(!should_ignore_file(
-            false,
-            &None,
-            &mut files,
-            Some((11, 12))
-        ));
+        assert!(!should_ignore_file(false, &mut files, Some((11, 12))));
         assert!(files.contains(&(11, 12)));
 
         // The same file will be ignored the second time
-        assert!(should_ignore_file(false, &None, &mut files, Some((11, 12))));
+        assert!(should_ignore_file(false, &mut files, Some((11, 12))));
     }
 
     #[test]
@@ -387,17 +350,8 @@ mod tests {
         let mut files = HashSet::new();
         files.insert((10, 20));
 
-        let mut devices = HashSet::new();
-        devices.insert(99);
-        let od = Some(devices);
-
-        // If we are looking at a different device (disk) and the device flag is set
-        // then apparent_size is irrelevant - we ignore files on other devices
-        assert!(should_ignore_file(false, &od, &mut files, Some((11, 12))));
-        assert!(should_ignore_file(true, &od, &mut files, Some((11, 12))));
-
         // We do not ignore files on the same device
-        assert!(!should_ignore_file(false, &od, &mut files, Some((2, 99))));
-        assert!(!should_ignore_file(true, &od, &mut files, Some((2, 99))));
+        assert!(!should_ignore_file(false, &mut files, Some((2, 99))));
+        assert!(!should_ignore_file(true, &mut files, Some((2, 99))));
     }
 }
