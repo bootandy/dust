@@ -63,13 +63,6 @@ fn main() {
                 .takes_value(true),
         )
         .arg(
-            Arg::with_name("threads")
-                .short("t")
-                .long("threads")
-                .help("Number of threads to spawn simultaneously")
-                .takes_value(true),
-        )
-        .arg(
             Arg::with_name("number_of_lines")
                 .short("n")
                 .long("number-of-lines")
