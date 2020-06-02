@@ -20,15 +20,20 @@ static DEFAULT_NUMBER_OF_LINES: usize = 30;
 
 #[cfg(windows)]
 fn init_color(no_color: bool) -> bool {
-    // Required for windows 10
-    // Fails to resolve for windows 8 so disable color
-    match ansi_term::enable_ansi_support() {
-        Ok(_) => no_color,
-        Err(_) => {
-            eprintln!(
-                "This version of Windows does not support ANSI colors, setting no_color flag"
-            );
-            true
+    // If no color is already set do not print a warning message
+    if no_color {
+        true
+    } else {
+        // Required for windows 10
+        // Fails to resolve for windows 8 so disable color
+        match ansi_term::enable_ansi_support() {
+            Ok(_) => no_color,
+            Err(_) => {
+                eprintln!(
+                    "This version of Windows does not support ANSI colors, setting no_color flag"
+                );
+                true
+            }
         }
     }
 }
