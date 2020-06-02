@@ -236,7 +236,7 @@ pub fn test_d_flag_works() {
 // Check against directories and files whos names are substrings of each other
 #[cfg_attr(target_os = "windows", ignore)]
 #[test]
-pub fn test_substring_of_names() {
+pub fn test_substring_of_names_and_long_names() {
     initialize();
     let mut cmd = Command::cargo_bin("dust").unwrap();
     let output = cmd.arg("-c").arg("/tmp/test_dir2").unwrap().stdout;
@@ -247,12 +247,13 @@ pub fn test_substring_of_names() {
 #[cfg(target_os = "linux")]
 fn no_substring_of_names_output() -> String {
     "
- 4.0K   ┌── dir_name_clash│                                    ████████ │  17%
- 4.0K   │ ┌── hello       │                             ░░░░░░░████████ │  17%
- 8.0K   ├─┴ dir_substring │                             ███████████████ │  33%
- 4.0K   │ ┌── hello       │                             ░░░░░░░████████ │  17%
- 8.0K   ├─┴ dir           │                             ███████████████ │  33%
-  24K ┌─┴ test_dir2       │████████████████████████████████████████████ │ 100% 
+   0B   ┌── long_dir_name_what_a_very_long_dir_name_what_happens_when_this..
+ 4.0K   ├── dir_name_clash
+ 4.0K   │ ┌── hello
+ 8.0K   ├─┴ dir_substring
+ 4.0K   │ ┌── hello
+ 8.0K   ├─┴ dir
+  24K ┌─┴ test_dir2
     "
     .trim()
     .into()
@@ -261,12 +262,13 @@ fn no_substring_of_names_output() -> String {
 #[cfg(target_os = "macos")]
 fn no_substring_of_names_output() -> String {
     "
- 4.0K     ┌── hello       │                             ███████████████ │  33%
- 4.0K   ┌─┴ dir_substring │                             ███████████████ │  33%
- 4.0K   ├── dir_name_clash│                             ███████████████ │  33%
- 4.0K   │ ┌── hello       │                             ███████████████ │  33%
- 4.0K   ├─┴ dir           │                             ███████████████ │  33%
-  12K ┌─┴ test_dir2       │████████████████████████████████████████████ │ 100% 
+   0B   ┌── long_dir_name_what_a_very_long_dir_name_what_happens_when_this..
+ 4.0K   │ ┌── hello
+ 4.0K   ├─┴ dir_substring
+ 4.0K   ├── dir_name_clash
+ 4.0K   │ ┌── hello
+ 4.0K   ├─┴ dir
+  12K ┌─┴ test_dir2
   "
     .trim()
     .into()
