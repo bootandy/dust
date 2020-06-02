@@ -32,6 +32,16 @@ pub fn test_basic_output() {
     assert!(output.contains("a_file "));
 }
 
+#[test]
+pub fn test_output_no_bars_means_no_excess_spaces() {
+    let mut cmd = Command::cargo_bin("dust").unwrap();
+    let output = cmd.arg("-b").arg("src/test_dir/").unwrap().stdout;
+    let output = str::from_utf8(&output).unwrap();
+    // If bars are not being shown we don't need to pad the output with spaces
+    assert!(output.contains("many"));
+    assert!(!output.contains("many    "));
+}
+
 // "windows" result data can vary by host (size seems to be variable by one byte); fix code vs test and re-enable
 #[cfg_attr(target_os = "windows", ignore)]
 #[test]
@@ -138,6 +148,8 @@ fn main_output_long_paths() -> String {
 #[cfg_attr(target_os = "windows", ignore)]
 #[test]
 pub fn test_apparent_size() {
+    copy_test_data("src/test_dir");
+
     let mut cmd = Command::cargo_bin("dust").unwrap();
     let assert = cmd.arg("-c").arg("-s").arg("src/test_dir").unwrap().stdout;
     let output = str::from_utf8(&assert).unwrap();
