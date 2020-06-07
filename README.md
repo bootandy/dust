@@ -14,7 +14,7 @@ Because I want an easy way to see where my disk is being used.
 
 ## Install
 
-#### Cargo
+#### Cargo <a href="https://repology.org/project/dust-du/versions"><img src="https://repology.org/badge/vertical-allrepos/dust-du.svg" alt="Packaging status" align="right"></a>
 
 * `cargo install du-dust`
 
