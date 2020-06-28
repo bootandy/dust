@@ -2,7 +2,7 @@ extern crate ansi_term;
 
 use crate::utils::Node;
 
-use self::ansi_term::Colour::Fixed;
+use self::ansi_term::Colour::Red;
 use lscolors::{LsColors, Style};
 
 use terminal_size::{terminal_size, Height, Width};
@@ -298,7 +298,7 @@ pub fn format_string(
     };
 
     let pretty_size = if is_biggest && display_data.colors_on {
-        format!("{}", Fixed(196).paint(pretty_size))
+        format!("{}", Red.paint(pretty_size))
     } else {
         pretty_size
     };
