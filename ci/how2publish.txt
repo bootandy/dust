@@ -4,3 +4,6 @@
 #   git push origin v0.4.5
 
 # cargo publish to put it in crates.io
+
+# To install locally [Do before pushing it]
+#cargo install --path .
