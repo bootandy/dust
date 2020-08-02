@@ -18,6 +18,10 @@ Because I want an easy way to see where my disk is being used.
 
 * `cargo install du-dust`
 
+#### Homebrew
+
+* `brew install dust`
+
 #### Download
 
 * Download Linux/Mac binary from [Releases](https://github.com/bootandy/dust/releases)
