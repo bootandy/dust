@@ -105,13 +105,14 @@ impl DrawData<'_> {
         self.indent.to_string() + chars
     }
 
+    // TODO: can we test this?
     fn generate_bar(&self, node: &Node, level: usize) -> String {
         let chars_in_bar = self.percent_bar.chars().count();
         let num_bars = chars_in_bar as f32 * self.display_data.percent_size(node);
         let mut num_not_my_bar = (chars_in_bar as i32) - num_bars as i32;
 
         let mut new_bar = "".to_string();
-        let idx = 5 - min(5, max(1, level));
+        let idx = 5 - min(4, max(1, level));
 
         for c in self.percent_bar.chars() {
             num_not_my_bar -= 1;
