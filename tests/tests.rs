@@ -318,3 +318,31 @@ pub fn test_with_bad_param() {
     let stderr = str::from_utf8(&stderr).unwrap();
     assert!(stderr.contains("Did not have permissions for all directories"));
 }
+
+#[test]
+pub fn test_counts() {
+    let mut cmd = Command::cargo_bin("dust").unwrap();
+    let stdout = cmd.arg("--filecount").arg("-c").arg("src").unwrap().stdout;
+    let stdout = str::from_utf8(&stdout).unwrap();
+    for line in stdout.lines() {
+        if line.contains("test_dir ") {
+            assert!(
+                line.starts_with(" 4 "),
+                "Correct test dir 1 counts :: '{}'",
+                line
+            )
+        } else if line.contains("test_dir2 ") {
+            assert!(
+                line.starts_with(" 6 "),
+                "Correct test dir 2 counts :: '{}'",
+                line
+            )
+        } else if line.contains("test_dir3 ") {
+            assert!(
+                line.starts_with(" 3 "),
+                "Correct test dir 3 counts :: '{}'",
+                line
+            )
+        }
+    }
+}

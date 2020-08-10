@@ -120,6 +120,12 @@ fn main() {
                 .long("no-percent-bars")
                 .help("No percent bars or percentages will be displayed"),
         )
+        .arg(
+            Arg::with_name("by_filecount")
+                .short("f")
+                .long("filecount")
+                .help("Directory 'size' is number of child files/dirs not disk size"),
+        )
         .arg(Arg::with_name("inputs").multiple(true))
         .get_matches();
 
@@ -157,6 +163,7 @@ fn main() {
         Some(i) => Some(i.map(PathBuf::from).collect()),
         None => None,
     };
+    let by_filecount = options.is_present("by_filecount");
 
     let simplified_dirs = simplify_dir_names(target_dirs);
     let (permissions, nodes) = get_dir_tree(
@@ -164,6 +171,7 @@ fn main() {
         &ignore_directories,
         use_apparent_size,
         limit_filesystem,
+        by_filecount,
         depth,
     );
     let sorted_data = sort(nodes);
@@ -181,6 +189,7 @@ fn main() {
         !options.is_present("reverse"),
         no_colors,
         options.is_present("no_bars"),
+        by_filecount,
         tree,
     );
 }
