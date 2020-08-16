@@ -31,9 +31,9 @@ fn copy_test_data(dir: &str) {
 
 pub fn initialize() {
     INIT.call_once(|| {
-        copy_test_data("src/test_dir");
-        copy_test_data("src/test_dir2");
-        copy_test_data("src/test_dir3");
+        copy_test_data("tests/test_dir");
+        copy_test_data("tests/test_dir2");
+        copy_test_data("tests/test_dir3");
     });
 }
 
@@ -41,7 +41,7 @@ pub fn initialize() {
 #[test]
 pub fn test_basic_output() {
     let mut cmd = Command::cargo_bin("dust").unwrap();
-    let output = cmd.arg("src/test_dir/").unwrap().stdout;
+    let output = cmd.arg("tests/test_dir/").unwrap().stdout;
     let output = str::from_utf8(&output).unwrap();
 
     assert!(output.contains(" ┌─┴ "));
@@ -57,7 +57,7 @@ pub fn test_basic_output() {
 #[test]
 pub fn test_output_no_bars_means_no_excess_spaces() {
     let mut cmd = Command::cargo_bin("dust").unwrap();
-    let output = cmd.arg("-b").arg("src/test_dir/").unwrap().stdout;
+    let output = cmd.arg("-b").arg("tests/test_dir/").unwrap().stdout;
     let output = str::from_utf8(&output).unwrap();
     // If bars are not being shown we don't need to pad the output with spaces
     assert!(output.contains("many"));
@@ -170,7 +170,7 @@ fn main_output_long_paths() -> String {
 pub fn test_apparent_size() {
     initialize();
     let mut cmd = Command::cargo_bin("dust").unwrap();
-    let assert = cmd.arg("-c").arg("-s").arg("src/test_dir").unwrap().stdout;
+    let assert = cmd.arg("-c").arg("-s").arg("/tmp/test_dir").unwrap().stdout;
     let output = str::from_utf8(&assert).unwrap();
     assert!(output.contains(&output_apparent_size()));
 }
@@ -206,9 +206,13 @@ fn output_apparent_size() -> String {
 
 #[test]
 pub fn test_reverse_flag() {
-    initialize();
     let mut cmd = Command::cargo_bin("dust").unwrap();
-    let output = cmd.arg("-c").arg("-r").arg("src/test_dir/").unwrap().stdout;
+    let output = cmd
+        .arg("-c")
+        .arg("-r")
+        .arg("tests/test_dir/")
+        .unwrap()
+        .stdout;
     let output = str::from_utf8(&output).unwrap();
 
     assert!(output.contains(" └─┬ test_dir "));
@@ -219,14 +223,13 @@ pub fn test_reverse_flag() {
 
 #[test]
 pub fn test_d_flag_works() {
-    initialize();
     // We should see the top level directory but not the sub dirs / files:
     let mut cmd = Command::cargo_bin("dust").unwrap();
     let output = cmd
         .arg("-d")
         .arg("1")
         .arg("-s")
-        .arg("src/test_dir/")
+        .arg("tests/test_dir/")
         .unwrap()
         .stdout;
     let output = str::from_utf8(&output).unwrap();
@@ -320,13 +323,12 @@ fn unicode_dir() -> String {
 // Check against directories and files whos names are substrings of each other
 #[test]
 pub fn test_ignore_dir() {
-    initialize();
     let mut cmd = Command::cargo_bin("dust").unwrap();
     let output = cmd
         .arg("-c")
         .arg("-X")
         .arg("dir_substring")
-        .arg("src/test_dir3")
+        .arg("tests/test_dir3")
         .unwrap()
         .stdout;
     let output = str::from_utf8(&output).unwrap();
