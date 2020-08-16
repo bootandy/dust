@@ -70,7 +70,6 @@ pub fn test_soft_sym_link() {
 
     let output = str::from_utf8(&output).unwrap();
 
-    println!("{:?}", output);
     assert!(output.contains(a.as_str()));
     assert!(output.contains(b.as_str()));
     assert!(output.contains(c.as_str()));
@@ -129,7 +128,6 @@ pub fn test_recursive_sym_link() {
     let output = cmd.arg("-p").arg("-c").arg("-r").arg(dir_s).unwrap().stdout;
 
     let output = str::from_utf8(&output).unwrap();
-    println!("{:?}", output);
     assert!(output.contains(a.as_str()));
     assert!(output.contains(b.as_str()));
 }
