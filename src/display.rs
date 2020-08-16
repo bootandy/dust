@@ -300,25 +300,39 @@ pub fn format_string(
     is_biggest: bool,
     display_data: &DisplayData,
 ) -> String {
-    let (percents, name_and_padding) = if percent_bar != "" {
+    let (percents, name_and_padding) = get_name_percent(node, indent, percent_bar, display_data);
+    let pretty_size = get_pretty_size(node, is_biggest, display_data);
+    let pretty_name = get_pretty_name(node, name_and_padding, display_data);
+    format!("{} {} {}{}", pretty_size, indent, pretty_name, percents)
+}
+
+fn get_name_percent(
+    node: &Node,
+    indent: &str,
+    bar_chart: &str,
+    display_data: &DisplayData,
+) -> (String, String) {
+    if bar_chart != "" {
         let percent_size_str = format!("{:.0}%", display_data.percent_size(node) * 100.0);
-        let percents = format!("│{} │ {:>4}", percent_bar, percent_size_str);
+        let percents = format!("│{} │ {:>4}", bar_chart, percent_size_str);
         let name_and_padding = pad_or_trim_filename(node, indent, display_data);
         (percents, name_and_padding)
     } else {
         let n = get_printable_name(&node.name, display_data.short_paths);
         let name = maybe_trim_filename(n, display_data);
         ("".into(), name)
-    };
-
+    }
+}
+fn get_pretty_size(node: &Node, is_biggest: bool, display_data: &DisplayData) -> String {
     let pretty_size = format!("{:>5}", human_readable_number(node.size));
-    let pretty_size = if is_biggest && display_data.colors_on {
+    if is_biggest && display_data.colors_on {
         format!("{}", Red.paint(pretty_size))
     } else {
         pretty_size
-    };
-
-    let pretty_name = if display_data.colors_on {
+    }
+}
+fn get_pretty_name(node: &Node, name_and_padding: String, display_data: &DisplayData) -> String {
+    if display_data.colors_on {
         let meta_result = fs::metadata(node.name.clone());
         let directory_color = display_data
             .ls_colors
@@ -329,10 +343,7 @@ pub fn format_string(
         format!("{}", ansi_style.paint(name_and_padding))
     } else {
         name_and_padding
-    };
-
-    let result = format!("{} {} {}{}", pretty_size, indent, pretty_name, percents);
-    result
+    }
 }
 
 fn human_readable_number(size: u64) -> String {
