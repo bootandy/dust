@@ -148,7 +148,6 @@ pub fn draw_it(
     if !permissions {
         eprintln!("Did not have permissions for all directories");
     }
-
     let longest_num = if by_filecount {
         human_readable_number(
             root_node.children.iter().map(|n| n.size).fold(0, max),
@@ -159,13 +158,13 @@ pub fn draw_it(
         7
     };
 
+    let terminal_width = get_width_of_terminal() as usize - (9 + longest_num);
+    let num_indent_chars = 3;
     let longest_string_length = root_node
         .children
         .iter()
-        .map(|c| find_longest_dir_name(&c, "   ", !use_full_path))
+        .map(|c| find_longest_dir_name(&c, num_indent_chars, terminal_width, !use_full_path))
         .fold(0, max);
-
-    let terminal_width = get_width_of_terminal() as usize - (9 + longest_num);
 
     let max_bar_length = if no_percents || longest_string_length >= terminal_width as usize {
         0
@@ -173,8 +172,7 @@ pub fn draw_it(
         terminal_width as usize - longest_string_length
     };
 
-    // handle usize error also add do not show fancy output option
-    let bar_text = repeat(BLOCKS[0]).take(max_bar_length).collect::<String>();
+    let first_size_bar = repeat(BLOCKS[0]).take(max_bar_length).collect::<String>();
 
     for c in get_children_from_node(root_node, is_reversed) {
         let display_data = DisplayData {
@@ -187,24 +185,24 @@ pub fn draw_it(
         };
         let draw_data = DrawData {
             indent: "".to_string(),
-            percent_bar: bar_text.clone(),
+            percent_bar: first_size_bar.clone(),
             display_data: &display_data,
         };
         display_node(c, &draw_data, longest_num, true, true, by_filecount);
     }
 }
 
-// We can probably pass depth instead of indent here.
-// It is ugly to feed in '  ' instead of the actual tree characters but we don't need them yet.
-fn find_longest_dir_name(node: &Node, indent: &str, long_paths: bool) -> usize {
+fn find_longest_dir_name(node: &Node, indent: usize, terminal: usize, long_paths: bool) -> usize {
     let printable_name = get_printable_name(&node.name, long_paths);
-    let longest = get_unicode_width_of_indent_and_name(indent, &printable_name);
+    let longest = min(
+        UnicodeWidthStr::width(&*printable_name) + 1 + indent,
+        terminal,
+    );
 
-    // each none root tree drawing is 2 chars
-    let full_indent: String = indent.to_string() + "  ";
+    // each none root tree drawing is 2 more chars, hence we increment indent by 2
     node.children
         .iter()
-        .map(|c| find_longest_dir_name(c, &*full_indent, long_paths))
+        .map(|c| find_longest_dir_name(c, indent + 2, terminal, long_paths))
         .fold(longest, max)
 }
 
@@ -218,7 +216,8 @@ fn display_node(
 ) {
     let indent2 = draw_data.get_new_indent(!node.children.is_empty(), is_last);
     // hacky way of working out how deep we are in the tree
-    let level = ((indent2.chars().count() - 1) / 2) - 1;
+    let indent = draw_data.get_new_indent(!node.children.is_empty(), is_last);
+    let level = ((indent.chars().count() - 1) / 2) - 1;
     let bar_text = draw_data.generate_bar(&node, level);
 
     let to_print = format_string(
@@ -236,7 +235,7 @@ fn display_node(
     }
 
     let dd = DrawData {
-        indent: clean_indentation_string(&*indent2),
+        indent: clean_indentation_string(&*indent),
         percent_bar: bar_text,
         display_data: draw_data.display_data,
     };
@@ -288,9 +287,30 @@ fn get_printable_name<P: AsRef<Path>>(dir_name: &P, long_paths: bool) -> String 
     printable_name.display().to_string()
 }
 
-fn get_unicode_width_of_indent_and_name(indent: &str, name: &str) -> usize {
+fn pad_or_trim_filename(node: &Node, indent: &str, display_data: &DisplayData) -> String {
+    let name = get_printable_name(&node.name, display_data.short_paths);
     let indent_and_name = format!("{} {}", indent, name);
-    UnicodeWidthStr::width(&*indent_and_name)
+    let width = UnicodeWidthStr::width(&*indent_and_name);
+
+    // Add spaces after the filename so we can draw the % used bar chart.
+    let name_and_padding = name
+        + &(repeat(" ")
+            .take(display_data.longest_string_length - width)
+            .collect::<String>());
+
+    maybe_trim_filename(name_and_padding, display_data)
+}
+
+fn maybe_trim_filename(name_in: String, display_data: &DisplayData) -> String {
+    if UnicodeWidthStr::width(&*name_in) > display_data.longest_string_length {
+        let name = name_in
+            .chars()
+            .take(display_data.longest_string_length - 2)
+            .collect::<String>();
+        name + ".."
+    } else {
+        name_in
+    }
 }
 
 pub fn format_string(
@@ -302,28 +322,22 @@ pub fn format_string(
     display_count: bool,
     display_data: &DisplayData,
 ) -> String {
+    let (percents, name_and_padding) = if percent_bar != "" {
+        let percent_size_str = format!("{:.0}%", display_data.percent_size(node) * 100.0);
+        let percents = format!("│{} │ {:>4}", percent_bar, percent_size_str);
+        let name_and_padding = pad_or_trim_filename(node, indent, display_data);
+        (percents, name_and_padding)
+    } else {
+        let n = get_printable_name(&node.name, display_data.short_paths);
+        let name = maybe_trim_filename(n, display_data);
+        ("".into(), name)
+    };
+
     let pretty_size = format!(
         "{0:>1$}",
         human_readable_number(node.size, display_count),
         longest_num,
     );
-
-    let percent_size_str = format!("{:.0}%", display_data.percent_size(node) * 100.0);
-
-    let name = get_printable_name(&node.name, display_data.short_paths);
-    let width = get_unicode_width_of_indent_and_name(indent, &name);
-
-    let (percents, name_and_padding) = if percent_bar != "" {
-        let percents = format!("│{} │ {:>4}", percent_bar, percent_size_str);
-
-        let name_and_padding = name
-            + &(repeat(" ")
-                .take(display_data.longest_string_length - width)
-                .collect::<String>());
-        (percents, name_and_padding)
-    } else {
-        ("".into(), name)
-    };
 
     let pretty_size = if is_biggest && display_data.colors_on {
         format!("{}", Red.paint(pretty_size))
@@ -344,7 +358,8 @@ pub fn format_string(
         name_and_padding
     };
 
-    format!("{} {} {}{}", pretty_size, indent, pretty_name, percents)
+    let result = format!("{} {} {}{}", pretty_size, indent, pretty_name, percents);
+    result
 }
 
 fn human_readable_number(size: u64, display_count: bool) -> String {
@@ -369,6 +384,63 @@ fn human_readable_number(size: u64, display_count: bool) -> String {
 mod tests {
     #[allow(unused_imports)]
     use super::*;
+    #[allow(unused_imports)]
+    use std::path::PathBuf;
+
+    #[cfg(test)]
+    fn get_fake_display_data(longest_string_length: usize) -> DisplayData {
+        DisplayData {
+            short_paths: true,
+            is_reversed: false,
+            colors_on: false,
+            base_size: 1,
+            longest_string_length: longest_string_length,
+            ls_colors: LsColors::from_env().unwrap_or_default(),
+        }
+    }
+
+    #[test]
+    fn test_format_str() {
+        let n = Node {
+            name: PathBuf::from("/short"),
+            size: 2_u64.pow(12), // This is 4.0K
+            children: vec![],
+        };
+        let indent = "┌─┴";
+        let percent_bar = "";
+        let is_biggest = false;
+
+        let s = format_string(
+            &n,
+            5,
+            indent,
+            percent_bar,
+            is_biggest,
+            false,
+            &get_fake_display_data(6),
+        );
+        assert_eq!(s, " 4.0K ┌─┴ short");
+    }
+
+    #[test]
+    fn test_format_str_long_name() {
+        let name = "very_long_name_longer_than_the_eighty_character_limit_very_long_name_this_bit_will_truncate";
+        let n = Node {
+            name: PathBuf::from(name),
+            size: 2_u64.pow(12), // This is 4.0K
+            children: vec![],
+        };
+        let indent = "┌─┴";
+        let percent_bar = "";
+        let is_biggest = false;
+
+        let dd = get_fake_display_data(64);
+        let s = format_string(&n, 5, indent, percent_bar, is_biggest, false, &dd);
+        assert_eq!(
+            s,
+            " 4.0K ┌─┴ very_long_name_longer_than_the_eighty_character_limit_very_lon.."
+        );
+    }
 
     #[test]
     fn test_human_readable_number() {
