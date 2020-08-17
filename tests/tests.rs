@@ -72,8 +72,8 @@ pub fn test_main_basic() {
     initialize();
     let mut cmd = Command::cargo_bin("dust").unwrap();
     let assert = cmd.arg("-c").arg("/tmp/test_dir/").unwrap().stdout;
-    let output = str::from_utf8(&assert).unwrap();
-    assert!(output.contains(&main_output()));
+    let output = str::from_utf8(&assert).unwrap().trim();
+    assert_eq!(output, main_output());
 }
 
 #[cfg_attr(target_os = "windows", ignore)]
@@ -88,8 +88,8 @@ pub fn test_main_multi_arg() {
         .arg("/tmp/test_dir")
         .unwrap()
         .stdout;
-    let output = str::from_utf8(&assert).unwrap();
-    assert!(output.contains(&main_output()));
+    let output = str::from_utf8(&assert).unwrap().trim();
+    assert_eq!(output, main_output());
 }
 
 #[cfg(target_os = "macos")]
@@ -171,8 +171,8 @@ pub fn test_apparent_size() {
     initialize();
     let mut cmd = Command::cargo_bin("dust").unwrap();
     let assert = cmd.arg("-c").arg("-s").arg("src/test_dir").unwrap().stdout;
-    let output = str::from_utf8(&assert).unwrap();
-    assert!(output.contains(&output_apparent_size()));
+    let output = str::from_utf8(&assert).unwrap().trim();
+    assert_eq!(output, output_apparent_size());
 }
 
 #[cfg(target_os = "linux")]
@@ -240,8 +240,8 @@ pub fn test_substring_of_names_and_long_names() {
     initialize();
     let mut cmd = Command::cargo_bin("dust").unwrap();
     let output = cmd.arg("-c").arg("/tmp/test_dir2").unwrap().stdout;
-    let output = str::from_utf8(&output).unwrap();
-    assert!(output.contains(&no_substring_of_names_output()));
+    let output = str::from_utf8(&output).unwrap().trim();
+    assert_eq!(output, no_substring_of_names_output());
 }
 
 #[cfg(target_os = "linux")]
@@ -285,8 +285,8 @@ pub fn test_unicode_directories() {
     initialize();
     let mut cmd = Command::cargo_bin("dust").unwrap();
     let output = cmd.arg("-c").arg("/tmp/test_dir3").unwrap().stdout;
-    let output = str::from_utf8(&output).unwrap();
-    assert!(output.contains(&unicode_dir()));
+    let output = str::from_utf8(&output).unwrap().trim();
+    assert_eq!(output, unicode_dir());
 }
 
 #[cfg(target_os = "linux")]
