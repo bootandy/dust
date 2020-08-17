@@ -148,17 +148,18 @@ pub fn draw_it(
     if !permissions {
         eprintln!("Did not have permissions for all directories");
     }
-    let longest_num = if by_filecount {
-        human_readable_number(
+    let (longest_num, term_len) = if by_filecount {
+        let n = human_readable_number(
             root_node.children.iter().map(|n| n.size).fold(0, max),
             by_filecount,
         )
-        .len()
+        .len();
+        (n, n)
     } else {
-        7
+        (5, 7)
     };
 
-    let terminal_width = get_width_of_terminal() as usize - (9 + longest_num);
+    let terminal_width = get_width_of_terminal() as usize - (9 + term_len);
     let num_indent_chars = 3;
     let longest_string_length = root_node
         .children
