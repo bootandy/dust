@@ -156,7 +156,7 @@ pub fn draw_it(
         )
         .len()
     } else {
-        5
+        7
     };
 
     let longest_string_length = root_node
