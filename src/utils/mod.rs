@@ -109,6 +109,7 @@ pub fn get_dir_tree<P: AsRef<Path>>(
     ignore_directories: &Option<Vec<PathBuf>>,
     apparent_size: bool,
     limit_filesystem: bool,
+    by_filecount: bool,
     max_depth: Option<usize>,
 ) -> (bool, HashMap<PathBuf, u64>) {
     let (tx, rx) = channel::bounded::<PathData>(1000);
@@ -144,7 +145,8 @@ pub fn get_dir_tree<P: AsRef<Path>>(
 
                     match maybe_size_and_inode {
                         Some(data) => {
-                            let (size, inode_device) = data;
+                            let (size, inode_device) =
+                                if by_filecount { (1, data.1) } else { data };
                             txc.send((p.into_path(), size, inode_device)).unwrap();
                         }
                         None => {

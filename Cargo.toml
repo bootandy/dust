@@ -30,6 +30,8 @@ unicode-width = "0.1"
 ignore="0.4"
 crossbeam-channel = "0.4"
 walkdir="2.3"
+# todo use num_format instead
+thousands="" 
 
 [target.'cfg(windows)'.dependencies]
 winapi-util = "0.1"
