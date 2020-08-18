@@ -148,7 +148,7 @@ pub fn draw_it(
     if !permissions {
         eprintln!("Did not have permissions for all directories");
     }
-    let terminal_width = (get_width_of_terminal() - 16) as usize;
+    let terminal_width = (get_width_of_terminal() - 14) as usize;
     let num_indent_chars = 3;
     let longest_string_length = root_node
         .children
