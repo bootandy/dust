@@ -14,6 +14,7 @@ use std::cmp::min;
 use std::fs;
 use std::iter::repeat;
 use std::path::Path;
+use thousands::Separable;
 
 static UNITS: [char; 4] = ['T', 'G', 'M', 'K'];
 static BLOCKS: [char; 5] = ['█', '▓', '▒', '░', ' '];
@@ -23,6 +24,8 @@ pub struct DisplayData {
     pub short_paths: bool,
     pub is_reversed: bool,
     pub colors_on: bool,
+    pub by_filecount: bool,
+    pub num_chars_needed_on_left_most: usize,
     pub base_size: u64,
     pub longest_string_length: usize,
     pub ls_colors: LsColors,
@@ -143,12 +146,20 @@ pub fn draw_it(
     is_reversed: bool,
     no_colors: bool,
     no_percents: bool,
+    by_filecount: bool,
     root_node: Node,
 ) {
     if !permissions {
         eprintln!("Did not have permissions for all directories");
     }
-    let terminal_width = (get_width_of_terminal() - 14) as usize;
+    let num_chars_needed_on_left_most = if by_filecount {
+        let max_size = root_node.children.iter().map(|n| n.size).fold(0, max);
+        max_size.separate_with_commas().chars().count()
+    } else {
+        5 // Under normal usage we need 5 chars to display the size of a directory
+    };
+
+    let terminal_width = get_width_of_terminal() as usize - 9 - num_chars_needed_on_left_most;
     let num_indent_chars = 3;
     let longest_string_length = root_node
         .children
@@ -169,6 +180,8 @@ pub fn draw_it(
             short_paths: !use_full_path,
             is_reversed,
             colors_on: !no_colors,
+            by_filecount,
+            num_chars_needed_on_left_most,
             base_size: c.size,
             longest_string_length,
             ls_colors: LsColors::from_env().unwrap_or_default(),
@@ -323,12 +336,26 @@ fn get_name_percent(
         ("".into(), name)
     }
 }
+
 fn get_pretty_size(node: &Node, is_biggest: bool, display_data: &DisplayData) -> String {
-    let pretty_size = format!("{:>5}", human_readable_number(node.size));
-    if is_biggest && display_data.colors_on {
-        format!("{}", Red.paint(pretty_size))
+    if display_data.by_filecount {
+        let size_as_str = node.size.separate_with_commas();
+        let spaces_to_add =
+            display_data.num_chars_needed_on_left_most - size_as_str.chars().count();
+        let first_size_bar = size_as_str + &*repeat(' ').take(spaces_to_add).collect::<String>();
+
+        if is_biggest && display_data.colors_on {
+            format!("{}", Red.paint(first_size_bar))
+        } else {
+            first_size_bar
+        }
     } else {
-        pretty_size
+        let pretty_size = format!("{:>5}", human_readable_number(node.size));
+        if is_biggest && display_data.colors_on {
+            format!("{}", Red.paint(pretty_size))
+        } else {
+            pretty_size
+        }
     }
 }
 fn get_pretty_name(node: &Node, name_and_padding: String, display_data: &DisplayData) -> String {
@@ -372,6 +399,8 @@ mod tests {
             short_paths: true,
             is_reversed: false,
             colors_on: false,
+            by_filecount: false,
+            num_chars_needed_on_left_most: 5,
             base_size: 1,
             longest_string_length: longest_string_length,
             ls_colors: LsColors::from_env().unwrap_or_default(),
