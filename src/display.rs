@@ -338,26 +338,22 @@ fn get_name_percent(
 }
 
 fn get_pretty_size(node: &Node, is_biggest: bool, display_data: &DisplayData) -> String {
-    if display_data.by_filecount {
+    let output = if display_data.by_filecount {
         let size_as_str = node.size.separate_with_commas();
         let spaces_to_add =
             display_data.num_chars_needed_on_left_most - size_as_str.chars().count();
-        let first_size_bar = size_as_str + &*repeat(' ').take(spaces_to_add).collect::<String>();
-
-        if is_biggest && display_data.colors_on {
-            format!("{}", Red.paint(first_size_bar))
-        } else {
-            first_size_bar
-        }
+        size_as_str + &*repeat(' ').take(spaces_to_add).collect::<String>()
     } else {
-        let pretty_size = format!("{:>5}", human_readable_number(node.size));
-        if is_biggest && display_data.colors_on {
-            format!("{}", Red.paint(pretty_size))
-        } else {
-            pretty_size
-        }
+        format!("{:>5}", human_readable_number(node.size))
+    };
+
+    if is_biggest && display_data.colors_on {
+        format!("{}", Red.paint(output))
+    } else {
+        output
     }
 }
+
 fn get_pretty_name(node: &Node, name_and_padding: String, display_data: &DisplayData) -> String {
     if display_data.colors_on {
         let meta_result = fs::metadata(node.name.clone());
