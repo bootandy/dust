@@ -110,6 +110,7 @@ pub fn get_dir_tree<P: AsRef<Path>>(
     apparent_size: bool,
     limit_filesystem: bool,
     max_depth: Option<usize>,
+    quantity: bool,
 ) -> (bool, HashMap<PathBuf, u64>) {
     let (tx, rx) = channel::bounded::<PathData>(1000);
 
@@ -145,6 +146,7 @@ pub fn get_dir_tree<P: AsRef<Path>>(
                     match maybe_size_and_inode {
                         Some(data) => {
                             let (size, inode_device) = data;
+                            let size = if quantity {1} else {size};
                             txc.send((p.into_path(), size, inode_device)).unwrap();
                         }
                         None => {

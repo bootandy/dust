@@ -120,6 +120,12 @@ fn main() {
                 .long("no-percent-bars")
                 .help("No percent bars or percentages will be displayed"),
         )
+        .arg(
+            Arg::with_name("quantity")
+                .short("q")
+                .long("quantity")
+                .help("Measure directories by the quantity of the files, ignoring their size"),
+        )
         .arg(Arg::with_name("inputs").multiple(true))
         .get_matches();
 
@@ -151,6 +157,7 @@ fn main() {
     }
 
     let no_colors = init_color(options.is_present("no_colors"));
+    let quantity = options.is_present("quantity");
     let use_apparent_size = options.is_present("display_apparent_size");
     let limit_filesystem = options.is_present("limit_filesystem");
     let ignore_directories = match options.values_of("ignore_directory") {
@@ -165,6 +172,7 @@ fn main() {
         use_apparent_size,
         limit_filesystem,
         depth,
+        quantity,
     );
     let sorted_data = sort(nodes);
     let biggest_ones = {
