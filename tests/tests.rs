@@ -330,7 +330,7 @@ pub fn test_ignore_dir() {
         .arg("-c")
         .arg("-X")
         .arg("dir_substring")
-        .arg("tests/test_dir3")
+        .arg("tests/test_dir2")
         .unwrap()
         .stdout;
     let output = str::from_utf8(&output).unwrap();
