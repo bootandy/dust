@@ -126,6 +126,12 @@ fn main() {
                 .long("filecount")
                 .help("Directory 'size' is number of child files/dirs not disk size"),
         )
+        .arg(
+            Arg::with_name("ignore_hidden")
+                .short("i") // Do not use 'h' this is used by 'help'
+                .long("ignore_hidden")
+                .help("Obey .git_ignore rules & Do not display hidden files"),
+        )
 
         .arg(Arg::with_name("inputs").multiple(true))
         .get_matches();
@@ -165,6 +171,7 @@ fn main() {
         None => None,
     };
     let by_filecount = options.is_present("by_filecount");
+    let show_hidden = !options.is_present("ignore_hidden");
 
     let simplified_dirs = simplify_dir_names(target_dirs);
     let (permissions, nodes) = get_dir_tree(
@@ -173,6 +180,7 @@ fn main() {
         use_apparent_size,
         limit_filesystem,
         by_filecount,
+        show_hidden,
         depth,
     );
     let sorted_data = sort(nodes);
