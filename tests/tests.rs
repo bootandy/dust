@@ -344,3 +344,27 @@ pub fn test_with_bad_param() {
     let stderr = str::from_utf8(&stderr).unwrap();
     assert!(stderr.contains("Did not have permissions for all directories"));
 }
+
+#[test]
+pub fn test_hidden_flag() {
+    // Check we can see the hidden file normally
+    let mut cmd = Command::cargo_bin("dust").unwrap();
+    let output = cmd
+        .arg("-c")
+        .arg("tests/test_dir_hidden_entries")
+        .unwrap()
+        .stdout;
+    let output = str::from_utf8(&output).unwrap();
+    assert!(output.contains(".hidden_file"));
+
+    // Check that adding the '-h' flag causes us to not see hidden files
+    let mut cmd = Command::cargo_bin("dust").unwrap();
+    let output = cmd
+        .arg("-c")
+        .arg("-h")
+        .arg("tests/test_dir_hidden_entries")
+        .unwrap()
+        .stdout;
+    let output = str::from_utf8(&output).unwrap();
+    assert!(!output.contains(".hidden_file"));
+}
