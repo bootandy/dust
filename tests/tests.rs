@@ -33,7 +33,7 @@ pub fn initialize() {
     INIT.call_once(|| {
         copy_test_data("tests/test_dir");
         copy_test_data("tests/test_dir2");
-        copy_test_data("tests/test_dir3");
+        copy_test_data("tests/test_dir_unicode");
     });
 }
 
@@ -289,7 +289,7 @@ fn no_substring_of_names_output() -> String {
 pub fn test_unicode_directories() {
     initialize();
     let mut cmd = Command::cargo_bin("dust").unwrap();
-    let output = cmd.arg("-c").arg("/tmp/test_dir3").unwrap().stdout;
+    let output = cmd.arg("-c").arg("/tmp/test_dir_unicode").unwrap().stdout;
     let output = str::from_utf8(&output).unwrap();
     assert!(output.contains(&unicode_dir()));
 }
@@ -300,7 +300,7 @@ fn unicode_dir() -> String {
     "
    0B   ┌── 👩.unicode                │                                 █ │   0%
    0B   ├── ラウトは難しいです！.japan│                                 █ │   0%
- 4.0K ┌─┴ test_dir3                   │██████████████████████████████████ │ 100%
+ 4.0K ┌─┴ test_dir_unicode            │██████████████████████████████████ │ 100%
     "
     .trim()
     .into()
@@ -311,7 +311,7 @@ fn unicode_dir() -> String {
     "
    0B   ┌── 👩.unicode                │                                 █ │   0%
    0B   ├── ラウトは難しいです！.japan│                                 █ │   0%
-   0B ┌─┴ test_dir3                   │                                 █ │   0%
+   0B ┌─┴ test_dir_unicode            │                                 █ │   0%
     "
     .trim()
     .into()
