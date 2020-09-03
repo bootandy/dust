@@ -82,7 +82,6 @@ fn prepare_walk_dir_builder<P: AsRef<Path>>(
     top_level_names: &HashSet<P>,
     limit_filesystem: bool,
     show_hidden: bool,
-    max_depth: Option<usize>,
 ) -> WalkBuilder {
     let mut it = top_level_names.iter();
     let mut builder = WalkBuilder::new(it.next().unwrap());
@@ -99,8 +98,6 @@ fn prepare_walk_dir_builder<P: AsRef<Path>>(
         builder.same_file_system(true);
     }
 
-    builder.max_depth(max_depth);
-
     for b in it {
         builder.add(b);
     }
@@ -114,7 +111,6 @@ pub fn get_dir_tree<P: AsRef<Path>>(
     limit_filesystem: bool,
     by_filecount: bool,
     show_hidden: bool,
-    max_depth: Option<usize>,
 ) -> (bool, HashMap<PathBuf, u64>) {
     let (tx, rx) = channel::bounded::<PathData>(1000);
 
@@ -123,8 +119,7 @@ pub fn get_dir_tree<P: AsRef<Path>>(
     let t2 = HashSet::from_iter(top_level_names.iter().map(|p| p.as_ref().to_path_buf()));
 
     let t = create_reader_thread(rx, t2, apparent_size);
-    let walk_dir_builder =
-        prepare_walk_dir_builder(top_level_names, limit_filesystem, show_hidden, max_depth);
+    let walk_dir_builder = prepare_walk_dir_builder(top_level_names, limit_filesystem, show_hidden);
 
     walk_dir_builder.build_parallel().run(|| {
         let txc = tx.clone();
