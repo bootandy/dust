@@ -65,6 +65,23 @@ pub fn test_d_flag_works() {
     assert!(!output.contains("hello_file"));
 }
 
+#[test]
+pub fn test_d_flag_works_and_still_recurses_down() {
+    // We had a bug where running with '-d 1' would stop at the first directory and the code
+    // would fail to recurse down
+    let mut cmd = Command::cargo_bin("dust").unwrap();
+    let output = cmd
+        .arg("-d")
+        .arg("1")
+        .arg("-f")
+        .arg("-c")
+        .arg("tests/test_dir2/")
+        .unwrap()
+        .stdout;
+    let output = str::from_utf8(&output).unwrap();
+    assert!(output.contains("7 ┌─┴ test_dir2"));
+}
+
 // Check against directories and files whos names are substrings of each other
 #[test]
 pub fn test_ignore_dir() {
