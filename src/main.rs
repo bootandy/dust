@@ -181,7 +181,6 @@ fn main() {
         limit_filesystem,
         by_filecount,
         show_hidden,
-        depth,
     );
     let sorted_data = sort(nodes);
     let biggest_ones = {
