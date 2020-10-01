@@ -22,6 +22,10 @@ Because I want an easy way to see where my disk is being used.
 
 * `brew install dust`
 
+#### 🍺 Homebrew (Linux)
+
+* `brew tap tgotwig/linux-dust && brew install dust`
+
 #### Download
 
 * Download Linux/Mac binary from [Releases](https://github.com/bootandy/dust/releases)
