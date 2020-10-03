@@ -9,6 +9,8 @@ use terminal_size::{terminal_size, Height, Width};
 
 use unicode_width::UnicodeWidthStr;
 
+use stfu8::encode_u8;
+
 use std::cmp::max;
 use std::cmp::min;
 use std::fs;
@@ -277,7 +279,7 @@ fn get_printable_name<P: AsRef<Path>>(dir_name: &P, long_paths: bool) -> String 
             dir_name
         }
     };
-    printable_name.display().to_string()
+    encode_u8(printable_name.display().to_string().as_bytes())
 }
 
 fn pad_or_trim_filename(node: &Node, indent: &str, display_data: &DisplayData) -> String {

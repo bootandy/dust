@@ -31,6 +31,7 @@ ignore="0.4"
 crossbeam-channel = "0.4"
 walkdir="2.3"
 thousands = "0.2"
+stfu8 = "0.2"
 
 [target.'cfg(windows)'.dependencies]
 winapi-util = "0.1"
