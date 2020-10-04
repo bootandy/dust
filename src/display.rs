@@ -398,7 +398,7 @@ mod tests {
             by_filecount: false,
             num_chars_needed_on_left_most: 5,
             base_size: 1,
-            longest_string_length: longest_string_length,
+            longest_string_length,
             ls_colors: LsColors::from_env().unwrap_or_default(),
         }
     }
