@@ -89,7 +89,7 @@ impl DisplayData {
 
 fn get_children_from_node(node: Node, is_reversed: bool) -> impl Iterator<Item = Node> {
     if is_reversed {
-        let n: Vec<Node> = node.children.into_iter().rev().map(|a| a).collect();
+        let n: Vec<Node> = node.children.into_iter().rev().collect();
         n.into_iter()
     } else {
         node.children.into_iter()
