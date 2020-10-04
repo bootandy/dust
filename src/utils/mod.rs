@@ -46,6 +46,12 @@ impl PartialEq for Node {
     }
 }
 
+impl Node {
+    pub fn num_siblings(&self) -> u64 {
+        self.children.len() as u64
+    }
+}
+
 pub fn is_a_parent_of<P: AsRef<Path>>(parent: P, child: P) -> bool {
     let parent = parent.as_ref();
     let child = child.as_ref();

@@ -232,7 +232,8 @@ fn display_node(node: Node, draw_data: &DrawData, is_biggest: bool, is_last: boo
         percent_bar: bar_text,
         display_data: draw_data.display_data,
     };
-    let num_siblings = node.children.len() as u64;
+
+    let num_siblings = node.num_siblings();
 
     for (count, c) in get_children_from_node(node, draw_data.display_data.is_reversed).enumerate() {
         let is_biggest = dd.display_data.is_biggest(count, num_siblings);
@@ -398,7 +399,7 @@ mod tests {
             by_filecount: false,
             num_chars_needed_on_left_most: 5,
             base_size: 1,
-            longest_string_length,
+            longest_string_length: longest_string_length,
             ls_colors: LsColors::from_env().unwrap_or_default(),
         }
     }
