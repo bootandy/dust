@@ -198,6 +198,10 @@ fn display_node(node: Node, draw_data: &DrawData, is_biggest: bool, is_last: boo
         draw_data.display_data,
     );
 
+    if !draw_data.display_data.is_reversed {
+        println!("{}", to_print)
+    }
+
     let dd = DrawData {
         indent: clean_indentation_string(&*indent),
         percent_bar: bar_text,
@@ -215,7 +219,9 @@ fn display_node(node: Node, draw_data: &DrawData, is_biggest: bool, is_last: boo
         display_node(c, &dd, is_biggest, was_i_last);
     }
 
-    println!("{}", to_print)
+    if draw_data.display_data.is_reversed {
+        println!("{}", to_print)
+    }
 }
 
 fn clean_indentation_string(s: &str) -> String {
