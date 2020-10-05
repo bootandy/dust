@@ -32,32 +32,16 @@ pub struct DisplayData {
 }
 
 impl DisplayData {
-    #[allow(clippy::collapsible_if)]
     fn get_tree_chars(&self, was_i_last: bool, has_children: bool) -> &'static str {
-        if self.is_reversed {
-            if was_i_last {
-                if has_children {
-                    "┌─┴"
-                } else {
-                    "┌──"
-                }
-            } else if has_children {
-                "├─┴"
-            } else {
-                "├──"
-            }
-        } else {
-            if was_i_last {
-                if has_children {
-                    "└─┬"
-                } else {
-                    "└──"
-                }
-            } else if has_children {
-                "├─┬"
-            } else {
-                "├──"
-            }
+        match (self.is_reversed, was_i_last, has_children) {
+            (true, true, true) => "┌─┴",
+            (true, true, false) => "┌──",
+            (true, false, true) => "├─┴",
+            (true, _, _) => "├──",
+            (false, true, true) => "└─┬",
+            (false, true, false) => "└──",
+            (false, false, true) => "├─┬",
+            (false, false, false) => "├──",
         }
     }
 
