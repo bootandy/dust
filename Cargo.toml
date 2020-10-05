@@ -21,7 +21,7 @@ name = "dust"
 path = "src/main.rs"
 
 [dependencies]
-ansi_term = "=0.12"
+ansi_term = "0.12"
 clap = "=2.33"
 lscolors = "0.7"
 num_cpus = "1"
