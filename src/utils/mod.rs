@@ -17,7 +17,7 @@ use self::platform::*;
 
 type PathData = (PathBuf, u64, Option<(u64, u64)>);
 
-#[derive(Debug, Default, Eq)]
+#[derive(Debug, Default, Eq, Clone)]
 pub struct Node {
     pub name: PathBuf,
     pub size: u64,
@@ -49,6 +49,16 @@ impl PartialEq for Node {
 impl Node {
     pub fn num_siblings(&self) -> u64 {
         self.children.len() as u64
+    }
+
+    pub fn get_children_from_node(&self, is_reversed: bool) -> impl Iterator<Item = Node> {
+        let children = self.children.clone();
+        if is_reversed {
+            let children: Vec<Node> = children.into_iter().rev().collect();
+            return children.into_iter();
+        }
+
+        children.into_iter()
     }
 }
 

@@ -71,15 +71,6 @@ impl DisplayData {
     }
 }
 
-fn get_children_from_node(node: Node, is_reversed: bool) -> impl Iterator<Item = Node> {
-    if is_reversed {
-        let n: Vec<Node> = node.children.into_iter().rev().collect();
-        n.into_iter()
-    } else {
-        node.children.into_iter()
-    }
-}
-
 struct DrawData<'a> {
     indent: String,
     percent_bar: String,
@@ -159,7 +150,7 @@ pub fn draw_it(
 
     let first_size_bar = repeat(BLOCKS[0]).take(max_bar_length).collect::<String>();
 
-    for c in get_children_from_node(root_node, is_reversed) {
+    for c in root_node.get_children_from_node(is_reversed) {
         let display_data = DisplayData {
             short_paths: !use_full_path,
             is_reversed,
@@ -215,7 +206,10 @@ fn display_node(node: Node, draw_data: &DrawData, is_biggest: bool, is_last: boo
 
     let num_siblings = node.num_siblings();
 
-    for (count, c) in get_children_from_node(node, draw_data.display_data.is_reversed).enumerate() {
+    for (count, c) in node
+        .get_children_from_node(draw_data.display_data.is_reversed)
+        .enumerate()
+    {
         let is_biggest = dd.display_data.is_biggest(count, num_siblings);
         let was_i_last = dd.display_data.is_last(count, num_siblings);
         display_node(c, &dd, is_biggest, was_i_last);
