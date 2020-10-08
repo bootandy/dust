@@ -185,7 +185,7 @@ fn main() {
     let sorted_data = sort(nodes);
     let biggest_ones = {
         match depth {
-            None => find_big_ones(sorted_data, number_of_lines + simplified_dirs.len()),
+            None => find_big_ones(sorted_data, number_of_lines),
             Some(_) => sorted_data,
         }
     };
