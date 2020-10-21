@@ -34,32 +34,16 @@ pub struct DisplayData {
 }
 
 impl DisplayData {
-    #[allow(clippy::collapsible_if)]
     fn get_tree_chars(&self, was_i_last: bool, has_children: bool) -> &'static str {
-        if self.is_reversed {
-            if was_i_last {
-                if has_children {
-                    "┌─┴"
-                } else {
-                    "┌──"
-                }
-            } else if has_children {
-                "├─┴"
-            } else {
-                "├──"
-            }
-        } else {
-            if was_i_last {
-                if has_children {
-                    "└─┬"
-                } else {
-                    "└──"
-                }
-            } else if has_children {
-                "├─┬"
-            } else {
-                "├──"
-            }
+        match (self.is_reversed, was_i_last, has_children) {
+            (true, true, true) => "┌─┴",
+            (true, true, false) => "┌──",
+            (true, false, true) => "├─┴",
+            (true, _, _) => "├──",
+            (false, true, true) => "└─┬",
+            (false, true, false) => "└──",
+            (false, false, true) => "├─┬",
+            (false, false, false) => "├──",
         }
     }
 
@@ -86,15 +70,6 @@ impl DisplayData {
         } else {
             0.0
         }
-    }
-}
-
-fn get_children_from_node(node: Node, is_reversed: bool) -> impl Iterator<Item = Node> {
-    if is_reversed {
-        let n: Vec<Node> = node.children.into_iter().rev().map(|a| a).collect();
-        n.into_iter()
-    } else {
-        node.children.into_iter()
     }
 }
 
@@ -177,7 +152,7 @@ pub fn draw_it(
 
     let first_size_bar = repeat(BLOCKS[0]).take(max_bar_length).collect::<String>();
 
-    for c in get_children_from_node(root_node, is_reversed) {
+    for c in root_node.get_children_from_node(is_reversed) {
         let display_data = DisplayData {
             short_paths: !use_full_path,
             is_reversed,
@@ -234,9 +209,13 @@ fn display_node(node: Node, draw_data: &DrawData, is_biggest: bool, is_last: boo
         percent_bar: bar_text,
         display_data: draw_data.display_data,
     };
-    let num_siblings = node.children.len() as u64;
 
-    for (count, c) in get_children_from_node(node, draw_data.display_data.is_reversed).enumerate() {
+    let num_siblings = node.num_siblings();
+
+    for (count, c) in node
+        .get_children_from_node(draw_data.display_data.is_reversed)
+        .enumerate()
+    {
         let is_biggest = dd.display_data.is_biggest(count, num_siblings);
         let was_i_last = dd.display_data.is_last(count, num_siblings);
         display_node(c, &dd, is_biggest, was_i_last);
@@ -400,7 +379,7 @@ mod tests {
             by_filecount: false,
             num_chars_needed_on_left_most: 5,
             base_size: 1,
-            longest_string_length: longest_string_length,
+            longest_string_length,
             ls_colors: LsColors::from_env().unwrap_or_default(),
         }
     }
