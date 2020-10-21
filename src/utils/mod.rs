@@ -52,13 +52,12 @@ impl Node {
     }
 
     pub fn get_children_from_node(&self, is_reversed: bool) -> impl Iterator<Item = Node> {
-        let children = self.children.clone();
         if is_reversed {
-            let children: Vec<Node> = children.into_iter().rev().collect();
-            return children.into_iter();
+            let children: Vec<Node> = self.children.clone().into_iter().rev().collect();
+            children.into_iter()
+        } else {
+            self.children.clone().into_iter()
         }
-
-        children.into_iter()
     }
 }
 
@@ -147,9 +146,8 @@ pub fn get_dir_tree<P: AsRef<Path>>(
                         let path = p.path();
                         let parts = path.components().collect::<Vec<std::path::Component>>();
                         for d in dirs {
-                            let seq = d.components().collect::<Vec<std::path::Component>>();
                             if parts
-                                .windows(seq.len())
+                                .windows(d.components().count())
                                 .any(|window| window.iter().collect::<PathBuf>() == *d)
                             {
                                 return WalkState::Continue;

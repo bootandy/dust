@@ -39,7 +39,7 @@ impl DisplayData {
             (true, true, true) => "┌─┴",
             (true, true, false) => "┌──",
             (true, false, true) => "├─┴",
-            (true, _, _) => "├──",
+            (true, false, false) => "├──",
             (false, true, true) => "└─┬",
             (false, true, false) => "└──",
             (false, false, true) => "├─┬",
