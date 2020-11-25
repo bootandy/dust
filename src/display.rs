@@ -5,8 +5,6 @@ use crate::utils::{Errors, Node};
 use self::ansi_term::Colour::Red;
 use lscolors::{LsColors, Style};
 
-use terminal_size::{terminal_size, Height, Width};
-
 use unicode_width::UnicodeWidthStr;
 
 use stfu8::encode_u8;
@@ -20,7 +18,6 @@ use thousands::Separable;
 
 static UNITS: [char; 4] = ['T', 'G', 'M', 'K'];
 static BLOCKS: [char; 5] = ['█', '▓', '▒', '░', ' '];
-static DEFAULT_TERMINAL_WIDTH: u16 = 80;
 
 pub struct DisplayData {
     pub short_paths: bool,
@@ -108,21 +105,14 @@ impl DrawData<'_> {
     }
 }
 
-fn get_width_of_terminal() -> u16 {
-    // Windows CI runners detect a very low terminal width
-    if let Some((Width(w), Height(_h))) = terminal_size() {
-        max(w, DEFAULT_TERMINAL_WIDTH)
-    } else {
-        DEFAULT_TERMINAL_WIDTH
-    }
-}
-
+#[allow(clippy::too_many_arguments)]
 pub fn draw_it(
     errors: Errors,
     use_full_path: bool,
     is_reversed: bool,
     no_colors: bool,
     no_percents: bool,
+    terminal_width: usize,
     by_filecount: bool,
     root_node: Node,
 ) {
@@ -139,7 +129,7 @@ pub fn draw_it(
         5 // Under normal usage we need 5 chars to display the size of a directory
     };
 
-    let terminal_width = get_width_of_terminal() as usize - 9 - num_chars_needed_on_left_most;
+    let terminal_width = terminal_width - 9 - num_chars_needed_on_left_most;
     let num_indent_chars = 3;
     let longest_string_length = root_node
         .children
