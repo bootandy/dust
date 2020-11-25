@@ -1,6 +1,6 @@
 # ----------- To do a release ---------
 # edit version in cargo.toml
-# tag a commit and push:
+# tag a commit and push (increment version first):
 #   git tag v0.4.5
 #   git push origin v0.4.5
 
