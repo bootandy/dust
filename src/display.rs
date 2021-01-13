@@ -1,6 +1,6 @@
 extern crate ansi_term;
 
-use crate::utils::Node;
+use crate::utils::{Errors, Node};
 
 use self::ansi_term::Colour::Red;
 use lscolors::{LsColors, Style};
@@ -118,7 +118,7 @@ fn get_width_of_terminal() -> u16 {
 }
 
 pub fn draw_it(
-    permissions: bool,
+    errors: Errors,
     use_full_path: bool,
     is_reversed: bool,
     no_colors: bool,
@@ -126,8 +126,11 @@ pub fn draw_it(
     by_filecount: bool,
     root_node: Node,
 ) {
-    if !permissions {
+    if errors.permissions {
         eprintln!("Did not have permissions for all directories");
+    }
+    if errors.not_found {
+        eprintln!("Not all directories were found");
     }
     let num_chars_needed_on_left_most = if by_filecount {
         let max_size = root_node.children.iter().map(|n| n.size).fold(0, max);
