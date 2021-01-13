@@ -309,7 +309,7 @@ fn get_name_percent(
     bar_chart: &str,
     display_data: &DisplayData,
 ) -> (String, String) {
-    if bar_chart != "" {
+    if !bar_chart.is_empty() {
         let percent_size_str = format!("{:.0}%", display_data.percent_size(node) * 100.0);
         let percents = format!("│{} │ {:>4}", bar_chart, percent_size_str);
         let name_and_padding = pad_or_trim_filename(node, indent, display_data);

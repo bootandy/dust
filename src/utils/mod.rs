@@ -1,7 +1,6 @@
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::collections::HashSet;
-use std::iter::FromIterator;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::AtomicBool;
 
@@ -149,7 +148,10 @@ pub fn get_dir_tree<P: AsRef<Path>>(
     let permissions_flag = AtomicBool::new(false);
     let not_found_flag = AtomicBool::new(false);
 
-    let t2 = HashSet::from_iter(top_level_names.iter().map(|p| p.as_ref().to_path_buf()));
+    let t2 = top_level_names
+        .iter()
+        .map(|p| p.as_ref().to_path_buf())
+        .collect();
 
     let t = create_reader_thread(rx, t2, apparent_size);
     let walk_dir_builder = prepare_walk_dir_builder(top_level_names, limit_filesystem, show_hidden);
