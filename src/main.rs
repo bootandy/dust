@@ -174,7 +174,7 @@ fn main() {
     let show_hidden = !options.is_present("ignore_hidden");
 
     let simplified_dirs = simplify_dir_names(target_dirs);
-    let (permissions, nodes) = get_dir_tree(
+    let (errors, nodes) = get_dir_tree(
         &simplified_dirs,
         &ignore_directories,
         use_apparent_size,
@@ -192,7 +192,7 @@ fn main() {
     let tree = build_tree(biggest_ones, depth);
 
     draw_it(
-        permissions,
+        errors,
         options.is_present("display_full_paths"),
         !options.is_present("reverse"),
         no_colors,

@@ -61,6 +61,11 @@ impl Node {
     }
 }
 
+pub struct Errors {
+    pub permissions: bool,
+    pub not_found: bool,
+}
+
 pub fn is_a_parent_of<P: AsRef<Path>>(parent: P, child: P) -> bool {
     let parent = parent.as_ref();
     let child = child.as_ref();
@@ -119,6 +124,18 @@ fn prepare_walk_dir_builder<P: AsRef<Path>>(
     builder
 }
 
+fn is_not_found(e: &ignore::Error) -> bool {
+    use ignore::Error;
+    if let Error::WithPath { err, .. } = e {
+        if let Error::Io(e) = &**err {
+            if e.kind() == std::io::ErrorKind::NotFound {
+                return true;
+            }
+        }
+    }
+    false
+}
+
 pub fn get_dir_tree<P: AsRef<Path>>(
     top_level_names: &HashSet<P>,
     ignore_directories: &Option<Vec<PathBuf>>,
@@ -126,10 +143,11 @@ pub fn get_dir_tree<P: AsRef<Path>>(
     limit_filesystem: bool,
     by_filecount: bool,
     show_hidden: bool,
-) -> (bool, HashMap<PathBuf, u64>) {
+) -> (Errors, HashMap<PathBuf, u64>) {
     let (tx, rx) = channel::bounded::<PathData>(1000);
 
-    let permissions_flag = AtomicBool::new(true);
+    let permissions_flag = AtomicBool::new(false);
+    let not_found_flag = AtomicBool::new(false);
 
     let t2 = HashSet::from_iter(top_level_names.iter().map(|p| p.as_ref().to_path_buf()));
 
@@ -139,6 +157,7 @@ pub fn get_dir_tree<P: AsRef<Path>>(
     walk_dir_builder.build_parallel().run(|| {
         let txc = tx.clone();
         let pf = &permissions_flag;
+        let nf = &not_found_flag;
         Box::new(move |path| {
             match path {
                 Ok(p) => {
@@ -164,12 +183,16 @@ pub fn get_dir_tree<P: AsRef<Path>>(
                             txc.send((p.into_path(), size, inode_device)).unwrap();
                         }
                         None => {
-                            pf.store(false, atomic::Ordering::Relaxed);
+                            pf.store(true, atomic::Ordering::Relaxed);
                         }
                     }
                 }
-                Err(_) => {
-                    pf.store(false, atomic::Ordering::Relaxed);
+                Err(e) => {
+                    if is_not_found(&e) {
+                        nf.store(true, atomic::Ordering::Relaxed);
+                    } else {
+                        pf.store(true, atomic::Ordering::Relaxed);
+                    }
                 }
             };
             WalkState::Continue
@@ -178,7 +201,11 @@ pub fn get_dir_tree<P: AsRef<Path>>(
 
     drop(tx);
     let data = t.join().unwrap();
-    (permissions_flag.load(atomic::Ordering::SeqCst), data)
+    let errors = Errors {
+        permissions: permissions_flag.load(atomic::Ordering::SeqCst),
+        not_found: not_found_flag.load(atomic::Ordering::SeqCst),
+    };
+    (errors, data)
 }
 
 fn create_reader_thread(
