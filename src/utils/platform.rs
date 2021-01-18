@@ -24,6 +24,18 @@ pub fn get_metadata(d: &DirEntry, use_apparent_size: bool) -> Option<(u64, Optio
     }
 }
 
+#[cfg(target_os = "wasi")]
+pub fn get_metadata(d: &DirEntry, _use_apparent_size: bool) -> Option<(u64, Option<(u64, u64)>)> {
+    use std::os::wasi::fs::MetadataExt;
+    match d.metadata() {
+        Ok(md) => {
+            let id = Some((md.ino(), md.dev())).filter(|(ino, dev)| ino != &0 || dev != &0);
+            Some((md.len(), id))
+        }
+        Err(_e) => None,
+    }
+}
+
 #[cfg(target_family = "windows")]
 pub fn get_metadata(d: &DirEntry, _use_apparent_size: bool) -> Option<(u64, Option<(u64, u64)>)> {
     // On windows opening the file to get size, file ID and volume can be very

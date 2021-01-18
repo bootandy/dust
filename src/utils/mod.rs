@@ -4,9 +4,6 @@ use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::AtomicBool;
 
-use channel::Receiver;
-use std::thread::JoinHandle;
-
 use ignore::{WalkBuilder, WalkState};
 use std::sync::atomic;
 use std::thread;
@@ -143,8 +140,6 @@ pub fn get_dir_tree<P: AsRef<Path>>(
     by_filecount: bool,
     show_hidden: bool,
 ) -> (Errors, HashMap<PathBuf, u64>) {
-    let (tx, rx) = channel::bounded::<PathData>(1000);
-
     let permissions_flag = AtomicBool::new(false);
     let not_found_flag = AtomicBool::new(false);
 
@@ -153,56 +148,63 @@ pub fn get_dir_tree<P: AsRef<Path>>(
         .map(|p| p.as_ref().to_path_buf())
         .collect();
 
-    let t = create_reader_thread(rx, t2, apparent_size);
+    let (gather_entry_owned, aggregate_entries) = create_reader(t2, apparent_size);
+    let gather_entry = &gather_entry_owned;
     let walk_dir_builder = prepare_walk_dir_builder(top_level_names, limit_filesystem, show_hidden);
-
-    walk_dir_builder.build_parallel().run(|| {
-        let txc = tx.clone();
-        let pf = &permissions_flag;
-        let nf = &not_found_flag;
-        Box::new(move |path| {
-            match path {
-                Ok(p) => {
-                    if let Some(dirs) = ignore_directories {
-                        let path = p.path();
-                        let parts = path.components().collect::<Vec<std::path::Component>>();
-                        for d in dirs {
-                            if parts
-                                .windows(d.components().count())
-                                .any(|window| window.iter().collect::<PathBuf>() == *d)
-                            {
-                                return WalkState::Continue;
-                            }
-                        }
-                    }
-
-                    let maybe_size_and_inode = get_metadata(&p, apparent_size);
-
-                    match maybe_size_and_inode {
-                        Some(data) => {
-                            let (size, inode_device) =
-                                if by_filecount { (1, data.1) } else { data };
-                            txc.send((p.into_path(), size, inode_device)).unwrap();
-                        }
-                        None => {
-                            pf.store(true, atomic::Ordering::Relaxed);
+    let pf = &permissions_flag;
+    let nf = &not_found_flag;
+    let gather_entry = &gather_entry;
+    let process_entry = Box::new(move |path| {
+        match path {
+            Ok(p) => {
+                let p: ignore::DirEntry = p;
+                if let Some(dirs) = ignore_directories {
+                    let path = p.path();
+                    let parts = path.components().collect::<Vec<std::path::Component>>();
+                    for d in dirs {
+                        if parts
+                            .windows(d.components().count())
+                            .any(|window| window.iter().collect::<PathBuf>() == *d)
+                        {
+                            return WalkState::Continue;
                         }
                     }
                 }
-                Err(e) => {
-                    if is_not_found(&e) {
-                        nf.store(true, atomic::Ordering::Relaxed);
-                    } else {
+
+                let maybe_size_and_inode = get_metadata(&p, apparent_size);
+
+                match maybe_size_and_inode {
+                    Some(data) => {
+                        let (size, inode_device) = if by_filecount { (1, data.1) } else { data };
+                        gather_entry((p.into_path(), size, inode_device));
+                    }
+                    None => {
                         pf.store(true, atomic::Ordering::Relaxed);
                     }
                 }
-            };
-            WalkState::Continue
-        })
+            }
+            Err(e) => {
+                if is_not_found(&e) {
+                    nf.store(true, atomic::Ordering::Relaxed);
+                } else {
+                    pf.store(true, atomic::Ordering::Relaxed);
+                }
+            }
+        };
+        WalkState::Continue
     });
 
-    drop(tx);
-    let data = t.join().unwrap();
+    #[cfg(not(target_arch = "wasm32"))]
+    walk_dir_builder
+        .build_parallel()
+        .run(move || process_entry.clone());
+    #[cfg(target_arch = "wasm32")]
+    walk_dir_builder.build().for_each(|e| {
+        process_entry(e);
+    });
+    std::mem::drop(gather_entry_owned);
+
+    let data = aggregate_entries();
     let errors = Errors {
         permissions: permissions_flag.load(atomic::Ordering::SeqCst),
         not_found: not_found_flag.load(atomic::Ordering::SeqCst),
@@ -210,34 +212,84 @@ pub fn get_dir_tree<P: AsRef<Path>>(
     (errors, data)
 }
 
-fn create_reader_thread(
-    rx: Receiver<PathData>,
+#[cfg(not(target_arch = "wasm32"))]
+fn create_reader(
     top_level_names: HashSet<PathBuf>,
     apparent_size: bool,
-) -> JoinHandle<HashMap<PathBuf, u64>> {
+) -> (
+    Box<dyn Fn(PathData) + Sync>,
+    Box<dyn FnOnce() -> HashMap<PathBuf, u64>>,
+) {
+    let (tx, rx) = channel::bounded::<PathData>(1000);
+
     // Receiver thread
-    thread::spawn(move || {
+    let hnd = thread::spawn(move || {
         let mut hash: HashMap<PathBuf, u64> = HashMap::new();
         let mut inodes: HashSet<(u64, u64)> = HashSet::new();
 
         for dent in rx {
-            let (path, size, maybe_inode_device) = dent;
-
-            if should_ignore_file(apparent_size, &mut inodes, maybe_inode_device) {
-                continue;
-            } else {
-                for p in path.ancestors() {
-                    let s = hash.entry(p.to_path_buf()).or_insert(0);
-                    *s += size;
-
-                    if top_level_names.contains(p) {
-                        break;
-                    }
-                }
-            }
+            read_info(
+                dent,
+                &mut hash,
+                &mut inodes,
+                &top_level_names,
+                apparent_size,
+            );
         }
         hash
-    })
+    });
+
+    (
+        Box::new(move |e| tx.send(e).unwrap()),
+        Box::new(move || hnd.join().unwrap()),
+    )
+}
+
+#[cfg(target_arch = "wasm32")]
+fn create_reader(
+    top_level_names: HashSet<PathBuf>,
+    apparent_size: bool,
+) -> (
+    Box<dyn Fn(PathData)>,
+    Box<dyn FnOnce() -> HashMap<PathBuf, u64>>,
+) {
+    use std::cell::RefCell;
+    use std::rc::Rc;
+    let hash: Rc<RefCell<HashMap<PathBuf, u64>>> = Rc::new(RefCell::new(HashMap::new()));
+    let inodes: Rc<RefCell<HashSet<(u64, u64)>>> = Rc::new(RefCell::new(HashSet::new()));
+    let hash_ret = hash.clone();
+
+    (
+        Box::new(move |info| {
+            read_info(
+                info,
+                &mut hash.borrow_mut(),
+                &mut inodes.borrow_mut(),
+                &top_level_names,
+                apparent_size,
+            )
+        }),
+        Box::new(move || Rc::try_unwrap(hash_ret).unwrap().into_inner()),
+    )
+}
+
+fn read_info(
+    (path, size, maybe_inode_device): (PathBuf, u64, Option<(u64, u64)>),
+    hash: &mut HashMap<PathBuf, u64>,
+    inodes: &mut HashSet<(u64, u64)>,
+    top_level_names: &HashSet<PathBuf>,
+    apparent_size: bool,
+) {
+    if !should_ignore_file(apparent_size, inodes, maybe_inode_device) {
+        for p in path.ancestors() {
+            let s = hash.entry(p.to_path_buf()).or_insert(0);
+            *s += size;
+
+            if top_level_names.contains(p) {
+                break;
+            }
+        }
+    }
 }
 
 pub fn normalize_path<P: AsRef<Path>>(path: P) -> PathBuf {

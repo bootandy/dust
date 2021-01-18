@@ -4,6 +4,7 @@ description = "A more intuitive version of du"
 version = "0.5.4"
 authors = ["bootandy <bootandy@gmail.com>", "nebkor <code@ardent.nebcorp.com>"]
 edition = "2018"
+build = "build.rs"
 
 documentation = "https://github.com/bootandy/dust"
 homepage = "https://github.com/bootandy/dust"
@@ -23,9 +24,9 @@ path = "src/main.rs"
 [dependencies]
 ansi_term = "0.12"
 clap = "=2.33"
-lscolors = "0.7"
+lscolors = { git = "https://github.com/sharkdp/lscolors.git", rev = "bc95124f23d2f1c14616e6a97f5ae9e6ab786697" }
 num_cpus = "1"
-terminal_size = "0.1"
+terminal_size = "0.1.16"
 unicode-width = "0.1"
 ignore="0.4"
 crossbeam-channel = "0.4"
@@ -44,3 +45,6 @@ tempfile = "=3"
 [[test]]
 name = "integration"
 path = "tests/tests.rs"
+
+[build-dependencies]
+rustc_version = "0.3"

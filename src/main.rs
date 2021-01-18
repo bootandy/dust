@@ -1,3 +1,5 @@
+#![cfg_attr(feature = "rustc_nightly", feature(wasi_ext))]
+
 #[macro_use]
 extern crate clap;
 extern crate crossbeam_channel as channel;
