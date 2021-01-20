@@ -212,14 +212,12 @@ pub fn get_dir_tree<P: AsRef<Path>>(
     (errors, data)
 }
 
-#[cfg(not(target_arch = "wasm32"))]
-fn create_reader(
-    top_level_names: HashSet<PathBuf>,
-    apparent_size: bool,
-) -> (
+type ReaderAggregators = (
     Box<dyn Fn(PathData) + Sync>,
     Box<dyn FnOnce() -> HashMap<PathBuf, u64>>,
-) {
+);
+#[cfg(not(target_arch = "wasm32"))]
+fn create_reader(top_level_names: HashSet<PathBuf>, apparent_size: bool) -> ReaderAggregators {
     let (tx, rx) = channel::bounded::<PathData>(1000);
 
     // Receiver thread
