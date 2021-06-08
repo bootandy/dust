@@ -189,10 +189,10 @@ fn main() {
     let no_colors = init_color(options.is_present("no_colors"));
     let use_apparent_size = options.is_present("display_apparent_size");
     let limit_filesystem = options.is_present("limit_filesystem");
-    let ignore_directories = match options.values_of("ignore_directory") {
-        Some(i) => Some(i.map(PathBuf::from).collect()),
-        None => None,
-    };
+    let ignore_directories = options
+        .values_of("ignore_directory")
+        .map(|i| i.map(PathBuf::from).collect());
+
     let by_filecount = options.is_present("by_filecount");
     let show_hidden = !options.is_present("ignore_hidden");
 
