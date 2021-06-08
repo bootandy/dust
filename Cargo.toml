@@ -14,7 +14,7 @@ categories = ["command-line-utilities"]
 license = "Apache-2.0"
 
 [badges]
-travis-ci = {repository = "https://travis-ci.org/bootandy/dust"}
+travis-ci = { repository = "https://travis-ci.org/bootandy/dust" }
 
 [[bin]]
 name = "dust"
@@ -22,14 +22,14 @@ path = "src/main.rs"
 
 [dependencies]
 ansi_term = "0.12"
-clap = "=2.33"
+clap = { version = "=2.33", features = ["wrap_help"] }
 lscolors = "0.7"
 num_cpus = "1"
 terminal_size = "0.1"
 unicode-width = "0.1"
-ignore="0.4"
+ignore = "0.4"
 crossbeam-channel = "0.5"
-walkdir="2.3"
+walkdir = "2.3"
 thousands = "0.2"
 stfu8 = "0.2"
 
@@ -37,9 +37,8 @@ stfu8 = "0.2"
 winapi-util = "0.1"
 
 [dev-dependencies]
-assert_cmd ="1"
+assert_cmd = "1"
 tempfile = "=3"
-
 
 [[test]]
 name = "integration"

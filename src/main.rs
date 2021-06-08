@@ -75,7 +75,8 @@ fn main() {
                 .short("d")
                 .long("depth")
                 .help("Depth to show")
-                .takes_value(true),
+                .takes_value(true)
+                .conflicts_with("number_of_lines"),
         )
         .arg(
             Arg::with_name("number_of_lines")
@@ -150,7 +151,6 @@ fn main() {
                 .number_of_values(1)
                 .help("Specify width of output overriding the auto detection of terminal width"),
         )
-
         .arg(Arg::with_name("inputs").multiple(true))
         .get_matches();
 
@@ -181,10 +181,6 @@ fn main() {
             .map_err(|_| eprintln!("Ignoring bad value for depth"))
             .ok()
     });
-    if options.is_present("depth") && number_of_lines != default_height {
-        eprintln!("Use either -n or -d. Not both");
-        return;
-    }
 
     let no_colors = init_color(options.is_present("no_colors"));
     let use_apparent_size = options.is_present("display_apparent_size");
