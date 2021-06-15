@@ -1,6 +1,6 @@
 extern crate ansi_term;
 
-use crate::utils::{Errors, Node};
+use crate::display_node::DisplayNode;
 
 use self::ansi_term::Colour::Red;
 use lscolors::{LsColors, Style};
@@ -60,7 +60,7 @@ impl DisplayData {
         }
     }
 
-    fn percent_size(&self, node: &Node) -> f32 {
+    fn percent_size(&self, node: &DisplayNode) -> f32 {
         let result = node.size as f32 / self.base_size as f32;
         if result.is_normal() {
             result
@@ -83,7 +83,7 @@ impl DrawData<'_> {
     }
 
     // TODO: can we test this?
-    fn generate_bar(&self, node: &Node, level: usize) -> String {
+    fn generate_bar(&self, node: &DisplayNode, level: usize) -> String {
         let chars_in_bar = self.percent_bar.chars().count();
         let num_bars = chars_in_bar as f32 * self.display_data.percent_size(node);
         let mut num_not_my_bar = (chars_in_bar as i32) - num_bars as i32;
@@ -107,21 +107,23 @@ impl DrawData<'_> {
 
 #[allow(clippy::too_many_arguments)]
 pub fn draw_it(
-    errors: Errors,
+    permission_error: bool,
     use_full_path: bool,
     is_reversed: bool,
     no_colors: bool,
     no_percents: bool,
     terminal_width: usize,
     by_filecount: bool,
-    root_node: Node,
+    option_root_node: Option<DisplayNode>,
 ) {
-    if errors.permissions {
+    if permission_error {
         eprintln!("Did not have permissions for all directories");
     }
-    if errors.not_found {
-        eprintln!("Not all directories were found");
+    if option_root_node.is_none() {
+        return;
     }
+    let root_node = option_root_node.unwrap();
+
     let num_chars_needed_on_left_most = if by_filecount {
         let max_size = root_node.children.iter().map(|n| n.size).fold(0, max);
         max_size.separate_with_commas().chars().count()
@@ -131,11 +133,8 @@ pub fn draw_it(
 
     let terminal_width = terminal_width - 9 - num_chars_needed_on_left_most;
     let num_indent_chars = 3;
-    let longest_string_length = root_node
-        .children
-        .iter()
-        .map(|c| find_longest_dir_name(&c, num_indent_chars, terminal_width, !use_full_path))
-        .fold(0, max);
+    let longest_string_length =
+        find_longest_dir_name(&root_node, num_indent_chars, terminal_width, !use_full_path);
 
     let max_bar_length = if no_percents || longest_string_length >= terminal_width as usize {
         0
@@ -145,27 +144,30 @@ pub fn draw_it(
 
     let first_size_bar = repeat(BLOCKS[0]).take(max_bar_length).collect::<String>();
 
-    for c in root_node.get_children_from_node(is_reversed) {
-        let display_data = DisplayData {
-            short_paths: !use_full_path,
-            is_reversed,
-            colors_on: !no_colors,
-            by_filecount,
-            num_chars_needed_on_left_most,
-            base_size: c.size,
-            longest_string_length,
-            ls_colors: LsColors::from_env().unwrap_or_default(),
-        };
-        let draw_data = DrawData {
-            indent: "".to_string(),
-            percent_bar: first_size_bar.clone(),
-            display_data: &display_data,
-        };
-        display_node(c, &draw_data, true, true);
-    }
+    let display_data = DisplayData {
+        short_paths: !use_full_path,
+        is_reversed,
+        colors_on: !no_colors,
+        by_filecount,
+        num_chars_needed_on_left_most,
+        base_size: root_node.size,
+        longest_string_length,
+        ls_colors: LsColors::from_env().unwrap_or_default(),
+    };
+    let draw_data = DrawData {
+        indent: "".to_string(),
+        percent_bar: first_size_bar,
+        display_data: &display_data,
+    };
+    display_node(root_node, &draw_data, true, true);
 }
 
-fn find_longest_dir_name(node: &Node, indent: usize, terminal: usize, long_paths: bool) -> usize {
+fn find_longest_dir_name(
+    node: &DisplayNode,
+    indent: usize,
+    terminal: usize,
+    long_paths: bool,
+) -> usize {
     let printable_name = get_printable_name(&node.name, long_paths);
     let longest = min(
         UnicodeWidthStr::width(&*printable_name) + 1 + indent,
@@ -179,7 +181,7 @@ fn find_longest_dir_name(node: &Node, indent: usize, terminal: usize, long_paths
         .fold(longest, max)
 }
 
-fn display_node(node: Node, draw_data: &DrawData, is_biggest: bool, is_last: bool) {
+fn display_node(node: DisplayNode, draw_data: &DrawData, is_biggest: bool, is_last: bool) {
     // hacky way of working out how deep we are in the tree
     let indent = draw_data.get_new_indent(!node.children.is_empty(), is_last);
     let level = ((indent.chars().count() - 1) / 2) - 1;
@@ -254,10 +256,12 @@ fn get_printable_name<P: AsRef<Path>>(dir_name: &P, long_paths: bool) -> String 
     encode_u8(printable_name.display().to_string().as_bytes())
 }
 
-fn pad_or_trim_filename(node: &Node, indent: &str, display_data: &DisplayData) -> String {
+fn pad_or_trim_filename(node: &DisplayNode, indent: &str, display_data: &DisplayData) -> String {
     let name = get_printable_name(&node.name, display_data.short_paths);
     let indent_and_name = format!("{} {}", indent, name);
     let width = UnicodeWidthStr::width(&*indent_and_name);
+
+    assert!(display_data.longest_string_length >= width);
 
     // Add spaces after the filename so we can draw the % used bar chart.
     let name_and_padding = name
@@ -281,7 +285,7 @@ fn maybe_trim_filename(name_in: String, display_data: &DisplayData) -> String {
 }
 
 pub fn format_string(
-    node: &Node,
+    node: &DisplayNode,
     indent: &str,
     percent_bar: &str,
     is_biggest: bool,
@@ -294,7 +298,7 @@ pub fn format_string(
 }
 
 fn get_name_percent(
-    node: &Node,
+    node: &DisplayNode,
     indent: &str,
     bar_chart: &str,
     display_data: &DisplayData,
@@ -311,7 +315,7 @@ fn get_name_percent(
     }
 }
 
-fn get_pretty_size(node: &Node, is_biggest: bool, display_data: &DisplayData) -> String {
+fn get_pretty_size(node: &DisplayNode, is_biggest: bool, display_data: &DisplayData) -> String {
     let output = if display_data.by_filecount {
         let size_as_str = node.size.separate_with_commas();
         let spaces_to_add =
@@ -328,7 +332,11 @@ fn get_pretty_size(node: &Node, is_biggest: bool, display_data: &DisplayData) ->
     }
 }
 
-fn get_pretty_name(node: &Node, name_and_padding: String, display_data: &DisplayData) -> String {
+fn get_pretty_name(
+    node: &DisplayNode,
+    name_and_padding: String,
+    display_data: &DisplayData,
+) -> String {
     if display_data.colors_on {
         let meta_result = fs::metadata(node.name.clone());
         let directory_color = display_data
@@ -379,7 +387,7 @@ mod tests {
 
     #[test]
     fn test_format_str() {
-        let n = Node {
+        let n = DisplayNode {
             name: PathBuf::from("/short"),
             size: 2_u64.pow(12), // This is 4.0K
             children: vec![],
@@ -401,7 +409,7 @@ mod tests {
     #[test]
     fn test_format_str_long_name() {
         let name = "very_long_name_longer_than_the_eighty_character_limit_very_long_name_this_bit_will_truncate";
-        let n = Node {
+        let n = DisplayNode {
             name: PathBuf::from(name),
             size: 2_u64.pow(12), // This is 4.0K
             children: vec![],

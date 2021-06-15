@@ -1,19 +1,25 @@
 #[macro_use]
 extern crate clap;
-extern crate crossbeam_channel as channel;
-extern crate ignore;
+extern crate rayon;
 extern crate unicode_width;
-extern crate walkdir;
+
+use std::collections::HashSet;
 
 use self::display::draw_it;
-use crate::utils::is_a_parent_of;
 use clap::{App, AppSettings, Arg};
+use dirwalker::walk_it;
+use filter::{get_biggest, get_by_depth};
 use std::cmp::max;
 use std::path::PathBuf;
 use terminal_size::{terminal_size, Height, Width};
-use utils::{find_big_ones, get_dir_tree, simplify_dir_names, sort, Node};
+use utils::simplify_dir_names;
 
+mod dirwalker;
 mod display;
+mod display_node;
+mod filter;
+mod node;
+mod platform;
 mod utils;
 
 static DEFAULT_NUMBER_OF_LINES: usize = 30;
@@ -102,12 +108,6 @@ fn main() {
                 .help("Exclude any file or directory with this name"),
         )
         .arg(
-            Arg::with_name("limit_filesystem")
-                .short("x")
-                .long("limit-filesystem")
-                .help("Only count the files and directories on the same filesystem as the supplied directory"),
-        )
-        .arg(
             Arg::with_name("display_apparent_size")
                 .short("s")
                 .long("apparent-size")
@@ -184,31 +184,35 @@ fn main() {
 
     let no_colors = init_color(options.is_present("no_colors"));
     let use_apparent_size = options.is_present("display_apparent_size");
-    let limit_filesystem = options.is_present("limit_filesystem");
-    let ignore_directories = options
+    let ignore_directories: Vec<PathBuf> = options
         .values_of("ignore_directory")
-        .map(|i| i.map(PathBuf::from).collect());
+        .map(|i| i.map(PathBuf::from).collect())
+        .unwrap_or_default();
 
     let by_filecount = options.is_present("by_filecount");
-    let show_hidden = !options.is_present("ignore_hidden");
+    let ignore_hidden = options.is_present("ignore_hidden");
 
     let simplified_dirs = simplify_dir_names(target_dirs);
-    let (errors, nodes) = get_dir_tree(
-        &simplified_dirs,
-        &ignore_directories,
+
+    let ignored_full_path: HashSet<PathBuf> = ignore_directories
+        .into_iter()
+        .flat_map(|x| simplified_dirs.iter().map(move |d| d.join(x.clone())))
+        .collect();
+
+    let (nodes, errors) = walk_it(
+        simplified_dirs,
+        ignored_full_path,
         use_apparent_size,
-        limit_filesystem,
         by_filecount,
-        show_hidden,
+        ignore_hidden,
     );
-    let sorted_data = sort(nodes);
-    let biggest_ones = {
+
+    let tree = {
         match depth {
-            None => find_big_ones(sorted_data, number_of_lines),
-            Some(_) => sorted_data,
+            None => get_biggest(nodes, number_of_lines),
+            Some(depth) => get_by_depth(nodes, depth),
         }
     };
-    let tree = build_tree(biggest_ones, depth);
 
     draw_it(
         errors,
@@ -220,36 +224,4 @@ fn main() {
         by_filecount,
         tree,
     );
-}
-
-fn build_tree(biggest_ones: Vec<(PathBuf, u64)>, depth: Option<usize>) -> Node {
-    let mut top_parent = Node::default();
-
-    // assume sorted order
-    for b in biggest_ones {
-        let n = Node {
-            name: b.0,
-            size: b.1,
-            children: Vec::default(),
-        };
-        recursively_build_tree(&mut top_parent, n, depth);
-    }
-    top_parent
-}
-
-fn recursively_build_tree(parent_node: &mut Node, new_node: Node, depth: Option<usize>) {
-    let new_depth = match depth {
-        None => None,
-        Some(0) => return,
-        Some(d) => Some(d - 1),
-    };
-    if let Some(c) = parent_node
-        .children
-        .iter_mut()
-        .find(|c| is_a_parent_of(&c.name, &new_node.name))
-    {
-        recursively_build_tree(c, new_node, new_depth);
-    } else {
-        parent_node.children.push(new_node);
-    }
 }

@@ -2,7 +2,6 @@ use assert_cmd::Command;
 use std::cmp::max;
 use std::fs::File;
 use std::io::Write;
-use std::panic;
 use std::path::PathBuf;
 use std::str;
 
@@ -61,12 +60,12 @@ pub fn test_soft_sym_link() {
         .output();
     assert!(c.is_ok());
 
-    let c = format!(" ┌── {}", get_file_name(link_name_s.into()));
-    let b = format!(" ├── {}", get_file_name(file_path_s.into()));
+    let c = format!(" ├── {}", get_file_name(link_name_s.into()));
+    let b = format!(" ┌── {}", get_file_name(file_path_s.into()));
     let a = format!("─┴ {}", dir_s);
 
     let mut cmd = Command::cargo_bin("dust").unwrap();
-    let output = cmd.arg("-p").arg("-c").arg(dir_s).unwrap().stdout;
+    let output = cmd.arg("-p").arg("-c").arg("-s").arg(dir_s).unwrap().stdout;
 
     let output = str::from_utf8(&output).unwrap();
 
@@ -125,9 +124,16 @@ pub fn test_recursive_sym_link() {
     let b = format!(" └── {}", get_file_name(link_name_s.into()));
 
     let mut cmd = Command::cargo_bin("dust").unwrap();
-    let output = cmd.arg("-p").arg("-c").arg("-r").arg(dir_s).unwrap().stdout;
-
+    let output = cmd
+        .arg("-p")
+        .arg("-c")
+        .arg("-r")
+        .arg("-s")
+        .arg(dir_s)
+        .unwrap()
+        .stdout;
     let output = str::from_utf8(&output).unwrap();
+
     assert!(output.contains(a.as_str()));
     assert!(output.contains(b.as_str()));
 }

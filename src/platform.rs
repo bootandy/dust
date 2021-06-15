@@ -1,6 +1,7 @@
-use ignore::DirEntry;
 #[allow(unused_imports)]
 use std::fs;
+
+use std::path::Path;
 
 #[cfg(target_family = "unix")]
 fn get_block_size() -> u64 {
@@ -10,7 +11,7 @@ fn get_block_size() -> u64 {
 }
 
 #[cfg(target_family = "unix")]
-pub fn get_metadata(d: &DirEntry, use_apparent_size: bool) -> Option<(u64, Option<(u64, u64)>)> {
+pub fn get_metadata(d: &Path, use_apparent_size: bool) -> Option<(u64, Option<(u64, u64)>)> {
     use std::os::unix::fs::MetadataExt;
     match d.metadata() {
         Ok(md) => {
@@ -25,7 +26,7 @@ pub fn get_metadata(d: &DirEntry, use_apparent_size: bool) -> Option<(u64, Optio
 }
 
 #[cfg(target_family = "windows")]
-pub fn get_metadata(d: &DirEntry, _use_apparent_size: bool) -> Option<(u64, Option<(u64, u64)>)> {
+pub fn get_metadata(d: &Path, _use_apparent_size: bool) -> Option<(u64, Option<(u64, u64)>)> {
     // On windows opening the file to get size, file ID and volume can be very
     // expensive because 1) it causes a few system calls, and more importantly 2) it can cause
     // windows defender to scan the file.
@@ -63,7 +64,6 @@ pub fn get_metadata(d: &DirEntry, _use_apparent_size: bool) -> Option<(u64, Opti
     // With this optimization:         8 sec.
 
     use std::io;
-    use std::path::Path;
     use winapi_util::Handle;
     fn handle_from_path_limited<P: AsRef<Path>>(path: P) -> io::Result<Handle> {
         use std::fs::OpenOptions;
@@ -90,10 +90,10 @@ pub fn get_metadata(d: &DirEntry, _use_apparent_size: bool) -> Option<(u64, Opti
         Ok(Handle::from_file(file))
     }
 
-    fn get_metadata_expensive(d: &DirEntry) -> Option<(u64, Option<(u64, u64)>)> {
+    fn get_metadata_expensive(d: &Path) -> Option<(u64, Option<(u64, u64)>)> {
         use winapi_util::file::information;
 
-        let h = handle_from_path_limited(d.path()).ok()?;
+        let h = handle_from_path_limited(d).ok()?;
         let info = information(&h).ok()?;
 
         Some((
