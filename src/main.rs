@@ -71,87 +71,87 @@ fn main() {
         .version(crate_version!())
         .setting(AppSettings::TrailingVarArg)
         .arg(
-            Arg::with_name("depth")
-                .short("d")
+            Arg::new("depth")
+                .short('d')
                 .long("depth")
-                .help("Depth to show")
+                .about("Depth to show")
                 .takes_value(true)
                 .conflicts_with("number_of_lines"),
         )
         .arg(
-            Arg::with_name("number_of_lines")
-                .short("n")
+            Arg::new("number_of_lines")
+                .short('n')
                 .long("number-of-lines")
-                .help("Number of lines of output to show. This is Height, (but h is help)")
+                .about("Number of lines of output to show. This is Height, (but h is help)")
                 .takes_value(true)
                 .default_value(def_num_str.as_ref()),
         )
         .arg(
-            Arg::with_name("display_full_paths")
-                .short("p")
+            Arg::new("display_full_paths")
+                .short('p')
                 .long("full-paths")
-                .help("Subdirectories will not have their path shortened"),
+                .about("Subdirectories will not have their path shortened"),
         )
         .arg(
-            Arg::with_name("ignore_directory")
-                .short("X")
+            Arg::new("ignore_directory")
+                .short('X')
                 .long("ignore-directory")
                 .takes_value(true)
                 .number_of_values(1)
                 .multiple(true)
-                .help("Exclude any file or directory with this name"),
+                .about("Exclude any file or directory with this name"),
         )
         .arg(
-            Arg::with_name("limit_filesystem")
-                .short("x")
+            Arg::new("limit_filesystem")
+                .short('x')
                 .long("limit-filesystem")
-                .help("Only count the files and directories on the same filesystem as the supplied directory"),
+                .about("Only count the files and directories on the same filesystem as the supplied directory"),
         )
         .arg(
-            Arg::with_name("display_apparent_size")
-                .short("s")
+            Arg::new("display_apparent_size")
+                .short('s')
                 .long("apparent-size")
-                .help("Use file length instead of blocks"),
+                .about("Use file length instead of blocks"),
         )
         .arg(
-            Arg::with_name("reverse")
-                .short("r")
+            Arg::new("reverse")
+                .short('r')
                 .long("reverse")
-                .help("Print tree upside down (biggest highest)"),
+                .about("Print tree upside down (biggest highest)"),
         )
         .arg(
-            Arg::with_name("no_colors")
-                .short("c")
+            Arg::new("no_colors")
+                .short('c')
                 .long("no-colors")
-                .help("No colors will be printed (normally largest directories are colored)"),
+                .about("No colors will be printed (normally largest directories are colored)"),
         )
         .arg(
-            Arg::with_name("no_bars")
-                .short("b")
+            Arg::new("no_bars")
+                .short('b')
                 .long("no-percent-bars")
-                .help("No percent bars or percentages will be displayed"),
+                .about("No percent bars or percentages will be displayed"),
         )
         .arg(
-            Arg::with_name("by_filecount")
-                .short("f")
+            Arg::new("by_filecount")
+                .short('f')
                 .long("filecount")
-                .help("Directory 'size' is number of child files/dirs not disk size"),
+                .about("Directory 'size' is number of child files/dirs not disk size"),
         )
         .arg(
-            Arg::with_name("ignore_hidden")
-                .short("i") // Do not use 'h' this is used by 'help'
+            Arg::new("ignore_hidden")
+                .short('i') // Do not use 'h' this is used by 'help'
                 .long("ignore_hidden")
-                .help("Obey .git_ignore rules & Do not display hidden files"),
+                .about("Obey .git_ignore rules & Do not display hidden files"),
         )
         .arg(
-            Arg::with_name("width")
-                .short("w")
+            Arg::new("width")
+                .short('w')
                 .long("terminal_width")
                 .takes_value(true)
                 .number_of_values(1)
-                .help("Specify width of output overriding the auto detection of terminal width"),
+                .about("Specify width of output overriding the auto detection of terminal width"),
         )
-        .arg(Arg::with_name("inputs").multiple(true))
+        .arg(Arg::new("inputs").multiple(true))
         .get_matches();
 
     let target_dirs = {
@@ -161,7 +161,7 @@ fn main() {
         }
     };
 
-    let number_of_lines = match value_t!(options.value_of("number_of_lines"), usize) {
+    let number_of_lines = match options.value_of_t("number_of_lines") {
         Ok(v) => v,
         Err(_) => {
             eprintln!("Ignoring bad value for number_of_lines");
@@ -169,7 +169,7 @@ fn main() {
         }
     };
 
-    let terminal_width = match value_t!(options.value_of("width"), usize) {
+    let terminal_width = match options.value_of_t("width") {
         Ok(v) => v,
         Err(_) => get_width_of_terminal(),
     };
