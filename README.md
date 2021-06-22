@@ -59,6 +59,8 @@ Usage: dust -b <dir>  (do not show percentages or draw ASCII bars)
 
 * [NCDU](https://dev.yorhel.nl/ncdu)
 * [dutree](https://github.com/nachoparker/dutree)
+* [dua](https://github.com/Byron/dua-cli/)
+* [pdu](https://github.com/KSXGitHub/parallel-disk-usage)
 * du -d 1 -h | sort -h
 
 Note: Apparent-size is calculated slightly differently in dust to gdu. In dust each hard link is counted as using file_length space. In gdu only the first entry is counted.
