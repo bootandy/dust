@@ -114,8 +114,6 @@ pub fn test_main_long_paths() {
         .unwrap()
         .stdout;
     let output = str::from_utf8(&assert).unwrap();
-    println!("{:?}", output.trim());
-    println!("{:?}", main_output_long_paths().trim());
     assert!(output.contains(&main_output_long_paths()));
 }
 
@@ -204,9 +202,9 @@ fn no_substring_of_names_output() -> String {
    0B   ┌── long_dir_name_what_a_very_long_dir_name_what_happens_when_this_g..
  4.0K   ├── dir_name_clash
  4.0K   │ ┌── hello
- 8.0K   ├─┴ dir_substring
- 4.0K   │ ┌── hello
  8.0K   ├─┴ dir
+ 4.0K   │ ┌── hello
+ 8.0K   ├─┴ dir_substring
   24K ┌─┴ test_dir2
     "
     .trim()
@@ -218,10 +216,10 @@ fn no_substring_of_names_output() -> String {
     "
    0B   ┌── long_dir_name_what_a_very_long_dir_name_what_happens_when_this_g..
  4.0K   │ ┌── hello
- 4.0K   ├─┴ dir_substring
+ 4.0K   ├─┴ dir
  4.0K   ├── dir_name_clash
  4.0K   │ ┌── hello
- 4.0K   ├─┴ dir
+ 4.0K   ├─┴ dir_substring
   12K ┌─┴ test_dir2
   "
     .trim()
@@ -247,8 +245,8 @@ pub fn test_unicode_directories() {
 fn unicode_dir() -> String {
     // The way unicode & asian characters are rendered on the terminal should make this line up
     "
-   0B   ┌── 👩.unicode                │                                 █ │   0%
-   0B   ├── ラウトは難しいです！.japan│                                 █ │   0%
+   0B   ┌── ラウトは難しいです！.japan│                                 █ │   0%
+   0B   ├── 👩.unicode                │                                 █ │   0%
  4.0K ┌─┴ test_dir_unicode            │██████████████████████████████████ │ 100%
     "
     .trim()
@@ -258,8 +256,8 @@ fn unicode_dir() -> String {
 #[cfg(target_os = "macos")]
 fn unicode_dir() -> String {
     "
-   0B   ┌── 👩.unicode                │                                 █ │   0%
-   0B   ├── ラウトは難しいです！.japan│                                 █ │   0%
+   0B   ┌── ラウトは難しいです！.japan│                                 █ │   0%
+   0B   ├── 👩.unicode                │                                 █ │   0%
    0B ┌─┴ test_dir_unicode            │                                 █ │   0%
     "
     .trim()

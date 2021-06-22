@@ -142,8 +142,8 @@ pub fn test_number_of_files() {
         .unwrap()
         .stdout;
     let output = str::from_utf8(&output).unwrap();
-    assert!(output.contains("1     ┌── hello_file"));
-    assert!(output.contains("1     ├── a_file "));
+    assert!(output.contains("1     ┌── a_file "));
+    assert!(output.contains("1     ├── hello_file"));
     assert!(output.contains("3   ┌─┴ many"));
     assert!(output.contains("4 ┌─┴ test_dir"));
 }
