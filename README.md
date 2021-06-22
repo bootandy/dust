@@ -49,7 +49,6 @@ Usage: dust -s <dir>  (apparent-size - shows the length of the file as opposed t
 Usage: dust -n 30  <dir>  (shows 30 directories instead of the default)
 Usage: dust -d 3  <dir>  (shows 3 levels of subdirectories)
 Usage: dust -r  <dir>  (reverse order of output, with root at the lowest)
-Usage: dust -x  <dir>  (only show directories on the same filesystem)
 Usage: dust -X ignore  <dir>  (ignore all files and directories with the name 'ignore')
 Usage: dust -b <dir>  (do not show percentages or draw ASCII bars)
 ```
