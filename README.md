@@ -51,6 +51,7 @@ Usage: dust -d 3  <dir>  (shows 3 levels of subdirectories)
 Usage: dust -r  <dir>  (reverse order of output, with root at the lowest)
 Usage: dust -X ignore  <dir>  (ignore all files and directories with the name 'ignore')
 Usage: dust -b <dir>  (do not show percentages or draw ASCII bars)
+Usage: dust -i (do not show files listed in .gitignore)
 ```
 
 
