@@ -44,13 +44,16 @@ Dust will list a slightly-less-than-the-terminal-height number of the biggest su
 Usage: dust
 Usage: dust <dir>
 Usage: dust <dir>  <another_dir> <and_more>
-Usage: dust -p <dir>  (full-path - does not shorten the path of the subdirectories)
-Usage: dust -s <dir>  (apparent-size - shows the length of the file as opposed to the amount of disk space it uses)
-Usage: dust -n 30  <dir>  (shows 30 directories instead of the default)
-Usage: dust -d 3  <dir>  (shows 3 levels of subdirectories)
-Usage: dust -r  <dir>  (reverse order of output, with root at the lowest)
-Usage: dust -X ignore  <dir>  (ignore all files and directories with the name 'ignore')
-Usage: dust -b <dir>  (do not show percentages or draw ASCII bars)
+Usage: dust -p (full-path - Show fullpath of the subdirectories)
+Usage: dust -s (apparent-size - shows the length of the file as opposed to the amount of disk space it uses)
+Usage: dust -n 30 (shows 30 directories instead of the default [default is terminal height])
+Usage: dust -d 3  (shows 3 levels of subdirectories)
+Usage: dust -r  (reverse order of output)
+Usage: dust -X ignore  (ignore all files and directories with the name 'ignore')
+Usage: dust -b (do not show percentages or draw ASCII bars)
+Usage: dust -i (do not show hidden files)
+Usage: dust -c (No colors [monochrome])
+Usage: dust -f (Count files instead of space)
 ```
 
 
