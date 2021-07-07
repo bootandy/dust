@@ -141,7 +141,7 @@ fn main() {
             Arg::with_name("ignore_hidden")
                 .short("i") // Do not use 'h' this is used by 'help'
                 .long("ignore_hidden")
-                .help("Obey .git_ignore rules & Do not display hidden files"),
+                .help("Do not display hidden files"),
         )
         .arg(
             Arg::with_name("width")
