@@ -24,7 +24,6 @@ path = "src/main.rs"
 ansi_term = "0.12"
 clap = { version = "=2.33", features = ["wrap_help"] }
 lscolors = "0.7"
-num_cpus = "1"
 terminal_size = "0.1"
 unicode-width = "0.1"
 rayon="1"
