@@ -15,11 +15,19 @@ pub fn build_node(
     dir: PathBuf,
     children: Vec<Node>,
     use_apparent_size: bool,
+    is_symlink: bool,
     by_filecount: bool,
 ) -> Option<Node> {
     match get_metadata(&dir, use_apparent_size) {
         Some(data) => {
-            let (size, inode_device) = if by_filecount { (1, data.1) } else { data };
+            let (size, inode_device) = if by_filecount {
+                (1, data.1)
+            } else if is_symlink && !use_apparent_size {
+                (0, None)
+            } else {
+                data
+            };
+
             Some(Node {
                 name: dir,
                 size,
