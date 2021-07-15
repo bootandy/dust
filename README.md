@@ -50,10 +50,11 @@ Usage: dust -n 30 (shows 30 directories instead of the default [default is termi
 Usage: dust -d 3  (shows 3 levels of subdirectories)
 Usage: dust -r  (reverse order of output)
 Usage: dust -X ignore  (ignore all files and directories with the name 'ignore')
+Usage: dust -x (only show directories on the same filesystem)
 Usage: dust -b (do not show percentages or draw ASCII bars)
 Usage: dust -i (do not show hidden files)
 Usage: dust -c (No colors [monochrome])
-Usage: dust -f (Count files instead of space)
+Usage: dust -f (Count files instead of diskspace)
 ```
 
 
