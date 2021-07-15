@@ -27,6 +27,7 @@ pub fn walk_it(
         .filter_map(|d| {
             let n = walk(
                 d,
+                false,
                 &permissions_flag,
                 &ignore_directories,
                 use_apparent_size,
@@ -74,6 +75,7 @@ fn clean_inodes(
     });
 }
 
+// todo: check for filesystem too
 fn ignore_file(
     entry: &DirEntry,
     ignore_hidden: bool,
@@ -86,6 +88,7 @@ fn ignore_file(
 
 fn walk(
     dir: PathBuf,
+    is_symlink: bool,
     permissions_flag: &AtomicBool,
     ignore_directories: &HashSet<PathBuf>,
     use_apparent_size: bool,
@@ -111,6 +114,7 @@ fn walk(
                             if data.is_dir() && !data.is_symlink() {
                                 return walk(
                                     entry.path(),
+                                    data.is_symlink(),
                                     permissions_flag,
                                     ignore_directories,
                                     use_apparent_size,
@@ -122,6 +126,7 @@ fn walk(
                                 entry.path(),
                                 vec![],
                                 use_apparent_size,
+                                data.is_symlink(),
                                 by_filecount,
                             );
                         }
@@ -135,7 +140,7 @@ fn walk(
     } else {
         permissions_flag.store(true, atomic::Ordering::Relaxed);
     }
-    build_node(dir, children, use_apparent_size, by_filecount)
+    build_node(dir, children, use_apparent_size, is_symlink, by_filecount)
 }
 
 mod tests {
