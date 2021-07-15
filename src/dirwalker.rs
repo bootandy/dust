@@ -13,9 +13,12 @@ use std::collections::HashSet;
 use crate::node::build_node;
 use std::fs::DirEntry;
 
+use crate::platform::get_metadata;
+
 pub fn walk_it(
     dirs: HashSet<PathBuf>,
     ignore_directories: HashSet<PathBuf>,
+    allowed_filesystems: HashSet<u64>,
     use_apparent_size: bool,
     by_filecount: bool,
     ignore_hidden: bool,
@@ -27,9 +30,9 @@ pub fn walk_it(
         .filter_map(|d| {
             let n = walk(
                 d,
-                false,
                 &permissions_flag,
                 &ignore_directories,
+                &allowed_filesystems,
                 use_apparent_size,
                 by_filecount,
                 ignore_hidden,
@@ -75,22 +78,32 @@ fn clean_inodes(
     });
 }
 
-// todo: check for filesystem too
 fn ignore_file(
     entry: &DirEntry,
     ignore_hidden: bool,
     ignore_directories: &HashSet<PathBuf>,
+    allowed_filesystems: &HashSet<u64>,
 ) -> bool {
     let is_dot_file = entry.file_name().to_str().unwrap_or("").starts_with('.');
     let is_ignored_path = ignore_directories.contains(&entry.path());
+
+    if !allowed_filesystems.is_empty() {
+        let size_inode_device = get_metadata(&entry.path(), false);
+
+        if let Some((_size, Some((_id, dev)))) = size_inode_device {
+            if !allowed_filesystems.contains(&dev) {
+                return true;
+            }
+        }
+    }
     (is_dot_file && ignore_hidden) || is_ignored_path
 }
 
 fn walk(
     dir: PathBuf,
-    is_symlink: bool,
     permissions_flag: &AtomicBool,
     ignore_directories: &HashSet<PathBuf>,
+    allowed_filesystems: &HashSet<u64>,
     use_apparent_size: bool,
     by_filecount: bool,
     ignore_hidden: bool,
@@ -107,16 +120,21 @@ fn walk(
                     // rayon doesn't parallelise as well giving a 3X performance drop
                     // hence we unravel the recursion a bit
 
-                    // return walk(entry.path(), permissions_flag, ignore_directories, use_apparent_size, by_filecount, ignore_hidden);
+                    // return walk(entry.path(), permissions_flag, ignore_directories, allowed_filesystems, use_apparent_size, by_filecount, ignore_hidden);
 
-                    if !ignore_file(&entry, ignore_hidden, &ignore_directories) {
+                    if !ignore_file(
+                        &entry,
+                        ignore_hidden,
+                        &ignore_directories,
+                        &allowed_filesystems,
+                    ) {
                         if let Ok(data) = entry.file_type() {
                             if data.is_dir() && !data.is_symlink() {
                                 return walk(
                                     entry.path(),
-                                    data.is_symlink(),
                                     permissions_flag,
                                     ignore_directories,
+                                    allowed_filesystems,
                                     use_apparent_size,
                                     by_filecount,
                                     ignore_hidden,
@@ -140,7 +158,7 @@ fn walk(
     } else {
         permissions_flag.store(true, atomic::Ordering::Relaxed);
     }
-    build_node(dir, children, use_apparent_size, is_symlink, by_filecount)
+    build_node(dir, children, use_apparent_size, false, by_filecount)
 }
 
 mod tests {

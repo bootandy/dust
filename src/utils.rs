@@ -1,5 +1,8 @@
+use platform::get_metadata;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
+
+use crate::platform;
 
 fn is_a_parent_of<P: AsRef<Path>>(parent: P, child: P) -> bool {
     let parent = parent.as_ref();
@@ -31,6 +34,22 @@ pub fn simplify_dir_names<P: AsRef<Path>>(filenames: Vec<P>) -> HashSet<PathBuf>
     }
 
     top_level_names
+}
+
+pub fn get_filesystem_devices<'a, P: IntoIterator<Item = &'a PathBuf>>(paths: P) -> HashSet<u64> {
+    // Gets the device ids for the filesystems which are used by the argument paths
+    paths
+        .into_iter()
+        .filter_map(|p| {
+            let meta = get_metadata(&p, false);
+
+            if let Some((_size, Some((_id, dev)))) = meta {
+                Some(dev)
+            } else {
+                None
+            }
+        })
+        .collect()
 }
 
 pub fn normalize_path<P: AsRef<Path>>(path: P) -> PathBuf {

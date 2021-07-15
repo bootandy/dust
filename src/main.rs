@@ -12,6 +12,7 @@ use filter::{get_biggest, get_by_depth};
 use std::cmp::max;
 use std::path::PathBuf;
 use terminal_size::{terminal_size, Height, Width};
+use utils::get_filesystem_devices;
 use utils::simplify_dir_names;
 
 mod dirwalker;
@@ -108,6 +109,12 @@ fn main() {
                 .help("Exclude any file or directory with this name"),
         )
         .arg(
+            Arg::with_name("limit_filesystem")
+                .short("x")
+                .long("limit-filesystem")
+                .help("Only count the files and directories on the same filesystem as the supplied directory"),
+        )
+        .arg(
             Arg::with_name("display_apparent_size")
                 .short("s")
                 .long("apparent-size")
@@ -191,8 +198,16 @@ fn main() {
 
     let by_filecount = options.is_present("by_filecount");
     let ignore_hidden = options.is_present("ignore_hidden");
+    let limit_filesystem = options.is_present("limit_filesystem");
 
     let simplified_dirs = simplify_dir_names(target_dirs);
+    let allowed_filesystems = {
+        if limit_filesystem {
+            get_filesystem_devices(simplified_dirs.iter())
+        } else {
+            HashSet::new()
+        }
+    };
 
     let ignored_full_path: HashSet<PathBuf> = ignore_directories
         .into_iter()
@@ -202,6 +217,7 @@ fn main() {
     let (nodes, errors) = walk_it(
         simplified_dirs,
         ignored_full_path,
+        allowed_filesystems,
         use_apparent_size,
         by_filecount,
         ignore_hidden,
