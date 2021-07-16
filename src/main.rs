@@ -7,8 +7,8 @@ use std::collections::HashSet;
 
 use self::display::draw_it;
 use clap::{App, AppSettings, Arg};
-use dirwalker::walk_it;
-use dirwalker::WalkData;
+use dir_walker::walk_it;
+use dir_walker::WalkData;
 use filter::{get_biggest, get_by_depth};
 use std::cmp::max;
 use std::path::PathBuf;
@@ -16,7 +16,7 @@ use terminal_size::{terminal_size, Height, Width};
 use utils::get_filesystem_devices;
 use utils::simplify_dir_names;
 
-mod dirwalker;
+mod dir_walker;
 mod display;
 mod display_node;
 mod filter;
