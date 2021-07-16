@@ -15,32 +15,25 @@ use std::fs::DirEntry;
 
 use crate::platform::get_metadata;
 
-pub fn walk_it(
-    dirs: HashSet<PathBuf>,
-    ignore_directories: HashSet<PathBuf>,
-    allowed_filesystems: HashSet<u64>,
-    use_apparent_size: bool,
-    by_filecount: bool,
-    ignore_hidden: bool,
-) -> (Vec<Node>, bool) {
+pub struct WalkData {
+    pub ignore_directories: HashSet<PathBuf>,
+    pub allowed_filesystems: HashSet<u64>,
+    pub use_apparent_size: bool,
+    pub by_filecount: bool,
+    pub ignore_hidden: bool,
+}
+
+pub fn walk_it(dirs: HashSet<PathBuf>, walk_data: WalkData) -> (Vec<Node>, bool) {
     let permissions_flag = AtomicBool::new(false);
 
     let top_level_nodes: Vec<_> = dirs
         .into_iter()
         .filter_map(|d| {
-            let n = walk(
-                d,
-                &permissions_flag,
-                &ignore_directories,
-                &allowed_filesystems,
-                use_apparent_size,
-                by_filecount,
-                ignore_hidden,
-            );
+            let n = walk(d, &permissions_flag, &walk_data);
             match n {
                 Some(n) => {
                     let mut inodes: HashSet<(u64, u64)> = HashSet::new();
-                    clean_inodes(n, &mut inodes, use_apparent_size)
+                    clean_inodes(n, &mut inodes, walk_data.use_apparent_size)
                 }
                 None => None,
             }
@@ -78,36 +71,23 @@ fn clean_inodes(
     });
 }
 
-fn ignore_file(
-    entry: &DirEntry,
-    ignore_hidden: bool,
-    ignore_directories: &HashSet<PathBuf>,
-    allowed_filesystems: &HashSet<u64>,
-) -> bool {
+fn ignore_file(entry: &DirEntry, walk_data: &WalkData) -> bool {
     let is_dot_file = entry.file_name().to_str().unwrap_or("").starts_with('.');
-    let is_ignored_path = ignore_directories.contains(&entry.path());
+    let is_ignored_path = walk_data.ignore_directories.contains(&entry.path());
 
-    if !allowed_filesystems.is_empty() {
+    if !walk_data.allowed_filesystems.is_empty() {
         let size_inode_device = get_metadata(&entry.path(), false);
 
         if let Some((_size, Some((_id, dev)))) = size_inode_device {
-            if !allowed_filesystems.contains(&dev) {
+            if !walk_data.allowed_filesystems.contains(&dev) {
                 return true;
             }
         }
     }
-    (is_dot_file && ignore_hidden) || is_ignored_path
+    (is_dot_file && walk_data.ignore_hidden) || is_ignored_path
 }
 
-fn walk(
-    dir: PathBuf,
-    permissions_flag: &AtomicBool,
-    ignore_directories: &HashSet<PathBuf>,
-    allowed_filesystems: &HashSet<u64>,
-    use_apparent_size: bool,
-    by_filecount: bool,
-    ignore_hidden: bool,
-) -> Option<Node> {
+fn walk(dir: PathBuf, permissions_flag: &AtomicBool, walk_data: &WalkData) -> Option<Node> {
     let mut children = vec![];
 
     if let Ok(entries) = fs::read_dir(dir.clone()) {
@@ -122,30 +102,17 @@ fn walk(
 
                     // return walk(entry.path(), permissions_flag, ignore_directories, allowed_filesystems, use_apparent_size, by_filecount, ignore_hidden);
 
-                    if !ignore_file(
-                        &entry,
-                        ignore_hidden,
-                        &ignore_directories,
-                        &allowed_filesystems,
-                    ) {
+                    if !ignore_file(&entry, walk_data) {
                         if let Ok(data) = entry.file_type() {
                             if data.is_dir() && !data.is_symlink() {
-                                return walk(
-                                    entry.path(),
-                                    permissions_flag,
-                                    ignore_directories,
-                                    allowed_filesystems,
-                                    use_apparent_size,
-                                    by_filecount,
-                                    ignore_hidden,
-                                );
+                                return walk(entry.path(), permissions_flag, walk_data);
                             }
                             return build_node(
                                 entry.path(),
                                 vec![],
-                                use_apparent_size,
+                                walk_data.use_apparent_size,
                                 data.is_symlink(),
-                                by_filecount,
+                                walk_data.by_filecount,
                             );
                         }
                     }
@@ -158,7 +125,13 @@ fn walk(
     } else {
         permissions_flag.store(true, atomic::Ordering::Relaxed);
     }
-    build_node(dir, children, use_apparent_size, false, by_filecount)
+    build_node(
+        dir,
+        children,
+        walk_data.use_apparent_size,
+        false,
+        walk_data.by_filecount,
+    )
 }
 
 mod tests {
