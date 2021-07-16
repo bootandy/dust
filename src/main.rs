@@ -8,6 +8,7 @@ use std::collections::HashSet;
 use self::display::draw_it;
 use clap::{App, AppSettings, Arg};
 use dirwalker::walk_it;
+use dirwalker::WalkData;
 use filter::{get_biggest, get_by_depth};
 use std::cmp::max;
 use std::path::PathBuf;
@@ -214,14 +215,15 @@ fn main() {
         .flat_map(|x| simplified_dirs.iter().map(move |d| d.join(x.clone())))
         .collect();
 
-    let (nodes, errors) = walk_it(
-        simplified_dirs,
-        ignored_full_path,
+    let walk_data = WalkData {
+        ignore_directories: ignored_full_path,
         allowed_filesystems,
         use_apparent_size,
         by_filecount,
         ignore_hidden,
-    );
+    };
+
+    let (nodes, errors) = walk_it(simplified_dirs, walk_data);
 
     let tree = {
         match depth {
