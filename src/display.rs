@@ -125,7 +125,7 @@ pub fn draw_it(
     let root_node = option_root_node.unwrap();
 
     let num_chars_needed_on_left_most = if by_filecount {
-        let max_size = root_node.children.iter().map(|n| n.size).fold(0, max);
+        let max_size = root_node.size;
         max_size.separate_with_commas().chars().count()
     } else {
         5 // Under normal usage we need 5 chars to display the size of a directory
