@@ -102,7 +102,7 @@ fn walk(dir: PathBuf, permissions_flag: &AtomicBool, walk_data: &WalkData) -> Op
 
                     // return walk(entry.path(), permissions_flag, ignore_directories, allowed_filesystems, use_apparent_size, by_filecount, ignore_hidden);
 
-                    if !ignore_file(&entry, walk_data) {
+                    if !ignore_file(entry, walk_data) {
                         if let Ok(data) = entry.file_type() {
                             if data.is_dir() && !data.is_symlink() {
                                 return walk(entry.path(), permissions_flag, walk_data);
