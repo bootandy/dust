@@ -120,9 +120,9 @@ pub fn get_metadata(d: &Path, _use_apparent_size: bool) -> Option<(u64, Option<(
             {
                 Some((md.len(), None))
             } else {
-                get_metadata_expensive(&d)
+                get_metadata_expensive(d)
             }
         }
-        _ => get_metadata_expensive(&d),
+        _ => get_metadata_expensive(d),
     }
 }

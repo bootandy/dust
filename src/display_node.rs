@@ -36,11 +36,12 @@ impl DisplayNode {
     }
 
     pub fn get_children_from_node(&self, is_reversed: bool) -> impl Iterator<Item = DisplayNode> {
-        if is_reversed {
-            let children: Vec<DisplayNode> = self.children.clone().into_iter().rev().collect();
-            children.into_iter()
+        // we box to avoid the clippy lint warning
+        let out: Box<dyn Iterator<Item = DisplayNode>> = if is_reversed {
+            Box::new(self.children.clone().into_iter().rev())
         } else {
-            self.children.clone().into_iter()
-        }
+            Box::new(self.children.clone().into_iter())
+        };
+        out
     }
 }

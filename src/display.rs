@@ -265,9 +265,9 @@ fn pad_or_trim_filename(node: &DisplayNode, indent: &str, display_data: &Display
 
     // Add spaces after the filename so we can draw the % used bar chart.
     let name_and_padding = name
-        + &(repeat(" ")
-            .take(display_data.longest_string_length - width)
-            .collect::<String>());
+        + " "
+            .repeat(display_data.longest_string_length - width)
+            .as_str();
 
     maybe_trim_filename(name_and_padding, display_data)
 }
@@ -320,7 +320,7 @@ fn get_pretty_size(node: &DisplayNode, is_biggest: bool, display_data: &DisplayD
         let size_as_str = node.size.separate_with_commas();
         let spaces_to_add =
             display_data.num_chars_needed_on_left_most - size_as_str.chars().count();
-        size_as_str + &*repeat(' ').take(spaces_to_add).collect::<String>()
+        size_as_str + " ".repeat(spaces_to_add).as_str()
     } else {
         format!("{:>5}", human_readable_number(node.size))
     };

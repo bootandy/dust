@@ -41,7 +41,7 @@ pub fn get_filesystem_devices<'a, P: IntoIterator<Item = &'a PathBuf>>(paths: P)
     paths
         .into_iter()
         .filter_map(|p| {
-            let meta = get_metadata(&p, false);
+            let meta = get_metadata(p, false);
 
             if let Some((_size, Some((_id, dev)))) = meta {
                 Some(dev)
