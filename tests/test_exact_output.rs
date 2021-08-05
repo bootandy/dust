@@ -46,17 +46,16 @@ fn initialize() {
     });
 }
 
-fn run_dust_with<T: AsRef<OsStr>>(params: Vec<T>) -> String {
-    let mut cmd = Command::cargo_bin("dust").unwrap();
-    let mut a = &mut cmd;
-    for p in params {
+fn exact_output_test<T: AsRef<OsStr>>(valid_outputs: Vec<String>, command_args : Vec<T>) {
+    initialize();
+
+    let mut a = &mut Command::cargo_bin("dust").unwrap();
+    for p in command_args {
         a = a.arg(p);
     }
-    str::from_utf8(&a.unwrap().stdout).unwrap().into()
-}
+    let output : String = str::from_utf8(&a.unwrap().stdout).unwrap().into();
 
-fn check_dust_output(output: String, func: fn() -> Vec<String>) {
-    assert!(func()
+    assert!(valid_outputs
         .iter()
         .fold(false, |sum, i| sum || output.contains(i)));
 }
@@ -66,22 +65,19 @@ fn check_dust_output(output: String, func: fn() -> Vec<String>) {
 #[test]
 pub fn test_main_basic() {
     // -c is no color mode - This makes testing much simpler
-    initialize();
-    let output = run_dust_with(vec!["-c", "/tmp/test_dir/"]);
-    check_dust_output(output, main_output);
+    exact_output_test(main_output(), vec!["-c", "/tmp/test_dir/"])
 }
 
 #[cfg_attr(target_os = "windows", ignore)]
 #[test]
 pub fn test_main_multi_arg() {
-    initialize();
-    let output = run_dust_with(vec![
+    let command_args = vec![
         "-c",
         "/tmp/test_dir/many/",
         "/tmp/test_dir",
         "/tmp/test_dir",
-    ]);
-    check_dust_output(output, main_output);
+    ];
+    exact_output_test(main_output(), command_args);
 }
 
 fn main_output() -> Vec<String> {
@@ -111,9 +107,8 @@ fn main_output() -> Vec<String> {
 #[cfg_attr(target_os = "windows", ignore)]
 #[test]
 pub fn test_main_long_paths() {
-    initialize();
-    let output = run_dust_with(vec!["-c", "-p", "/tmp/test_dir/"]);
-    check_dust_output(output, main_output_long_paths);
+    let command_args = vec!["-c", "-p", "/tmp/test_dir/"];
+    exact_output_test(main_output_long_paths(), command_args);
 }
 
 fn main_output_long_paths() -> Vec<String> {
@@ -139,9 +134,8 @@ fn main_output_long_paths() -> Vec<String> {
 #[cfg_attr(target_os = "windows", ignore)]
 #[test]
 pub fn test_apparent_size() {
-    initialize();
-    let output = run_dust_with(vec!["-c", "-s", "/tmp/test_dir"]);
-    check_dust_output(output, output_apparent_size);
+    let command_args = vec!["-c", "-s", "/tmp/test_dir"];
+    exact_output_test(output_apparent_size(), command_args);
 }
 
 fn output_apparent_size() -> Vec<String> {
@@ -156,9 +150,8 @@ fn output_apparent_size() -> Vec<String> {
 #[cfg_attr(target_os = "windows", ignore)]
 #[test]
 pub fn test_substring_of_names_and_long_names() {
-    initialize();
-    let output = run_dust_with(vec!["-c", "/tmp/test_dir2"]);
-    check_dust_output(output, no_substring_of_names_output);
+    let command_args = vec!["-c", "/tmp/test_dir2"];
+    exact_output_test(no_substring_of_names_output(), command_args);
 }
 
 fn no_substring_of_names_output() -> Vec<String> {
@@ -191,9 +184,8 @@ fn no_substring_of_names_output() -> Vec<String> {
 #[cfg_attr(target_os = "windows", ignore)]
 #[test]
 pub fn test_unicode_directories() {
-    initialize();
-    let output = run_dust_with(vec!["-c", "/tmp/test_dir_unicode"]);
-    check_dust_output(output, unicode_dir);
+    let command_args = vec!["-c", "/tmp/test_dir_unicode"];
+    exact_output_test(unicode_dir(), command_args);
 }
 
 fn unicode_dir() -> Vec<String> {
