@@ -1,4 +1,5 @@
 use assert_cmd::Command;
+use std::ffi::OsStr;
 use std::str;
 use std::sync::Once;
 
@@ -37,12 +38,29 @@ fn copy_test_data(dir: &str) {
     };
 }
 
-pub fn initialize() {
+fn initialize() {
     INIT.call_once(|| {
         copy_test_data("tests/test_dir");
         copy_test_data("tests/test_dir2");
         copy_test_data("tests/test_dir_unicode");
     });
+}
+
+fn run_dust_with<T: AsRef<OsStr>>(params: Vec<T>) -> String {
+    let mut cmd = Command::cargo_bin("dust").unwrap();
+    let mut a = &mut cmd;
+    for p in params {
+        a = a.arg(p);
+    }
+    str::from_utf8(&a.unwrap().stdout).unwrap().into()
+}
+
+fn check_dust_output(output: String, func: fn() -> Vec<String>) {
+    let mut we_match = false;
+    for mo in func() {
+        we_match = we_match || output.contains(&mo);
+    }
+    assert!(we_match);
 }
 
 // "windows" result data can vary by host (size seems to be variable by one byte); fix code vs test and re-enable
@@ -51,34 +69,21 @@ pub fn initialize() {
 pub fn test_main_basic() {
     // -c is no color mode - This makes testing much simpler
     initialize();
-    let mut cmd = Command::cargo_bin("dust").unwrap();
-    let assert = cmd.arg("-c").arg("/tmp/test_dir/").unwrap().stdout;
-    let output = str::from_utf8(&assert).unwrap();
-    let mut we_match = false;
-    for mo in main_output() {
-        we_match = we_match || output.contains(&mo);
-    }
-    assert!(we_match);
+    let output = run_dust_with(vec!["-c", "/tmp/test_dir/"]);
+    check_dust_output(output, main_output);
 }
 
 #[cfg_attr(target_os = "windows", ignore)]
 #[test]
 pub fn test_main_multi_arg() {
     initialize();
-    let mut cmd = Command::cargo_bin("dust").unwrap();
-    let assert = cmd
-        .arg("-c")
-        .arg("/tmp/test_dir/many/")
-        .arg("/tmp/test_dir")
-        .arg("/tmp/test_dir")
-        .unwrap()
-        .stdout;
-    let output = str::from_utf8(&assert).unwrap();
-    let mut we_match = false;
-    for mo in main_output() {
-        we_match = we_match || output.contains(&mo);
-    }
-    assert!(we_match);
+    let output = run_dust_with(vec![
+        "-c",
+        "/tmp/test_dir/many/",
+        "/tmp/test_dir",
+        "/tmp/test_dir",
+    ]);
+    check_dust_output(output, main_output);
 }
 
 fn main_output() -> Vec<String> {
@@ -109,20 +114,8 @@ fn main_output() -> Vec<String> {
 #[test]
 pub fn test_main_long_paths() {
     initialize();
-    let mut cmd = Command::cargo_bin("dust").unwrap();
-    let assert = cmd
-        .arg("-c")
-        .arg("-p")
-        .arg("/tmp/test_dir/")
-        .unwrap()
-        .stdout;
-    let output = str::from_utf8(&assert).unwrap();
-
-    let mut we_match = false;
-    for mo in main_output_long_paths() {
-        we_match = we_match || output.contains(&mo);
-    }
-    assert!(we_match);
+    let output = run_dust_with(vec!["-c", "-p", "/tmp/test_dir/"]);
+    check_dust_output(output, main_output_long_paths);
 }
 
 fn main_output_long_paths() -> Vec<String> {
@@ -149,14 +142,8 @@ fn main_output_long_paths() -> Vec<String> {
 #[test]
 pub fn test_apparent_size() {
     initialize();
-    let mut cmd = Command::cargo_bin("dust").unwrap();
-    let assert = cmd.arg("-c").arg("-s").arg("/tmp/test_dir").unwrap().stdout;
-    let output = str::from_utf8(&assert).unwrap();
-    let mut we_match = false;
-    for mo in output_apparent_size() {
-        we_match = we_match || output.contains(&mo);
-    }
-    assert!(we_match);
+    let output = run_dust_with(vec!["-c", "-s", "/tmp/test_dir"]);
+    check_dust_output(output, output_apparent_size);
 }
 
 fn output_apparent_size() -> Vec<String> {
@@ -172,14 +159,8 @@ fn output_apparent_size() -> Vec<String> {
 #[test]
 pub fn test_substring_of_names_and_long_names() {
     initialize();
-    let mut cmd = Command::cargo_bin("dust").unwrap();
-    let output = cmd.arg("-c").arg("/tmp/test_dir2").unwrap().stdout;
-    let output = str::from_utf8(&output).unwrap();
-    let mut we_match = false;
-    for mo in no_substring_of_names_output() {
-        we_match = we_match || output.contains(&mo);
-    }
-    assert!(we_match);
+    let output = run_dust_with(vec!["-c", "/tmp/test_dir2"]);
+    check_dust_output(output, no_substring_of_names_output);
 }
 
 fn no_substring_of_names_output() -> Vec<String> {
@@ -213,14 +194,8 @@ fn no_substring_of_names_output() -> Vec<String> {
 #[test]
 pub fn test_unicode_directories() {
     initialize();
-    let mut cmd = Command::cargo_bin("dust").unwrap();
-    let output = cmd.arg("-c").arg("/tmp/test_dir_unicode").unwrap().stdout;
-    let output = str::from_utf8(&output).unwrap();
-    let mut we_match = false;
-    for mo in unicode_dir() {
-        we_match = we_match || output.contains(&mo);
-    }
-    assert!(we_match);
+    let output = run_dust_with(vec!["-c", "/tmp/test_dir_unicode"]);
+    check_dust_output(output, unicode_dir);
 }
 
 fn unicode_dir() -> Vec<String> {
