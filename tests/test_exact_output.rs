@@ -56,11 +56,9 @@ fn run_dust_with<T: AsRef<OsStr>>(params: Vec<T>) -> String {
 }
 
 fn check_dust_output(output: String, func: fn() -> Vec<String>) {
-    let mut we_match = false;
-    for mo in func() {
-        we_match = we_match || output.contains(&mo);
-    }
-    assert!(we_match);
+    assert!(func()
+        .iter()
+        .fold(false, |sum, i| sum || output.contains(i)));
 }
 
 // "windows" result data can vary by host (size seems to be variable by one byte); fix code vs test and re-enable
