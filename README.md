@@ -38,6 +38,8 @@ Dust is meant to give you an instant overview of which directories are using dis
 
 Dust will list a slightly-less-than-the-terminal-height number of the biggest subdirectories or files and will smartly recurse down the tree to find the larger ones. There is no need for a '-d' flag or a '-h' flag. The largest subdirectories will be colored.
 
+The different colors: The shades of grey are used to indicate which parent folder a subfolder belongs to. For instance, look at the above screenshot. `.steam` is a folder taking 44% of the space from the current folder. Inside `.steam` is a folder called `steam` (no dot) this folder takes up 36% of disk, but that means 8% of disk is taken by a different subfolders or files inside `.steam` but not in `steam` (no dot), these files & subfolders aren't listed as they are small.
+
 ## Usage
 
 ```
