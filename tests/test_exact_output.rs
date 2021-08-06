@@ -46,14 +46,14 @@ fn initialize() {
     });
 }
 
-fn exact_output_test<T: AsRef<OsStr>>(valid_outputs: Vec<String>, command_args : Vec<T>) {
+fn exact_output_test<T: AsRef<OsStr>>(valid_outputs: Vec<String>, command_args: Vec<T>) {
     initialize();
 
     let mut a = &mut Command::cargo_bin("dust").unwrap();
     for p in command_args {
         a = a.arg(p);
     }
-    let output : String = str::from_utf8(&a.unwrap().stdout).unwrap().into();
+    let output: String = str::from_utf8(&a.unwrap().stdout).unwrap().into();
 
     assert!(valid_outputs
         .iter()
@@ -129,21 +129,6 @@ fn main_output_long_paths() -> Vec<String> {
     .trim()
     .to_string();
     vec![mac_and_some_linux, ubuntu]
-}
-
-#[cfg_attr(target_os = "windows", ignore)]
-#[test]
-pub fn test_apparent_size() {
-    let command_args = vec!["-c", "-s", "/tmp/test_dir"];
-    exact_output_test(output_apparent_size(), command_args);
-}
-
-fn output_apparent_size() -> Vec<String> {
-    // The directory sizes vary a lot based on what the underlying filesystem is
-    // so different distros give different results. Really we should be checking that
-    // the standard '4.0K' isn't there
-    let apparent_size = "6B     ├── hello_file│".into();
-    vec![apparent_size]
 }
 
 // Check against directories and files whos names are substrings of each other
