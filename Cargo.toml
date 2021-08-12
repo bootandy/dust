@@ -29,6 +29,7 @@ unicode-width = "0.1"
 rayon="1"
 thousands = "0.2"
 stfu8 = "0.2"
+regex = "1"
 
 [target.'cfg(windows)'.dependencies]
 winapi-util = "0.1"

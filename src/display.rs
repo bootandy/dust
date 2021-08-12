@@ -107,7 +107,6 @@ impl DrawData<'_> {
 
 #[allow(clippy::too_many_arguments)]
 pub fn draw_it(
-    permission_error: bool,
     use_full_path: bool,
     is_reversed: bool,
     no_colors: bool,
@@ -116,9 +115,6 @@ pub fn draw_it(
     by_filecount: bool,
     option_root_node: Option<DisplayNode>,
 ) {
-    if permission_error {
-        eprintln!("Did not have permissions for all directories");
-    }
     if option_root_node.is_none() {
         return;
     }

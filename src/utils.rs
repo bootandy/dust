@@ -3,12 +3,7 @@ use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
 use crate::platform;
-
-fn is_a_parent_of<P: AsRef<Path>>(parent: P, child: P) -> bool {
-    let parent = parent.as_ref();
-    let child = child.as_ref();
-    child.starts_with(parent) && !parent.starts_with(child)
-}
+use regex::Regex;
 
 pub fn simplify_dir_names<P: AsRef<Path>>(filenames: Vec<P>) -> HashSet<PathBuf> {
     let mut top_level_names: HashSet<PathBuf> = HashSet::with_capacity(filenames.len());
@@ -60,6 +55,19 @@ pub fn normalize_path<P: AsRef<Path>>(path: P) -> PathBuf {
     // * `Path.components()` does all the above work; ref: <https://doc.rust-lang.org/std/path/struct.Path.html#method.components>
     // 4. changing to os preferred separator (automatically done by recollecting components back into a PathBuf)
     path.as_ref().components().collect::<PathBuf>()
+}
+
+pub fn is_filtered_out_due_to_regex(filter_regex: &Option<Regex>, dir: &Path) -> bool {
+    match filter_regex {
+        Some(fr) => !fr.is_match(&dir.as_os_str().to_string_lossy()),
+        None => false,
+    }
+}
+
+fn is_a_parent_of<P: AsRef<Path>>(parent: P, child: P) -> bool {
+    let parent = parent.as_ref();
+    let child = child.as_ref();
+    child.starts_with(parent) && !parent.starts_with(child)
 }
 
 mod tests {

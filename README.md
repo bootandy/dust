@@ -57,6 +57,8 @@ Usage: dust -b (do not show percentages or draw ASCII bars)
 Usage: dust -i (do not show hidden files)
 Usage: dust -c (No colors [monochrome])
 Usage: dust -f (Count files instead of diskspace)
+Usage: dust -t Group by filetype
+Usage: dust -e regex Only include files matching this regex (eg dust -e "\.png$" would match png files)
 ```
 
 
