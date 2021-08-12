@@ -116,3 +116,26 @@ pub fn test_apparent_size() {
     let incorrect_apparent_size = "4.0K     ├── hello_file";
     assert!(!output.contains(incorrect_apparent_size));
 }
+
+#[test]
+pub fn test_show_files_by_type() {
+    // Check we can list files by type
+    let output = build_command(vec!["-c", "-t", "tests"]);
+    assert!(output.contains(" .unicode"));
+    assert!(output.contains(" .japan"));
+    assert!(output.contains(" .rs"));
+    assert!(output.contains(" (no extension)"));
+    assert!(output.contains("┌─┴ (total)"));
+}
+
+#[test]
+pub fn test_show_files_by_specific_type() {
+    // Check we can see '.rs' files in the tests directory
+    let output = build_command(vec!["-c", "-y", "rs", "tests"]);
+    assert!(output.contains(" ┌── tests│"));
+    assert!(!output.contains("0B ┌── tests│"));
+
+    // Check there are no '.bad_type' files in the tests directory
+    let output = build_command(vec!["-c", "-y", "bad_type", "tests"]);
+    assert!(output.contains("0B ┌── tests│"));
+}

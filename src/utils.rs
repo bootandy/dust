@@ -4,12 +4,6 @@ use std::path::{Path, PathBuf};
 
 use crate::platform;
 
-fn is_a_parent_of<P: AsRef<Path>>(parent: P, child: P) -> bool {
-    let parent = parent.as_ref();
-    let child = child.as_ref();
-    child.starts_with(parent) && !parent.starts_with(child)
-}
-
 pub fn simplify_dir_names<P: AsRef<Path>>(filenames: Vec<P>) -> HashSet<PathBuf> {
     let mut top_level_names: HashSet<PathBuf> = HashSet::with_capacity(filenames.len());
     let mut to_remove: Vec<PathBuf> = Vec::with_capacity(filenames.len());
@@ -60,6 +54,27 @@ pub fn normalize_path<P: AsRef<Path>>(path: P) -> PathBuf {
     // * `Path.components()` does all the above work; ref: <https://doc.rust-lang.org/std/path/struct.Path.html#method.components>
     // 4. changing to os preferred separator (automatically done by recollecting components back into a PathBuf)
     path.as_ref().components().collect::<PathBuf>()
+}
+
+pub fn is_filtered_out_due_to_extension(filtered_extensions: &HashSet<&str>, dir: &Path) -> bool {
+    if !filtered_extensions.is_empty()
+        && !filtered_extensions.contains(
+            &dir.extension()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .into_owned()
+                .as_ref(),
+        )
+    {
+        return true;
+    }
+    false
+}
+
+fn is_a_parent_of<P: AsRef<Path>>(parent: P, child: P) -> bool {
+    let parent = parent.as_ref();
+    let child = child.as_ref();
+    child.starts_with(parent) && !parent.starts_with(child)
 }
 
 mod tests {

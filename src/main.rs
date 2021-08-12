@@ -9,7 +9,7 @@ use self::display::draw_it;
 use clap::{App, AppSettings, Arg};
 use dir_walker::walk_it;
 use dir_walker::WalkData;
-use filter::{get_biggest, get_by_depth};
+use filter::{get_all_file_types, get_biggest, get_by_depth};
 use std::cmp::max;
 use std::path::PathBuf;
 use terminal_size::{terminal_size, Height, Width};
@@ -67,6 +67,29 @@ fn get_width_of_terminal() -> usize {
         max(w as usize, DEFAULT_TERMINAL_WIDTH)
     } else {
         DEFAULT_TERMINAL_WIDTH
+    }
+}
+
+/**
+ * Takes an Option<iterable of string> and returns a HashSet of strings that have been
+ * split by comma and whitespace
+ */
+fn clean_input<'a, I>(cmd_line_arg: Option<I>) -> HashSet<&'a str>
+where
+    I: Iterator<Item = &'a str>,
+{
+    match cmd_line_arg {
+        Some(aa) => aa
+            .map(|a| {
+                a.split_whitespace()
+                    .map(|bb| bb.split(','))
+                    .flatten()
+                    .collect::<Vec<&str>>()
+            })
+            .flatten()
+            .filter(|a| !a.is_empty())
+            .collect::<HashSet<&str>>(),
+        None => HashSet::new(),
     }
 }
 
@@ -152,6 +175,25 @@ fn main() {
                 .help("Do not display hidden files"),
         )
         .arg(
+            Arg::with_name("types")
+                .short("t")
+                .long("file_types")
+                .conflicts_with("depth")
+                .conflicts_with("type")
+                .help("Group by file type"),
+        )
+        .arg(
+            Arg::with_name("type")
+                .short("y")
+                .long("file_type")
+                .takes_value(true)
+                .number_of_values(1)
+                .multiple(true)
+                .conflicts_with("depth")
+                .conflicts_with("types")
+                .help("show only these file types"),
+        )
+        .arg(
             Arg::with_name("width")
                 .short("w")
                 .long("terminal_width")
@@ -168,6 +210,10 @@ fn main() {
             Some(r) => r.collect(),
         }
     };
+
+    let summarize_file_types = options.is_present("types");
+
+    let file_types: HashSet<&str> = clean_input(options.values_of("type"));
 
     let number_of_lines = match value_t!(options.value_of("number_of_lines"), usize) {
         Ok(v) => v,
@@ -217,23 +263,37 @@ fn main() {
 
     let walk_data = WalkData {
         ignore_directories: ignored_full_path,
+        filtered_extensions: file_types.clone(),
         allowed_filesystems,
         use_apparent_size,
         by_filecount,
         ignore_hidden,
     };
 
-    let (nodes, errors) = walk_it(simplified_dirs, walk_data);
+    let (top_level_nodes, has_errors) = walk_it(simplified_dirs, walk_data);
 
     let tree = {
-        match depth {
-            None => get_biggest(nodes, number_of_lines),
-            Some(depth) => get_by_depth(nodes, depth),
+        match (depth, summarize_file_types) {
+            (_, true) => get_all_file_types(top_level_nodes, number_of_lines),
+            (Some(depth), _) => get_by_depth(top_level_nodes, depth),
+            (_, _) => get_biggest(
+                top_level_nodes,
+                number_of_lines,
+                options.values_of("type").is_some(),
+            ),
         }
     };
 
+    if !file_types.is_empty() {
+        println!(
+            "Only including: {}",
+            file_types.into_iter().collect::<Vec<&str>>().join(", ")
+        );
+    }
+    if has_errors {
+        eprintln!("Did not have permissions for all directories");
+    }
     draw_it(
-        errors,
         options.is_present("display_full_paths"),
         !options.is_present("reverse"),
         no_colors,
@@ -242,4 +302,20 @@ fn main() {
         by_filecount,
         tree,
     );
+}
+
+mod tests {
+    #[allow(unused_imports)]
+    use super::*;
+    #[allow(unused_imports)]
+    use std::path::PathBuf;
+
+    #[test]
+    fn test_parse_input() {
+        let input = Some(vec!["txt", "png,gif jpeg, doc"].into_iter());
+        let correct = vec!["txt", "png", "gif", "jpeg", "doc"]
+            .into_iter()
+            .collect::<HashSet<&str>>();
+        assert_eq!(clean_input(input), correct);
+    }
 }

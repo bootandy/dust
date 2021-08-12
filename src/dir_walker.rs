@@ -1,6 +1,7 @@
 use std::fs;
 
 use crate::node::Node;
+use crate::utils::is_filtered_out_due_to_extension;
 use rayon::iter::ParallelBridge;
 use rayon::prelude::ParallelIterator;
 use std::path::PathBuf;
@@ -15,8 +16,9 @@ use std::fs::DirEntry;
 
 use crate::platform::get_metadata;
 
-pub struct WalkData {
+pub struct WalkData<'a> {
     pub ignore_directories: HashSet<PathBuf>,
+    pub filtered_extensions: HashSet<&'a str>,
     pub allowed_filesystems: HashSet<u64>,
     pub use_apparent_size: bool,
     pub by_filecount: bool,
@@ -84,6 +86,12 @@ fn ignore_file(entry: &DirEntry, walk_data: &WalkData) -> bool {
             }
         }
     }
+    if entry.path().is_file()
+        && is_filtered_out_due_to_extension(&walk_data.filtered_extensions, &entry.path())
+    {
+        return true;
+    }
+
     (is_dot_file && walk_data.ignore_hidden) || is_ignored_path
 }
 
@@ -110,6 +118,7 @@ fn walk(dir: PathBuf, permissions_flag: &AtomicBool, walk_data: &WalkData) -> Op
                             return build_node(
                                 entry.path(),
                                 vec![],
+                                &walk_data.filtered_extensions,
                                 walk_data.use_apparent_size,
                                 data.is_symlink(),
                                 walk_data.by_filecount,
@@ -128,6 +137,7 @@ fn walk(dir: PathBuf, permissions_flag: &AtomicBool, walk_data: &WalkData) -> Op
     build_node(
         dir,
         children,
+        &walk_data.filtered_extensions,
         walk_data.use_apparent_size,
         false,
         walk_data.by_filecount,
