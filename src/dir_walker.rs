@@ -1,8 +1,10 @@
 use std::fs;
 
 use crate::node::Node;
+use crate::utils::is_filtered_out_due_to_regex;
 use rayon::iter::ParallelBridge;
 use rayon::prelude::ParallelIterator;
+use regex::Regex;
 use std::path::PathBuf;
 
 use std::sync::atomic;
@@ -17,6 +19,7 @@ use crate::platform::get_metadata;
 
 pub struct WalkData {
     pub ignore_directories: HashSet<PathBuf>,
+    pub filter_regex: Option<Regex>,
     pub allowed_filesystems: HashSet<u64>,
     pub use_apparent_size: bool,
     pub by_filecount: bool,
@@ -84,6 +87,15 @@ fn ignore_file(entry: &DirEntry, walk_data: &WalkData) -> bool {
             }
         }
     }
+
+    // Keeping `walk_data.filter_regex.is_some()` is important for performance reasons, it stops unnecessary work
+    if walk_data.filter_regex.is_some()
+        && entry.path().is_file()
+        && is_filtered_out_due_to_regex(&walk_data.filter_regex, &entry.path())
+    {
+        return true;
+    }
+
     (is_dot_file && walk_data.ignore_hidden) || is_ignored_path
 }
 
@@ -110,8 +122,10 @@ fn walk(dir: PathBuf, permissions_flag: &AtomicBool, walk_data: &WalkData) -> Op
                             return build_node(
                                 entry.path(),
                                 vec![],
+                                &walk_data.filter_regex,
                                 walk_data.use_apparent_size,
                                 data.is_symlink(),
+                                data.is_file(),
                                 walk_data.by_filecount,
                             );
                         }
@@ -128,7 +142,9 @@ fn walk(dir: PathBuf, permissions_flag: &AtomicBool, walk_data: &WalkData) -> Op
     build_node(
         dir,
         children,
+        &walk_data.filter_regex,
         walk_data.use_apparent_size,
+        false,
         false,
         walk_data.by_filecount,
     )

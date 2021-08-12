@@ -60,7 +60,7 @@ pub fn test_d_flag_works_and_still_recurses_down() {
     // We had a bug where running with '-d 1' would stop at the first directory and the code
     // would fail to recurse down
     let output = build_command(vec!["-d", "1", "-f", "-c", "tests/test_dir2/"]);
-    assert!(output.contains("7 ┌─┴ test_dir2"));
+    assert!(output.contains("4 ┌─┴ test_dir2"));
 }
 
 // Check against directories and files whos names are substrings of each other
@@ -97,8 +97,8 @@ pub fn test_number_of_files() {
     let output = build_command(vec!["-c", "-f", "tests/test_dir"]);
     assert!(output.contains("1     ┌── a_file "));
     assert!(output.contains("1     ├── hello_file"));
-    assert!(output.contains("3   ┌─┴ many"));
-    assert!(output.contains("4 ┌─┴ test_dir"));
+    assert!(output.contains("2   ┌─┴ many"));
+    assert!(output.contains("2 ┌─┴ test_dir"));
 }
 
 #[cfg_attr(target_os = "windows", ignore)]
@@ -115,4 +115,28 @@ pub fn test_apparent_size() {
 
     let incorrect_apparent_size = "4.0K     ├── hello_file";
     assert!(!output.contains(incorrect_apparent_size));
+}
+
+#[test]
+pub fn test_show_files_by_type() {
+    // Check we can list files by type
+    let output = build_command(vec!["-c", "-t", "tests"]);
+    assert!(output.contains(" .unicode"));
+    assert!(output.contains(" .japan"));
+    assert!(output.contains(" .rs"));
+    assert!(output.contains(" (no extension)"));
+    assert!(output.contains("┌─┴ (total)"));
+}
+
+#[test]
+pub fn test_show_files_by_specific_type() {
+    // Check we can see '.rs' files in the tests directory
+    let output = build_command(vec!["-c", "-e", "\\.rs$", "tests"]);
+    assert!(output.contains(" ┌─┴ tests"));
+    assert!(!output.contains("0B ┌── tests"));
+    assert!(!output.contains("0B ┌─┴ tests"));
+
+    // Check there are no '.bad_type' files in the tests directory
+    let output = build_command(vec!["-c", "-e", "bad_regex", "tests"]);
+    assert!(output.contains("0B ┌── tests"));
 }

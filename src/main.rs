@@ -1,15 +1,18 @@
 #[macro_use]
 extern crate clap;
 extern crate rayon;
+extern crate regex;
 extern crate unicode_width;
 
 use std::collections::HashSet;
+use std::process;
 
 use self::display::draw_it;
 use clap::{App, AppSettings, Arg};
 use dir_walker::walk_it;
 use dir_walker::WalkData;
-use filter::{get_biggest, get_by_depth};
+use filter::{get_all_file_types, get_biggest, get_by_depth};
+use regex::Regex;
 use std::cmp::max;
 use std::path::PathBuf;
 use terminal_size::{terminal_size, Height, Width};
@@ -152,6 +155,23 @@ fn main() {
                 .help("Do not display hidden files"),
         )
         .arg(
+            Arg::with_name("filter")
+                .short("e")
+                .long("filter")
+                .takes_value(true)
+                .number_of_values(1)
+                .multiple(true)
+                .conflicts_with("types")
+                .help("Only include files matching this regex. For png files type: -e \"\\.png$\" "),
+        )
+        .arg(
+            Arg::with_name("types")
+                .short("t")
+                .long("file_types")
+                .conflicts_with("depth")
+                .help("show only these file types"),
+        )
+        .arg(
             Arg::with_name("width")
                 .short("w")
                 .long("terminal_width")
@@ -167,6 +187,20 @@ fn main() {
             None => vec!["."],
             Some(r) => r.collect(),
         }
+    };
+
+    let summarize_file_types = options.is_present("types");
+
+    let maybe_filter = if options.is_present("filter") {
+        match Regex::new(options.value_of("filter").unwrap()) {
+            Ok(r) => Some(r),
+            Err(e) => {
+                eprintln!("Ignoring bad value for filter {:?}", e);
+                process::exit(1);
+            }
+        }
+    } else {
+        None
     };
 
     let number_of_lines = match value_t!(options.value_of("number_of_lines"), usize) {
@@ -217,23 +251,34 @@ fn main() {
 
     let walk_data = WalkData {
         ignore_directories: ignored_full_path,
+        filter_regex: maybe_filter,
         allowed_filesystems,
         use_apparent_size,
         by_filecount,
         ignore_hidden,
     };
 
-    let (nodes, errors) = walk_it(simplified_dirs, walk_data);
+    let (top_level_nodes, has_errors) = walk_it(simplified_dirs, walk_data);
 
     let tree = {
-        match depth {
-            None => get_biggest(nodes, number_of_lines),
-            Some(depth) => get_by_depth(nodes, depth),
+        match (depth, summarize_file_types) {
+            (_, true) => get_all_file_types(top_level_nodes, number_of_lines),
+            (Some(depth), _) => get_by_depth(top_level_nodes, depth),
+            (_, _) => get_biggest(
+                top_level_nodes,
+                number_of_lines,
+                options.values_of("filter").is_some(),
+            ),
         }
     };
 
+    if options.is_present("filter") {
+        println!("Filtering by: {}", options.value_of("filter").unwrap());
+    }
+    if has_errors {
+        eprintln!("Did not have permissions for all directories");
+    }
     draw_it(
-        errors,
         options.is_present("display_full_paths"),
         !options.is_present("reverse"),
         no_colors,

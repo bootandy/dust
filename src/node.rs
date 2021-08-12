@@ -1,5 +1,7 @@
 use crate::platform::get_metadata;
+use crate::utils::is_filtered_out_due_to_regex;
 
+use regex::Regex;
 use std::cmp::Ordering;
 use std::path::PathBuf;
 
@@ -14,18 +16,29 @@ pub struct Node {
 pub fn build_node(
     dir: PathBuf,
     children: Vec<Node>,
+    filter_regex: &Option<Regex>,
     use_apparent_size: bool,
     is_symlink: bool,
+    is_file: bool,
     by_filecount: bool,
 ) -> Option<Node> {
     match get_metadata(&dir, use_apparent_size) {
         Some(data) => {
-            let (size, inode_device) = if by_filecount {
-                (1, data.1)
-            } else if is_symlink && !use_apparent_size {
-                (0, None)
+            let inode_device = if is_symlink && !use_apparent_size {
+                None
             } else {
-                data
+                data.1
+            };
+
+            let size = if is_filtered_out_due_to_regex(filter_regex, &dir)
+                || (is_symlink && !use_apparent_size)
+                || by_filecount && !is_file
+            {
+                0
+            } else if by_filecount {
+                1
+            } else {
+                data.0
             };
 
             Some(Node {
