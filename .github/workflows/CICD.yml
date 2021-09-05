@@ -206,15 +206,16 @@ jobs:
         command: build
         args: --release --target=${{ matrix.job.target }} ${{ matrix.job.cargo-options }} ${{ steps.vars.outputs.CARGO_FEATURES_OPTION }}
     - name: Install cargo-deb
-      uses: action-rs/cargo@v1
+      uses: actions-rs/cargo@v1
       with:
           command: install
           args: cargo-deb
     - name: Build deb
-      uses: action-rs/cargo@v1
+      uses: actions-rs/cargo@v1
       with:
           command: deb
           args: --no-build --target=${{ matrix.job.target }}
+      if: ${{ contains(matrix.job.target, "musl") }}
     - name: Test
       uses: actions-rs/cargo@v1
       with:
