@@ -205,6 +205,16 @@ jobs:
         use-cross: ${{ steps.vars.outputs.CARGO_USE_CROSS }}
         command: build
         args: --release --target=${{ matrix.job.target }} ${{ matrix.job.cargo-options }} ${{ steps.vars.outputs.CARGO_FEATURES_OPTION }}
+    - name: Install cargo-deb
+      uses: action-rs/cargo@v1
+      with:
+          command: install
+          args: cargo-deb
+    - name: Build deb
+      uses: action-rs/cargo@v1
+      with:
+          command: deb
+          args: --no-build --target=${{ matrix.job.target }}
     - name: Test
       uses: actions-rs/cargo@v1
       with:
@@ -216,6 +226,11 @@ jobs:
       with:
         name: ${{ env.PROJECT_NAME }}-${{ matrix.job.target }}
         path: target/${{ matrix.job.target }}/release/${{ env.PROJECT_NAME }}${{ steps.vars.outputs.EXE_suffix }}
+    - name: Archive deb artifacts
+      uses: actions/upload-artifact@master
+      with:
+        name: ${{ env.PROJECT_NAME }}-${{ matrix.job.target }}.deb
+        path: target/${{ matrix.job.target }}/debian
     - name: Package
       shell: bash
       run: |
