@@ -73,6 +73,19 @@ fn get_width_of_terminal() -> usize {
     }
 }
 
+fn get_regex_value(maybe_value: Option<&str>) -> Option<Regex> {
+    match maybe_value {
+        Some(v) => match Regex::new(v) {
+            Ok(r) => Some(r),
+            Err(e) => {
+                eprintln!("Ignoring bad value for regex {:?}", e);
+                process::exit(1);
+            }
+        },
+        None => None,
+    }
+}
+
 fn main() {
     let default_height = get_height_of_terminal();
     let def_num_str = default_height.to_string();
@@ -151,8 +164,20 @@ fn main() {
         .arg(
             Arg::with_name("ignore_hidden")
                 .short("i") // Do not use 'h' this is used by 'help'
-                .long("ignore_hidden")
+                .long("ignore_hidden") //fix - -> _
                 .help("Do not display hidden files"),
+        )
+        .arg(
+            Arg::with_name("invert_filter")
+                .short("v")
+                .long("invert-filter")
+                .takes_value(true)
+                .number_of_values(1)
+                .multiple(true)
+                .conflicts_with("filter")
+                .conflicts_with("types")
+                .conflicts_with("depth")
+                .help("Exclude files matching this regex. To ignore png files type: -v \"\\.png$\" "),
         )
         .arg(
             Arg::with_name("filter")
@@ -162,6 +187,7 @@ fn main() {
                 .number_of_values(1)
                 .multiple(true)
                 .conflicts_with("types")
+                .conflicts_with("depth")
                 .help("Only include files matching this regex. For png files type: -e \"\\.png$\" "),
         )
         .arg(
@@ -191,17 +217,8 @@ fn main() {
 
     let summarize_file_types = options.is_present("types");
 
-    let maybe_filter = if options.is_present("filter") {
-        match Regex::new(options.value_of("filter").unwrap()) {
-            Ok(r) => Some(r),
-            Err(e) => {
-                eprintln!("Ignoring bad value for filter {:?}", e);
-                process::exit(1);
-            }
-        }
-    } else {
-        None
-    };
+    let maybe_filter = get_regex_value(options.value_of("filter"));
+    let maybe_invert_filter = get_regex_value(options.value_of("invert_filter"));
 
     let number_of_lines = match value_t!(options.value_of("number_of_lines"), usize) {
         Ok(v) => v,
@@ -252,6 +269,7 @@ fn main() {
     let walk_data = WalkData {
         ignore_directories: ignored_full_path,
         filter_regex: maybe_filter,
+        invert_filter_regex: maybe_invert_filter,
         allowed_filesystems,
         use_apparent_size,
         by_filecount,
@@ -267,7 +285,8 @@ fn main() {
             (_, _) => get_biggest(
                 top_level_nodes,
                 number_of_lines,
-                options.values_of("filter").is_some(),
+                options.values_of("filter").is_some()
+                    || options.value_of("invert_filter").is_some(),
             ),
         }
     };
