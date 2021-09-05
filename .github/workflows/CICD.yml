@@ -215,7 +215,7 @@ jobs:
       with:
           command: deb
           args: --no-build --target=${{ matrix.job.target }}
-      if: ${{ contains(matrix.job.target, "musl") }}
+      if: ${{ contains(matrix.job.target, 'musl') }}
     - name: Test
       uses: actions-rs/cargo@v1
       with:
