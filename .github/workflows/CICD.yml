@@ -210,6 +210,7 @@ jobs:
       with:
           command: install
           args: cargo-deb
+      if: ${{ contains(matrix.job.target, 'musl') }}
     - name: Build deb
       uses: actions-rs/cargo@v1
       with:
@@ -232,6 +233,7 @@ jobs:
       with:
         name: ${{ env.PROJECT_NAME }}-${{ matrix.job.target }}.deb
         path: target/${{ matrix.job.target }}/debian
+      if: ${{ contains(matrix.job.target, 'musl') }}
     - name: Package
       shell: bash
       run: |
