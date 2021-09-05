@@ -129,14 +129,29 @@ pub fn test_show_files_by_type() {
 }
 
 #[test]
-pub fn test_show_files_by_specific_type() {
+pub fn test_show_files_by_regex() {
     // Check we can see '.rs' files in the tests directory
     let output = build_command(vec!["-c", "-e", "\\.rs$", "tests"]);
     assert!(output.contains(" ┌─┴ tests"));
     assert!(!output.contains("0B ┌── tests"));
     assert!(!output.contains("0B ┌─┴ tests"));
 
-    // Check there are no '.bad_type' files in the tests directory
-    let output = build_command(vec!["-c", "-e", "bad_regex", "tests"]);
+    // Check there are no files named: '.match_nothing' in the tests directory
+    let output = build_command(vec!["-c", "-e", "match_nothing$", "tests"]);
     assert!(output.contains("0B ┌── tests"));
+}
+
+#[test]
+pub fn test_show_files_by_invert_regex() {
+    let output = build_command(vec!["-c", "-f", "-v", "e", "tests/test_dir2"]);
+    // There are 0 files without 'e' in the name
+    assert!(output.contains("0 ┌── test_dir2"));
+
+    let output = build_command(vec!["-c", "-f", "-v", "a", "tests/test_dir2"]);
+    // There are 2 files without 'a' in the name
+    assert!(output.contains("2 ┌─┴ test_dir2"));
+
+    // There are 4 files in the test_dir2 hierarchy
+    let output = build_command(vec!["-c", "-f", "-v", "match_nothing$", "tests/test_dir2"]);
+    assert!(output.contains("4 ┌─┴ test_dir2"));
 }

@@ -17,7 +17,7 @@ pub fn get_by_depth(top_level_nodes: Vec<Node>, n: usize) -> Option<DisplayNode>
 pub fn get_biggest(
     top_level_nodes: Vec<Node>,
     n: usize,
-    using_file_type_filter: bool,
+    using_a_filter: bool,
 ) -> Option<DisplayNode> {
     if top_level_nodes.is_empty() {
         // perhaps change this, bring back Error object?
@@ -30,14 +30,14 @@ pub fn get_biggest(
     let mut allowed_nodes = HashSet::new();
 
     allowed_nodes.insert(&root.name);
-    heap = add_children(using_file_type_filter, &root, heap);
+    heap = add_children(using_a_filter, &root, heap);
 
     for _ in number_top_level_nodes..n {
         let line = heap.pop();
         match line {
             Some(line) => {
                 allowed_nodes.insert(&line.name);
-                heap = add_children(using_file_type_filter, line, heap);
+                heap = add_children(using_a_filter, line, heap);
             }
             None => break,
         }
@@ -76,11 +76,11 @@ pub fn get_all_file_types(top_level_nodes: Vec<Node>, n: usize) -> Option<Displa
 }
 
 fn add_children<'a>(
-    using_file_type_filter: bool,
+    using_a_filter: bool,
     line: &'a Node,
     mut heap: BinaryHeap<&'a Node>,
 ) -> BinaryHeap<&'a Node> {
-    if using_file_type_filter {
+    if using_a_filter {
         line.children.iter().for_each(|c| {
             if c.name.is_file() || c.size > 0 {
                 heap.push(c)
