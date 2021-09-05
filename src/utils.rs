@@ -64,6 +64,13 @@ pub fn is_filtered_out_due_to_regex(filter_regex: &Option<Regex>, dir: &Path) ->
     }
 }
 
+pub fn is_filtered_out_due_to_invert_regex(filter_regex: &Option<Regex>, dir: &Path) -> bool {
+    match filter_regex {
+        Some(fr) => fr.is_match(&dir.as_os_str().to_string_lossy()),
+        None => false,
+    }
+}
+
 fn is_a_parent_of<P: AsRef<Path>>(parent: P, child: P) -> bool {
     let parent = parent.as_ref();
     let child = child.as_ref();

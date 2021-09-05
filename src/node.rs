@@ -1,4 +1,5 @@
 use crate::platform::get_metadata;
+use crate::utils::is_filtered_out_due_to_invert_regex;
 use crate::utils::is_filtered_out_due_to_regex;
 
 use regex::Regex;
@@ -13,10 +14,12 @@ pub struct Node {
     pub inode_device: Option<(u64, u64)>,
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn build_node(
     dir: PathBuf,
     children: Vec<Node>,
     filter_regex: &Option<Regex>,
+    invert_filter_regex: &Option<Regex>,
     use_apparent_size: bool,
     is_symlink: bool,
     is_file: bool,
@@ -31,6 +34,7 @@ pub fn build_node(
             };
 
             let size = if is_filtered_out_due_to_regex(filter_regex, &dir)
+                || is_filtered_out_due_to_invert_regex(invert_filter_regex, &dir)
                 || (is_symlink && !use_apparent_size)
                 || by_filecount && !is_file
             {
