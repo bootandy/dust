@@ -205,15 +205,13 @@ fn main() {
                 .number_of_values(1)
                 .help("Specify width of output overriding the auto detection of terminal width"),
         )
-        .arg(Arg::with_name("inputs").multiple(true))
+        .arg(Arg::with_name("inputs").multiple(true).default_value("."))
         .get_matches();
 
-    let target_dirs = {
-        match options.values_of("inputs") {
-            None => vec!["."],
-            Some(r) => r.collect(),
-        }
-    };
+    let target_dirs = options
+        .values_of("inputs")
+        .expect("Should be a default value here")
+        .collect();
 
     let summarize_file_types = options.is_present("types");
 
