@@ -255,7 +255,7 @@ jobs:
       uses: softprops/action-gh-release@v1
       if: steps.vars.outputs.DEPLOY
       with:
-        data: |
+        files: |
           ${{ steps.vars.outputs.STAGING }}/${{ steps.vars.outputs.PKG_NAME }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
