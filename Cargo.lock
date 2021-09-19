@@ -157,7 +157,7 @@ checksum = "fea41bba32d969b513997752735605054bc0dfa92b4c56bf1189f2e174be7a10"
 
 [[package]]
 name = "du-dust"
-version = "0.7.0"
+version = "0.7.5"
 dependencies = [
  "ansi_term 0.12.1",
  "assert_cmd",
