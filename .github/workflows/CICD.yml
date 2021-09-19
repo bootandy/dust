@@ -258,6 +258,7 @@ jobs:
         files: |
           ${{ steps.vars.outputs.STAGING }}/${{ steps.vars.outputs.PKG_NAME }}
           target/${{ matrix.job.target }}/debian
+          ${{ env.PROJECT_NAME }}-${{ matrix.job.target }}.deb
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
