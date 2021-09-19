@@ -64,10 +64,20 @@ fn get_height_of_terminal() -> usize {
     }
 }
 
+#[cfg(windows)]
 fn get_width_of_terminal() -> usize {
     // Windows CI runners detect a very low terminal width
     if let Some((Width(w), Height(_h))) = terminal_size() {
         max(w as usize, DEFAULT_TERMINAL_WIDTH)
+    } else {
+        DEFAULT_TERMINAL_WIDTH
+    }
+}
+
+#[cfg(not(windows))]
+fn get_width_of_terminal() -> usize {
+    if let Some((Width(w), Height(_h))) = terminal_size() {
+        w as usize
     } else {
         DEFAULT_TERMINAL_WIDTH
     }
