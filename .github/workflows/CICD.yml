@@ -257,6 +257,8 @@ jobs:
       with:
         files: |
           ${{ steps.vars.outputs.STAGING }}/${{ steps.vars.outputs.PKG_NAME }}
+          target/${{ matrix.job.target }}/debian/*.deb
+
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
