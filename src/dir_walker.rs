@@ -1,8 +1,9 @@
 use std::fs;
 
-use crate::node::Node;
-use crate::utils::is_filtered_out_due_to_invert_regex;
-use crate::utils::is_filtered_out_due_to_regex;
+use crate::{
+    node::Node,
+    utils::{file_matches_all_regexes, file_matches_any_regexes},
+};
 use rayon::iter::ParallelBridge;
 use rayon::prelude::ParallelIterator;
 use regex::Regex;
@@ -20,8 +21,8 @@ use crate::platform::get_metadata;
 
 pub struct WalkData {
     pub ignore_directories: HashSet<PathBuf>,
-    pub filter_regex: Option<Regex>,
-    pub invert_filter_regex: Option<Regex>,
+    pub filter_regexes: Vec<Regex>,
+    pub invert_filter_regexes: Vec<Regex>,
     pub allowed_filesystems: HashSet<u64>,
     pub use_apparent_size: bool,
     pub by_filecount: bool,
@@ -90,17 +91,17 @@ fn ignore_file(entry: &DirEntry, walk_data: &WalkData) -> bool {
         }
     }
 
-    // Keeping `walk_data.filter_regex.is_some()` is important for performance reasons, it stops unnecessary work
-    if walk_data.filter_regex.is_some()
+    // length check here lets us avoid a costly path transform otherwise
+    if walk_data.filter_regexes.len() > 0
         && entry.path().is_file()
-        && is_filtered_out_due_to_regex(&walk_data.filter_regex, &entry.path())
+        && !file_matches_all_regexes(&walk_data.filter_regexes, &entry.path())
     {
         return true;
     }
 
-    if walk_data.invert_filter_regex.is_some()
+    if walk_data.invert_filter_regexes.len() > 0
         && entry.path().is_file()
-        && is_filtered_out_due_to_invert_regex(&walk_data.invert_filter_regex, &entry.path())
+        && file_matches_any_regexes(&walk_data.invert_filter_regexes, &entry.path())
     {
         return true;
     }
@@ -131,8 +132,8 @@ fn walk(dir: PathBuf, permissions_flag: &AtomicBool, walk_data: &WalkData) -> Op
                             return build_node(
                                 entry.path(),
                                 vec![],
-                                &walk_data.filter_regex,
-                                &walk_data.invert_filter_regex,
+                                &walk_data.filter_regexes,
+                                &walk_data.invert_filter_regexes,
                                 walk_data.use_apparent_size,
                                 data.is_symlink(),
                                 data.is_file(),
@@ -152,8 +153,8 @@ fn walk(dir: PathBuf, permissions_flag: &AtomicBool, walk_data: &WalkData) -> Op
     build_node(
         dir,
         children,
-        &walk_data.filter_regex,
-        &walk_data.invert_filter_regex,
+        &walk_data.filter_regexes,
+        &walk_data.invert_filter_regexes,
         walk_data.use_apparent_size,
         false,
         false,

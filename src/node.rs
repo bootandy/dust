@@ -1,6 +1,7 @@
-use crate::platform::get_metadata;
-use crate::utils::is_filtered_out_due_to_invert_regex;
-use crate::utils::is_filtered_out_due_to_regex;
+use crate::{
+    platform::get_metadata,
+    utils::{file_matches_all_regexes, file_matches_any_regexes},
+};
 
 use regex::Regex;
 use std::cmp::Ordering;
@@ -18,8 +19,8 @@ pub struct Node {
 pub fn build_node(
     dir: PathBuf,
     children: Vec<Node>,
-    filter_regex: &Option<Regex>,
-    invert_filter_regex: &Option<Regex>,
+    filter_regexes: &Vec<Regex>,
+    invert_filter_regexes: &Vec<Regex>,
     use_apparent_size: bool,
     is_symlink: bool,
     is_file: bool,
@@ -33,8 +34,10 @@ pub fn build_node(
                 data.1
             };
 
-            let size = if is_filtered_out_due_to_regex(filter_regex, &dir)
-                || is_filtered_out_due_to_invert_regex(invert_filter_regex, &dir)
+            let size = if (filter_regexes.len() > 0
+                && !file_matches_all_regexes(filter_regexes, &dir))
+                || (invert_filter_regexes.len() > 0
+                    && file_matches_any_regexes(invert_filter_regexes, &dir))
                 || (is_symlink && !use_apparent_size)
                 || by_filecount && !is_file
             {

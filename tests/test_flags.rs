@@ -139,6 +139,16 @@ pub fn test_show_files_by_regex() {
     // Check there are no files named: '.match_nothing' in the tests directory
     let output = build_command(vec!["-c", "-e", "match_nothing$", "tests"]);
     assert!(output.contains("0B ┌── tests"));
+
+    // when filtering for test_dir, we'll have test_dir2 and test_dir
+    let output = build_command(vec!["-c", "-e", "test_dir", "tests"]);
+    assert!(output.contains("test_dir\n"));
+    assert!(output.contains("test_dir2\n"));
+
+    // when filtering for test_dir and 2, we'll have test_dir2 but not test_dir
+    let output = build_command(vec!["-c", "-e", "test_dir", "-e", "2", "tests"]);
+    assert!(!output.contains("test_dir\n"));
+    assert!(output.contains("test_dir2\n"));
 }
 
 #[test]
@@ -150,6 +160,10 @@ pub fn test_show_files_by_invert_regex() {
     let output = build_command(vec!["-c", "-f", "-v", "a", "tests/test_dir2"]);
     // There are 2 files without 'a' in the name
     assert!(output.contains("2 ┌─┴ test_dir2"));
+
+    let output = build_command(vec!["-c", "-f", "-v", "a", "-v", "n", "tests/test_dir2"]);
+    // There is only 1 file without 'a' or 'n' in the name
+    assert!(output.contains("1 ┌─┴ test_dir2"));
 
     // There are 4 files in the test_dir2 hierarchy
     let output = build_command(vec!["-c", "-f", "-v", "match_nothing$", "tests/test_dir2"]);

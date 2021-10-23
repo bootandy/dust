@@ -83,17 +83,21 @@ fn get_width_of_terminal() -> usize {
     }
 }
 
-fn get_regex_value(maybe_value: Option<&str>) -> Option<Regex> {
-    match maybe_value {
-        Some(v) => match Regex::new(v) {
-            Ok(r) => Some(r),
+fn get_regex_values(maybe_value: Option<clap::Values>) -> Vec<Regex> {
+    let values = match maybe_value {
+        Some(v) => v,
+        None => return vec![],
+    };
+
+    values
+        .map(|s| match Regex::new(s) {
+            Ok(r) => r,
             Err(e) => {
                 eprintln!("Ignoring bad value for regex {:?}", e);
-                process::exit(1);
+                process::exit(1)
             }
-        },
-        None => None,
-    }
+        })
+        .collect()
 }
 
 fn main() {
@@ -225,9 +229,8 @@ fn main() {
 
     let summarize_file_types = options.is_present("types");
 
-    let maybe_filter = get_regex_value(options.value_of("filter"));
-    let maybe_invert_filter = get_regex_value(options.value_of("invert_filter"));
-
+    let maybe_filter = get_regex_values(options.values_of("filter"));
+    let maybe_invert_filter = get_regex_values(options.values_of("invert_filter"));
     let number_of_lines = match value_t!(options.value_of("number_of_lines"), usize) {
         Ok(v) => v,
         Err(_) => {
@@ -276,8 +279,8 @@ fn main() {
 
     let walk_data = WalkData {
         ignore_directories: ignored_full_path,
-        filter_regex: maybe_filter,
-        invert_filter_regex: maybe_invert_filter,
+        filter_regexes: maybe_filter,
+        invert_filter_regexes: maybe_invert_filter,
         allowed_filesystems,
         use_apparent_size,
         by_filecount,
@@ -300,7 +303,10 @@ fn main() {
     };
 
     if options.is_present("filter") {
-        println!("Filtering by: {}", options.value_of("filter").unwrap());
+        println!(
+            "Filtering by: {:?}",
+            options.values_of("filter").unwrap().collect::<Vec<&str>>()
+        )
     }
     if has_errors {
         eprintln!("Did not have permissions for all directories");

@@ -57,18 +57,31 @@ pub fn normalize_path<P: AsRef<Path>>(path: P) -> PathBuf {
     path.as_ref().components().collect::<PathBuf>()
 }
 
-pub fn is_filtered_out_due_to_regex(filter_regex: &Option<Regex>, dir: &Path) -> bool {
-    match filter_regex {
-        Some(fr) => !fr.is_match(&dir.as_os_str().to_string_lossy()),
-        None => false,
+pub fn file_matches_any_regexes(regexes: &Vec<Regex>, dir: &Path) -> bool {
+    if regexes.len() == 0 {
+        return true;
     }
-}
 
-pub fn is_filtered_out_due_to_invert_regex(filter_regex: &Option<Regex>, dir: &Path) -> bool {
-    match filter_regex {
-        Some(fr) => fr.is_match(&dir.as_os_str().to_string_lossy()),
-        None => false,
+    let dir_as_str = dir.as_os_str().to_string_lossy();
+    for fr in regexes {
+        if fr.is_match(&dir_as_str) {
+            return true;
+        }
     }
+    return false;
+}
+pub fn file_matches_all_regexes(regexes: &Vec<Regex>, dir: &Path) -> bool {
+    if regexes.len() == 0 {
+        return true;
+    }
+
+    let dir_as_str = dir.as_os_str().to_string_lossy();
+    for fr in regexes {
+        if !fr.is_match(&dir_as_str) {
+            return false;
+        }
+    }
+    return true;
 }
 
 fn is_a_parent_of<P: AsRef<Path>>(parent: P, child: P) -> bool {
