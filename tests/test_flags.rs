@@ -129,16 +129,27 @@ pub fn test_show_files_by_type() {
 }
 
 #[test]
-pub fn test_show_files_by_regex() {
+pub fn test_show_files_by_regex_match_lots() {
     // Check we can see '.rs' files in the tests directory
     let output = build_command(vec!["-c", "-e", "\\.rs$", "tests"]);
     assert!(output.contains(" ┌─┴ tests"));
     assert!(!output.contains("0B ┌── tests"));
     assert!(!output.contains("0B ┌─┴ tests"));
+}
 
+#[test]
+pub fn test_show_files_by_regex_match_nothing() {
     // Check there are no files named: '.match_nothing' in the tests directory
     let output = build_command(vec!["-c", "-e", "match_nothing$", "tests"]);
     assert!(output.contains("0B ┌── tests"));
+}
+
+#[test]
+pub fn test_show_files_by_regex_match_multiple() {
+    let output = build_command(vec!["-c", "-e", "test_dir2", "-e", "unicode", "tests"]);
+    assert!(output.contains("test_dir2"));
+    assert!(output.contains("test_dir_unicode"));
+    assert!(!output.contains("many")); // We do not find the 'many' folder in the 'test_dir' folder
 }
 
 #[test]
@@ -154,4 +165,14 @@ pub fn test_show_files_by_invert_regex() {
     // There are 4 files in the test_dir2 hierarchy
     let output = build_command(vec!["-c", "-f", "-v", "match_nothing$", "tests/test_dir2"]);
     assert!(output.contains("4 ┌─┴ test_dir2"));
+}
+
+#[test]
+pub fn test_show_files_by_invert_regex_match_multiple() {
+    // We ignore test_dir2 & test_dir_unicode, leaving the test_dir folder
+    // which has the 'many' folder inside
+    let output = build_command(vec!["-c", "-v", "test_dir2", "-v", "unicode", "tests"]);
+    assert!(!output.contains("test_dir2"));
+    assert!(!output.contains("test_dir_unicode"));
+    assert!(output.contains("many"));
 }
