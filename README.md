@@ -26,6 +26,10 @@ Because I want an easy way to see where my disk is being used.
 
 * `brew tap tgotwig/linux-dust && brew install dust`
 
+#### Windows:
+* Windows GNU version - works
+* Windows MSVC - requires: VCRUNTIME140.dll
+
 #### Download
 
 * Download Linux/Mac binary from [Releases](https://github.com/bootandy/dust/releases)
