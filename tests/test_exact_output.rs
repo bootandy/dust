@@ -192,3 +192,22 @@ fn unicode_dir() -> Vec<String> {
     .into();
     vec![mac_and_some_linux, ubuntu]
 }
+
+#[cfg_attr(target_os = "windows", ignore)]
+#[test]
+pub fn test_apparent_size() {
+    let command_args = vec!["-c", "-s", "-b", "/tmp/test_dir"];
+    exact_output_test(apparent_size_output(), command_args);
+}
+
+fn apparent_size_output() -> Vec<String> {
+    // The apparent directory sizes are too unpredictable and system dependant to try and match
+    let files = r#"
+   0B     ┌── a_file
+   6B     ├── hello_file
+ "#
+    .trim()
+    .to_string();
+
+    vec![files]
+}
