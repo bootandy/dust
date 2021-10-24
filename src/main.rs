@@ -178,7 +178,7 @@ fn main() {
         .arg(
             Arg::with_name("ignore_hidden")
                 .short("i") // Do not use 'h' this is used by 'help'
-                .long("ignore_hidden") //TODO: fix change - -> _
+                .long("ignore_hidden")
                 .help("Do not display hidden files"),
         )
         .arg(
