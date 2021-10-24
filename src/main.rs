@@ -273,11 +273,6 @@ fn main() {
         }
     };
 
-    if options.is_present("filter") {
-        println!("Filtering by: {:?}", filter_regexs);
-    }
-    // todo incl invert regex
-
     let ignored_full_path: HashSet<PathBuf> = ignore_directories
         .into_iter()
         .flat_map(|x| simplified_dirs.iter().map(move |d| d.join(x.clone())))
@@ -285,8 +280,8 @@ fn main() {
 
     let walk_data = WalkData {
         ignore_directories: ignored_full_path,
-        filter_regex: filter_regexs,
-        invert_filter_regex: invert_filter_regexs,
+        filter_regex: &filter_regexs,
+        invert_filter_regex: &invert_filter_regexs,
         allowed_filesystems,
         use_apparent_size,
         by_filecount,
