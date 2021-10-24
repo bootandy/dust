@@ -8,6 +8,7 @@ use std::collections::HashSet;
 use std::process;
 
 use self::display::draw_it;
+use clap::Values;
 use clap::{App, AppSettings, Arg};
 use dir_walker::walk_it;
 use dir_walker::WalkData;
@@ -83,17 +84,20 @@ fn get_width_of_terminal() -> usize {
     }
 }
 
-fn get_regex_value(maybe_value: Option<&str>) -> Option<Regex> {
-    match maybe_value {
-        Some(v) => match Regex::new(v) {
-            Ok(r) => Some(r),
-            Err(e) => {
-                eprintln!("Ignoring bad value for regex {:?}", e);
-                process::exit(1);
+fn get_regex_value(maybe_value: Option<Values>) -> Vec<Regex> {
+    let mut result = vec![];
+    if let Some(v) = maybe_value {
+        for reg in v {
+            match Regex::new(reg) {
+                Ok(r) => result.push(r),
+                Err(e) => {
+                    eprintln!("Ignoring bad value for regex {:?}", e);
+                    process::exit(1);
+                }
             }
-        },
-        None => None,
+        }
     }
+    result
 }
 
 fn main() {
@@ -225,8 +229,8 @@ fn main() {
 
     let summarize_file_types = options.is_present("types");
 
-    let maybe_filter = get_regex_value(options.value_of("filter"));
-    let maybe_invert_filter = get_regex_value(options.value_of("invert_filter"));
+    let filter_regexs = get_regex_value(options.values_of("filter"));
+    let invert_filter_regexs = get_regex_value(options.values_of("invert_filter"));
 
     let number_of_lines = match value_t!(options.value_of("number_of_lines"), usize) {
         Ok(v) => v,
@@ -269,6 +273,11 @@ fn main() {
         }
     };
 
+    if options.is_present("filter") {
+        println!("Filtering by: {:?}", filter_regexs);
+    }
+    // todo incl invert regex
+
     let ignored_full_path: HashSet<PathBuf> = ignore_directories
         .into_iter()
         .flat_map(|x| simplified_dirs.iter().map(move |d| d.join(x.clone())))
@@ -276,8 +285,8 @@ fn main() {
 
     let walk_data = WalkData {
         ignore_directories: ignored_full_path,
-        filter_regex: maybe_filter,
-        invert_filter_regex: maybe_invert_filter,
+        filter_regex: filter_regexs,
+        invert_filter_regex: invert_filter_regexs,
         allowed_filesystems,
         use_apparent_size,
         by_filecount,
@@ -299,9 +308,6 @@ fn main() {
         }
     };
 
-    if options.is_present("filter") {
-        println!("Filtering by: {}", options.value_of("filter").unwrap());
-    }
     if has_errors {
         eprintln!("Did not have permissions for all directories");
     }

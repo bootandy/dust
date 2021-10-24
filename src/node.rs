@@ -18,8 +18,8 @@ pub struct Node {
 pub fn build_node(
     dir: PathBuf,
     children: Vec<Node>,
-    filter_regex: &Option<Regex>,
-    invert_filter_regex: &Option<Regex>,
+    filter_regex: &[Regex],
+    invert_filter_regex: &[Regex],
     use_apparent_size: bool,
     is_symlink: bool,
     is_file: bool,
