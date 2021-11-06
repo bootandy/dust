@@ -128,14 +128,12 @@ pub fn test_show_files_by_regex_match_nothing() {
     assert!(output.contains("0B ┌── tests"));
 }
 
-#[cfg_attr(target_os = "windows", ignore)]
-#[cfg_attr(target_os = "macos", ignore)] // TODO: Figure out why mac doesnt like this test
 #[test]
 pub fn test_show_files_by_regex_match_multiple() {
     let output = build_command(vec![
         "-c",
         "-e",
-        "test_dir_unicode",
+        "test_dir_hidden",
         "-e",
         "test_dir2",
         "-n",
@@ -143,7 +141,7 @@ pub fn test_show_files_by_regex_match_multiple() {
         "tests",
     ]);
     assert!(output.contains("test_dir2"));
-    assert!(output.contains("test_dir_unicode"));
+    assert!(output.contains("test_dir_hidden"));
     assert!(!output.contains("many")); // We do not find the 'many' folder in the 'test_dir' folder
 }
 
