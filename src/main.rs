@@ -220,6 +220,12 @@ fn main() {
                 .help("Specify width of output overriding the auto detection of terminal width"),
         )
         .arg(Arg::with_name("inputs").multiple(true).default_value("."))
+        .arg(
+            Arg::with_name("iso")
+                .short("H")
+                .long("si")
+                .help("print sizes in powers of 1000 (e.g., 1.1G)")
+        )
         .get_matches();
 
     let target_dirs = options
@@ -314,5 +320,6 @@ fn main() {
         terminal_width,
         by_filecount,
         tree,
+        options.is_present("iso"),
     );
 }

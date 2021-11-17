@@ -28,6 +28,7 @@ pub struct DisplayData {
     pub base_size: u64,
     pub longest_string_length: usize,
     pub ls_colors: LsColors,
+    pub iso: bool,
 }
 
 impl DisplayData {
@@ -114,6 +115,7 @@ pub fn draw_it(
     terminal_width: usize,
     by_filecount: bool,
     option_root_node: Option<DisplayNode>,
+    iso: bool,
 ) {
     if option_root_node.is_none() {
         return;
@@ -149,6 +151,7 @@ pub fn draw_it(
         base_size: root_node.size,
         longest_string_length,
         ls_colors: LsColors::from_env().unwrap_or_default(),
+        iso,
     };
     let draw_data = DrawData {
         indent: "".to_string(),
@@ -318,7 +321,7 @@ fn get_pretty_size(node: &DisplayNode, is_biggest: bool, display_data: &DisplayD
             display_data.num_chars_needed_on_left_most - size_as_str.chars().count();
         size_as_str + " ".repeat(spaces_to_add).as_str()
     } else {
-        format!("{:>5}", human_readable_number(node.size))
+        format!("{:>5}", human_readable_number(node.size, display_data.iso))
     };
 
     if is_biggest && display_data.colors_on {
@@ -347,9 +350,10 @@ fn get_pretty_name(
     }
 }
 
-fn human_readable_number(size: u64) -> String {
+fn human_readable_number(size: u64, iso: bool) -> String {
     for (i, u) in UNITS.iter().enumerate() {
-        let marker = 1024u64.pow((UNITS.len() - i) as u32);
+        let num: u64 = if iso { 1000 } else { 1024 };
+        let marker = num.pow((UNITS.len() - i) as u32);
         if size >= marker {
             if size / marker < 10 {
                 return format!("{:.1}{}", (size as f32 / marker as f32), u);
@@ -378,6 +382,7 @@ mod tests {
             base_size: 1,
             longest_string_length,
             ls_colors: LsColors::from_env().unwrap_or_default(),
+            iso: false,
         }
     }
 
@@ -424,15 +429,21 @@ mod tests {
 
     #[test]
     fn test_human_readable_number() {
-        assert_eq!(human_readable_number(1), "1B");
-        assert_eq!(human_readable_number(956), "956B");
-        assert_eq!(human_readable_number(1004), "1004B");
-        assert_eq!(human_readable_number(1024), "1.0K");
-        assert_eq!(human_readable_number(1536), "1.5K");
-        assert_eq!(human_readable_number(1024 * 512), "512K");
-        assert_eq!(human_readable_number(1024 * 1024), "1.0M");
-        assert_eq!(human_readable_number(1024 * 1024 * 1024 - 1), "1023M");
-        assert_eq!(human_readable_number(1024 * 1024 * 1024 * 20), "20G");
-        assert_eq!(human_readable_number(1024 * 1024 * 1024 * 1024), "1.0T");
+        assert_eq!(human_readable_number(1, false), "1B");
+        assert_eq!(human_readable_number(956, false), "956B");
+        assert_eq!(human_readable_number(1004, false), "1004B");
+        assert_eq!(human_readable_number(1024, false), "1.0K");
+        assert_eq!(human_readable_number(1536, false), "1.5K");
+        assert_eq!(human_readable_number(1024 * 512, false), "512K");
+        assert_eq!(human_readable_number(1024 * 1024, false), "1.0M");
+        assert_eq!(
+            human_readable_number(1024 * 1024 * 1024 - 1, false),
+            "1023M"
+        );
+        assert_eq!(human_readable_number(1024 * 1024 * 1024 * 20, false), "20G");
+        assert_eq!(
+            human_readable_number(1024 * 1024 * 1024 * 1024, false),
+            "1.0T"
+        );
     }
 }
