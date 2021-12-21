@@ -26,6 +26,10 @@ Because I want an easy way to see where my disk is being used.
 
 * `brew tap tgotwig/linux-dust && brew install dust`
 
+#### [Pacstall](https://github.com/pacstall/pacstall) (Debian/Ubuntu)
+
+* `pacstall -I dust-bin`
+
 #### Windows:
 * Windows GNU version - works
 * Windows MSVC - requires: VCRUNTIME140.dll
