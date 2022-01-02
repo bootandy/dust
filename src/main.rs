@@ -161,7 +161,7 @@ fn main() {
             Arg::with_name("no_colors")
                 .short("c")
                 .long("no-colors")
-                .help("No colors will be printed (normally largest directories are colored)"),
+                .help("No colors will be printed (Useful for commands like: watch)"),
         )
         .arg(
             Arg::with_name("no_bars")
