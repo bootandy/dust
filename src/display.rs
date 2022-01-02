@@ -128,20 +128,21 @@ pub fn draw_it(
     } else {
         5 // Under normal usage we need 5 chars to display the size of a directory
     };
+
     assert!(
-        terminal_width > 9 + num_chars_needed_on_left_most,
+        terminal_width > num_chars_needed_on_left_most + 2,
         "Not enough terminal width"
     );
 
-    let terminal_width = terminal_width - 9 - num_chars_needed_on_left_most;
+    let t = terminal_width - num_chars_needed_on_left_most - 2;
     let num_indent_chars = 3;
     let longest_string_length =
-        find_longest_dir_name(&root_node, num_indent_chars, terminal_width, !use_full_path);
+        find_longest_dir_name(&root_node, num_indent_chars, t, !use_full_path);
 
-    let max_bar_length = if no_percents || longest_string_length >= terminal_width as usize {
+    let max_bar_length = if no_percents || longest_string_length + 7 >= t as usize {
         0
     } else {
-        terminal_width as usize - longest_string_length
+        t as usize - longest_string_length - 7
     };
 
     let first_size_bar = repeat(BLOCKS[0]).take(max_bar_length).collect::<String>();
@@ -264,23 +265,31 @@ fn pad_or_trim_filename(node: &DisplayNode, indent: &str, display_data: &Display
     let indent_and_name = format!("{} {}", indent, name);
     let width = UnicodeWidthStr::width(&*indent_and_name);
 
-    assert!(display_data.longest_string_length >= width);
+    assert!(
+        display_data.longest_string_length >= width,
+        "Terminal width not wide enough to draw directory tree"
+    );
 
     // Add spaces after the filename so we can draw the % used bar chart.
     let name_and_padding = name
         + " "
-            .repeat(display_data.longest_string_length - width)
+            .repeat((display_data.longest_string_length) - (width))
             .as_str();
 
-    maybe_trim_filename(name_and_padding, display_data)
+    name_and_padding
 }
 
-fn maybe_trim_filename(name_in: String, display_data: &DisplayData) -> String {
-    if UnicodeWidthStr::width(&*name_in) > display_data.longest_string_length {
-        let name = name_in
-            .chars()
-            .take(display_data.longest_string_length - 2)
-            .collect::<String>();
+fn maybe_trim_filename(name_in: String, indent: &str, display_data: &DisplayData) -> String {
+    let indent_length = UnicodeWidthStr::width(indent);
+    assert!(
+        display_data.longest_string_length >= indent_length + 2,
+        "Terminal width not wide enough to draw directory tree"
+    );
+
+    // println!("{} : {} : {}", UnicodeWidthStr::width(&*name_in) ,display_data.longest_string_length, indent_length);
+    let max_size = display_data.longest_string_length - indent_length;
+    if UnicodeWidthStr::width(&*name_in) > max_size {
+        let name = name_in.chars().take(max_size - 2).collect::<String>();
         name + ".."
     } else {
         name_in
@@ -313,7 +322,7 @@ fn get_name_percent(
         (percents, name_and_padding)
     } else {
         let n = get_printable_name(&node.name, display_data.short_paths);
-        let name = maybe_trim_filename(n, display_data);
+        let name = maybe_trim_filename(n, indent, display_data);
         ("".into(), name)
     }
 }
@@ -406,7 +415,7 @@ mod tests {
             indent,
             percent_bar,
             is_biggest,
-            &get_fake_display_data(6),
+            &get_fake_display_data(20),
         );
         assert_eq!(s, " 4.0K ┌─┴ short");
     }
@@ -427,7 +436,7 @@ mod tests {
         let s = format_string(&n, indent, percent_bar, is_biggest, &dd);
         assert_eq!(
             s,
-            " 4.0K ┌─┴ very_long_name_longer_than_the_eighty_character_limit_very_lon.."
+            " 4.0K ┌─┴ very_long_name_longer_than_the_eighty_character_limit_very_.."
         );
     }
 
