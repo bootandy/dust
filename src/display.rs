@@ -128,6 +128,10 @@ pub fn draw_it(
     } else {
         5 // Under normal usage we need 5 chars to display the size of a directory
     };
+    assert!(
+        terminal_width > 9 + num_chars_needed_on_left_most,
+        "Not enough terminal width"
+    );
 
     let terminal_width = terminal_width - 9 - num_chars_needed_on_left_most;
     let num_indent_chars = 3;
