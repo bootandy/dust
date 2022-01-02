@@ -24,7 +24,7 @@ fn get_width_of_terminal() -> u16 {
 
 // Mac test runners create tmp files with very long names, hence it may be shortened in the output
 fn get_file_name(name: String) -> String {
-    let terminal_plus_buffer = (get_width_of_terminal() - 14) as usize;
+    let terminal_plus_buffer = (get_width_of_terminal() - 12) as usize;
     if UnicodeWidthStr::width(&*name) > terminal_plus_buffer {
         let trimmed_name = name
             .chars()

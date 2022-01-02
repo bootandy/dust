@@ -141,7 +141,7 @@ pub fn test_substring_of_names_and_long_names() {
 
 fn no_substring_of_names_output() -> Vec<String> {
     let ubuntu = "
-   0B   ┌── long_dir_name_what_a_very_long_dir_name_what_happens_when_this_g..
+   0B   ┌── long_dir_name_what_a_very_long_dir_name_what_happens_when_this_goe..
  4.0K   ├── dir_name_clash
  4.0K   │ ┌── hello
  8.0K   ├─┴ dir
@@ -153,7 +153,7 @@ fn no_substring_of_names_output() -> Vec<String> {
     .into();
 
     let mac_and_some_linux = "
-   0B   ┌── long_dir_name_what_a_very_long_dir_name_what_happens_when_this_g..
+   0B   ┌── long_dir_name_what_a_very_long_dir_name_what_happens_when_this_goe..
  4.0K   │ ┌── hello
  4.0K   ├─┴ dir
  4.0K   ├── dir_name_clash
