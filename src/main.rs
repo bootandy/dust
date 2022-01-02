@@ -120,7 +120,7 @@ fn main() {
             Arg::with_name("number_of_lines")
                 .short("n")
                 .long("number-of-lines")
-                .help("Number of lines of output to show. This is Height, (but h is help)")
+                .help("Number of lines of output to show. (Default is terminal_height - 10)")
                 .takes_value(true)
                 .default_value(def_num_str.as_ref()),
         )
