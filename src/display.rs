@@ -114,14 +114,9 @@ pub fn draw_it(
     no_percents: bool,
     terminal_width: usize,
     by_filecount: bool,
-    option_root_node: Option<DisplayNode>,
+    root_node: DisplayNode,
     iso: bool,
 ) {
-    if option_root_node.is_none() {
-        return;
-    }
-    let root_node = option_root_node.unwrap();
-
     let num_chars_needed_on_left_most = if by_filecount {
         let max_size = root_node.size;
         max_size.separate_with_commas().chars().count()
@@ -134,15 +129,15 @@ pub fn draw_it(
         "Not enough terminal width"
     );
 
-    let t = terminal_width - num_chars_needed_on_left_most - 2;
+    let allowed_width = terminal_width - num_chars_needed_on_left_most - 2;
     let num_indent_chars = 3;
     let longest_string_length =
-        find_longest_dir_name(&root_node, num_indent_chars, t, !use_full_path);
+        find_longest_dir_name(&root_node, num_indent_chars, allowed_width, !use_full_path);
 
-    let max_bar_length = if no_percents || longest_string_length + 7 >= t as usize {
+    let max_bar_length = if no_percents || longest_string_length + 7 >= allowed_width as usize {
         0
     } else {
-        t as usize - longest_string_length - 7
+        allowed_width as usize - longest_string_length - 7
     };
 
     let first_size_bar = repeat(BLOCKS[0]).take(max_bar_length).collect::<String>();
@@ -273,7 +268,7 @@ fn pad_or_trim_filename(node: &DisplayNode, indent: &str, display_data: &Display
     // Add spaces after the filename so we can draw the % used bar chart.
     let name_and_padding = name
         + " "
-            .repeat((display_data.longest_string_length) - (width))
+            .repeat(display_data.longest_string_length - width)
             .as_str();
 
     name_and_padding
@@ -286,7 +281,6 @@ fn maybe_trim_filename(name_in: String, indent: &str, display_data: &DisplayData
         "Terminal width not wide enough to draw directory tree"
     );
 
-    // println!("{} : {} : {}", UnicodeWidthStr::width(&*name_in) ,display_data.longest_string_length, indent_length);
     let max_size = display_data.longest_string_length - indent_length;
     if UnicodeWidthStr::width(&*name_in) > max_size {
         let name = name_in.chars().take(max_size - 2).collect::<String>();

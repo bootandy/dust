@@ -312,14 +312,17 @@ fn main() {
     if has_errors {
         eprintln!("Did not have permissions for all directories");
     }
-    draw_it(
-        options.is_present("display_full_paths"),
-        !options.is_present("reverse"),
-        no_colors,
-        options.is_present("no_bars"),
-        terminal_width,
-        by_filecount,
-        tree,
-        options.is_present("iso"),
-    );
+    match tree {
+        None => {}
+        Some(root_node) => draw_it(
+            options.is_present("display_full_paths"),
+            !options.is_present("reverse"),
+            no_colors,
+            options.is_present("no_bars"),
+            terminal_width,
+            by_filecount,
+            root_node,
+            options.is_present("iso"),
+        ),
+    }
 }
