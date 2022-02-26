@@ -23,7 +23,7 @@ path = "src/main.rs"
 
 [dependencies]
 ansi_term = "0.12"
-clap = { version = "=2.33", features = ["wrap_help"] }
+clap = { version = "=3", features=["cargo"] }
 lscolors = "0.7"
 terminal_size = "0.1"
 unicode-width = "0.1"
