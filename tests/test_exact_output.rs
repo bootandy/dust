@@ -5,8 +5,6 @@ use std::sync::Once;
 
 static INIT: Once = Once::new();
 
-mod tests_symlinks;
-
 /**
  * This file contains tests that verify the exact output of the command.
  * This output differs on Linux / Mac so the tests are harder to write and debug
