@@ -189,7 +189,7 @@ fn main() {
                 .conflicts_with("filter")
                 .conflicts_with("types")
                 .conflicts_with("depth")
-                .help("Exclude files matching this regex. To ignore png files type: -v \"\\.png$\" "),
+                .help("Exclude filepaths matching this regex. To ignore png files type: -v \"\\.png$\" "),
         )
         .arg(
             Arg::new("filter")
@@ -200,7 +200,7 @@ fn main() {
                 .multiple_occurrences(true)
                 .conflicts_with("types")
                 .conflicts_with("depth")
-                .help("Only include files matching this regex. For png files type: -e \"\\.png$\" "),
+                .help("Only include filepaths matching this regex. For png files type: -e \"\\.png$\" "),
         )
         .arg(
             Arg::new("types")
