@@ -3,6 +3,7 @@
 # tag a commit and push (increment version in Cargo.toml first):
 #   git tag v0.4.5
 #   git push origin v0.4.5
+# pre release notation: "0.8.1-alpha.1"
 
 # cargo publish to put it in crates.io
 
