@@ -81,6 +81,8 @@ jobs:
       matrix:
         job:
           # { os, target, cargo-options, features, use-cross, toolchain }
+          - { os: ubuntu-latest  , target: aarch64-unknown-linux-gnu   , use-cross: use-cross }
+          - { os: ubuntu-latest  , target: aarch64-unknown-linux-musl  , use-cross: use-cross }
           - { os: ubuntu-latest  , target: arm-unknown-linux-gnueabihf , use-cross: use-cross }
           - { os: ubuntu-20.04   , target: i686-unknown-linux-gnu      , use-cross: use-cross }
           - { os: ubuntu-20.04   , target: i686-unknown-linux-musl     , use-cross: use-cross }
@@ -99,6 +101,7 @@ jobs:
       run: |
         case ${{ matrix.job.target }} in
           arm-unknown-linux-gnueabihf) sudo apt-get -y update ; sudo apt-get -y install gcc-arm-linux-gnueabihf ;;
+          aarch64-unknown-linux-gnu) sudo apt-get -y update ; sudo apt-get -y install binutils-aarch64-linux-gnu ;;
         esac
     - name: Initialize workflow variables
       id: vars
@@ -134,7 +137,7 @@ jobs:
         echo ::set-output name=REF_TAG::${REF_TAG}
         echo ::set-output name=REF_SHAS::${REF_SHAS}
         # parse target
-        unset TARGET_ARCH ; case ${{ matrix.job.target }} in arm-unknown-linux-gnueabihf) TARGET_ARCH=arm ;; i686-*) TARGET_ARCH=i686 ;; x86_64-*) TARGET_ARCH=x86_64 ;; esac;
+        unset TARGET_ARCH ; case ${{ matrix.job.target }} in arm-unknown-linux-gnueabihf) TARGET_ARCH=arm ;; aarch-*) TARGET_ARCH=aarch64 ;; i686-*) TARGET_ARCH=i686 ;; x86_64-*) TARGET_ARCH=x86_64 ;; esac;
         echo set-output name=TARGET_ARCH::${TARGET_ARCH}
         echo ::set-output name=TARGET_ARCH::${TARGET_ARCH}
         unset TARGET_OS ; case ${{ matrix.job.target }} in *-linux-*) TARGET_OS=linux ;; *-apple-*) TARGET_OS=macos ;; *-windows-*) TARGET_OS=windows ;; esac;
@@ -166,16 +169,16 @@ jobs:
         echo ::set-output name=CARGO_USE_CROSS::${CARGO_USE_CROSS}
         # # * `arm` cannot be tested on ubuntu-* hosts (b/c testing is currently primarily done via comparison of target outputs with built-in outputs and the `arm` target is not executable on the host)
         JOB_DO_TESTING="true"
-        case ${{ matrix.job.target }} in arm-*) unset JOB_DO_TESTING ;; esac;
+        case ${{ matrix.job.target }} in arm-*|aarch64-*) unset JOB_DO_TESTING ;; esac;
         echo set-output name=JOB_DO_TESTING::${JOB_DO_TESTING:-<empty>/false}
         echo ::set-output name=JOB_DO_TESTING::${JOB_DO_TESTING}
         # # * test only binary for arm-type targets
         unset CARGO_TEST_OPTIONS
-        unset CARGO_TEST_OPTIONS ; case ${{ matrix.job.target }} in arm-*) CARGO_TEST_OPTIONS="--bin ${PROJECT_NAME}" ;; esac;
+        unset CARGO_TEST_OPTIONS ; case ${{ matrix.job.target }} in arm-*|aarch64-*) CARGO_TEST_OPTIONS="--bin ${PROJECT_NAME}" ;; esac;
         echo set-output name=CARGO_TEST_OPTIONS::${CARGO_TEST_OPTIONS}
         echo ::set-output name=CARGO_TEST_OPTIONS::${CARGO_TEST_OPTIONS}
         # * strip executable?
-        STRIP="strip" ; case ${{ matrix.job.target }} in arm-unknown-linux-gnueabihf) STRIP="arm-linux-gnueabihf-strip" ;; *-pc-windows-msvc) STRIP="" ;; esac;
+        STRIP="strip" ; case ${{ matrix.job.target }} in arm-unknown-linux-gnueabihf) STRIP="arm-linux-gnueabihf-strip" ;; *-pc-windows-msvc) STRIP="" ;; aarch64-unknown-linux-gnu) STRIP="aarch64-linux-gnu-strip" ;; aarch64-unknown-linux-musl) STRIP="" ;;esac;
         echo set-output name=STRIP::${STRIP}
         echo ::set-output name=STRIP::${STRIP}
     - name: Create all needed build/work directories
@@ -210,13 +213,13 @@ jobs:
       with:
           command: install
           args: cargo-deb
-      if: ${{ contains(matrix.job.target, 'musl') }}
+      if: matrix.job.target == 'i686-unknown-linux-musl' || matrix.job.target == 'x86_64-unknown-linux-musl'
     - name: Build deb
       uses: actions-rs/cargo@v1
       with:
           command: deb
           args: --no-build --target=${{ matrix.job.target }}
-      if: ${{ contains(matrix.job.target, 'musl') }}
+      if: matrix.job.target == 'i686-unknown-linux-musl' || matrix.job.target == 'x86_64-unknown-linux-musl'
     - name: Test
       uses: actions-rs/cargo@v1
       with:
@@ -233,7 +236,7 @@ jobs:
       with:
         name: ${{ env.PROJECT_NAME }}-${{ matrix.job.target }}.deb
         path: target/${{ matrix.job.target }}/debian
-      if: ${{ contains(matrix.job.target, 'musl') }}
+      if: matrix.job.target == 'i686-unknown-linux-musl' || matrix.job.target == 'x86_64-unknown-linux-musl'
     - name: Package
       shell: bash
       run: |
