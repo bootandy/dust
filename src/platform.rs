@@ -105,7 +105,6 @@ pub fn get_metadata(d: &Path, _use_apparent_size: bool) -> Option<(u64, Option<(
     use std::os::windows::fs::MetadataExt;
     match d.metadata() {
         Ok(ref md) => {
-            const FILE_ATTRIBUTE_ARCHIVE: u32 = 0x20u32;
             const FILE_ATTRIBUTE_READONLY: u32 = 0x1u32;
             const FILE_ATTRIBUTE_HIDDEN: u32 = 0x2u32;
             const FILE_ATTRIBUTE_SYSTEM: u32 = 0x4u32;
@@ -114,8 +113,7 @@ pub fn get_metadata(d: &Path, _use_apparent_size: bool) -> Option<(u64, Option<(
 
             let attr_filtered = md.file_attributes()
                 & !(FILE_ATTRIBUTE_HIDDEN | FILE_ATTRIBUTE_READONLY | FILE_ATTRIBUTE_SYSTEM);
-            if attr_filtered == FILE_ATTRIBUTE_ARCHIVE
-                || attr_filtered == FILE_ATTRIBUTE_DIRECTORY
+            if attr_filtered == FILE_ATTRIBUTE_DIRECTORY
                 || md.file_attributes() == FILE_ATTRIBUTE_NORMAL
             {
                 Some((md.len(), None))
