@@ -114,8 +114,8 @@ pub fn get_metadata(d: &Path, _use_apparent_size: bool) -> Option<(u64, Option<(
 
             let attr_filtered = md.file_attributes()
                 & !(FILE_ATTRIBUTE_HIDDEN | FILE_ATTRIBUTE_READONLY | FILE_ATTRIBUTE_SYSTEM);
-            if attr_filtered == FILE_ATTRIBUTE_ARCHIVE
-                || attr_filtered == FILE_ATTRIBUTE_DIRECTORY
+            if (attr_filtered & FILE_ATTRIBUTE_ARCHIVE) != 0
+                || (attr_filtered & FILE_ATTRIBUTE_DIRECTORY) != 0
                 || md.file_attributes() == FILE_ATTRIBUTE_NORMAL
             {
                 Some((md.len(), None))
