@@ -12,6 +12,7 @@ pub struct Node {
     pub size: u64,
     pub children: Vec<Node>,
     pub inode_device: Option<(u64, u64)>,
+    pub depth: usize,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -24,6 +25,7 @@ pub fn build_node(
     is_symlink: bool,
     is_file: bool,
     by_filecount: bool,
+    depth: usize,
 ) -> Option<Node> {
     match get_metadata(&dir, use_apparent_size) {
         Some(data) => {
@@ -50,6 +52,7 @@ pub fn build_node(
                 size,
                 children,
                 inode_device,
+                depth,
             })
         }
         None => None,
