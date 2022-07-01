@@ -7,11 +7,10 @@ use regex::Regex;
 
 pub fn simplify_dir_names<P: AsRef<Path>>(filenames: Vec<P>) -> HashSet<PathBuf> {
     let mut top_level_names: HashSet<PathBuf> = HashSet::with_capacity(filenames.len());
-    let mut to_remove: Vec<PathBuf> = Vec::with_capacity(filenames.len());
-
     for t in filenames {
         let top_level_name = normalize_path(t);
         let mut can_add = true;
+        let mut to_remove: Vec<PathBuf> = Vec::new();
 
         for tt in top_level_names.iter() {
             if is_a_parent_of(&top_level_name, tt) {
@@ -20,14 +19,13 @@ pub fn simplify_dir_names<P: AsRef<Path>>(filenames: Vec<P>) -> HashSet<PathBuf>
                 can_add = false;
             }
         }
-        to_remove.sort_unstable();
-        top_level_names.retain(|tr| to_remove.binary_search(tr).is_err());
-        to_remove.clear();
+        for r in to_remove {
+            top_level_names.remove(&r);
+        }
         if can_add {
             top_level_names.insert(top_level_name);
         }
     }
-
     top_level_names
 }
 
@@ -94,6 +92,7 @@ mod tests {
     fn test_simplify_dir_rm_subdir() {
         let mut correct = HashSet::new();
         correct.insert(["a", "b"].iter().collect::<PathBuf>());
+        assert_eq!(simplify_dir_names(vec!["a/b/c", "a/b", "a/b/d/f"]), correct);
         assert_eq!(simplify_dir_names(vec!["a/b", "a/b/c", "a/b/d/f"]), correct);
     }
 
