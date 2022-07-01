@@ -5,18 +5,10 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 use std::path::PathBuf;
 
-pub fn get_by_depth(top_level_nodes: Vec<Node>, n: usize) -> Option<DisplayNode> {
-    if top_level_nodes.is_empty() {
-        // perhaps change this, bring back Error object?
-        return None;
-    }
-    let root = get_new_root(top_level_nodes);
-    Some(build_by_depth(&root, n - 1))
-}
-
 pub fn get_biggest(
     top_level_nodes: Vec<Node>,
     n: usize,
+    depth: usize,
     using_a_filter: bool,
 ) -> Option<DisplayNode> {
     if top_level_nodes.is_empty() {
@@ -30,14 +22,14 @@ pub fn get_biggest(
     let mut allowed_nodes = HashSet::new();
 
     allowed_nodes.insert(&root.name);
-    heap = add_children(using_a_filter, &root, heap);
+    heap = add_children(using_a_filter, &root, depth, heap);
 
     for _ in number_top_level_nodes..n {
         let line = heap.pop();
         match line {
             Some(line) => {
                 allowed_nodes.insert(&line.name);
-                heap = add_children(using_a_filter, line, heap);
+                heap = add_children(using_a_filter, line, depth, heap);
             }
             None => break,
         }
@@ -78,16 +70,19 @@ pub fn get_all_file_types(top_level_nodes: Vec<Node>, n: usize) -> Option<Displa
 fn add_children<'a>(
     using_a_filter: bool,
     line: &'a Node,
+    depth: usize,
     mut heap: BinaryHeap<&'a Node>,
 ) -> BinaryHeap<&'a Node> {
-    if using_a_filter {
-        line.children.iter().for_each(|c| {
-            if c.name.is_file() || c.size > 0 {
-                heap.push(c)
-            }
-        });
-    } else {
-        line.children.iter().for_each(|c| heap.push(c));
+    if depth > line.depth {
+        if using_a_filter {
+            line.children.iter().for_each(|c| {
+                if c.name.is_file() || c.size > 0 {
+                    heap.push(c)
+                }
+            });
+        } else {
+            line.children.iter().for_each(|c| heap.push(c));
+        }
     }
     heap
 }
@@ -111,29 +106,6 @@ fn build_by_all_file_types(top_level_nodes: Vec<Node>, counter: &mut HashMap<Str
     }
 }
 
-fn build_by_depth(node: &Node, depth: usize) -> DisplayNode {
-    let new_children = {
-        if depth == 0 {
-            vec![]
-        } else {
-            let mut new_children: Vec<_> = node
-                .children
-                .iter()
-                .map(|c| build_by_depth(c, depth - 1))
-                .collect();
-            new_children.sort();
-            new_children.reverse();
-            new_children
-        }
-    };
-
-    DisplayNode {
-        name: node.name.clone(),
-        size: node.size,
-        children: new_children,
-    }
-}
-
 fn get_new_root(top_level_nodes: Vec<Node>) -> Node {
     if top_level_nodes.len() > 1 {
         let total_size = top_level_nodes.iter().map(|node| node.size).sum();
@@ -142,6 +114,7 @@ fn get_new_root(top_level_nodes: Vec<Node>) -> Node {
             size: total_size,
             children: top_level_nodes,
             inode_device: None,
+            depth: 0,
         }
     } else {
         top_level_nodes.into_iter().next().unwrap()

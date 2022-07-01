@@ -10,7 +10,7 @@ use self::display::draw_it;
 use clap::{crate_version, Arg};
 use clap::{Command, Values};
 use dir_walker::{walk_it, WalkData};
-use filter::{get_all_file_types, get_biggest, get_by_depth};
+use filter::{get_all_file_types, get_biggest};
 use regex::Regex;
 use std::cmp::max;
 use std::path::PathBuf;
@@ -99,9 +99,6 @@ fn get_regex_value(maybe_value: Option<Values>) -> Vec<Regex> {
 }
 
 fn main() {
-    let default_height = get_height_of_terminal();
-    let def_num_str = default_height.to_string();
-
     let options = Command::new("Dust")
         .about("Like du but more intuitive")
         .version(crate_version!())
@@ -112,7 +109,7 @@ fn main() {
                 .long("depth")
                 .help("Depth to show")
                 .takes_value(true)
-                .conflicts_with("number_of_lines"),
+                .default_value(usize::MAX.to_string().as_ref())
         )
         .arg(
             Arg::new("number_of_lines")
@@ -120,7 +117,6 @@ fn main() {
                 .long("number-of-lines")
                 .help("Number of lines of output to show. (Default is terminal_height - 10)")
                 .takes_value(true)
-                .default_value(def_num_str.as_ref()),
         )
         .arg(
             Arg::new("display_full_paths")
@@ -188,7 +184,6 @@ fn main() {
                 .multiple_occurrences(true)
                 .conflicts_with("filter")
                 .conflicts_with("types")
-                .conflicts_with("depth")
                 .help("Exclude filepaths matching this regex. To ignore png files type: -v \"\\.png$\" "),
         )
         .arg(
@@ -199,7 +194,6 @@ fn main() {
                 .number_of_values(1)
                 .multiple_occurrences(true)
                 .conflicts_with("types")
-                .conflicts_with("depth")
                 .help("Only include filepaths matching this regex. For png files type: -e \"\\.png$\" "),
         )
         .arg(
@@ -236,26 +230,36 @@ fn main() {
     let filter_regexs = get_regex_value(options.values_of("filter"));
     let invert_filter_regexs = get_regex_value(options.values_of("invert_filter"));
 
-    let number_of_lines = match options.value_of_t("number_of_lines") {
-        Ok(v) => v,
-        Err(_) => {
-            eprintln!("Ignoring bad value for number_of_lines");
-            default_height
-        }
-    };
-
     let terminal_width = match options.value_of_t("width") {
         Ok(v) => v,
         Err(_) => get_width_of_terminal(),
     };
 
-    let depth = options.value_of("depth").and_then(|depth| {
-        depth
-            .parse::<usize>()
-            .map(|v| v + 1)
-            .map_err(|_| eprintln!("Ignoring bad value for depth"))
-            .ok()
-    });
+    let depth = match options.value_of_t("depth") {
+        Ok(v) => v,
+        Err(_) => {
+            eprintln!("Ignoring bad value for depth");
+            usize::MAX
+        }
+    };
+    // If depth is set we set the default number_of_lines to be max
+    // instead of screen height
+    let default_height = if depth != usize::MAX {
+        usize::MAX
+    } else {
+        get_height_of_terminal()
+    };
+
+    let number_of_lines = match options.value_of("number_of_lines") {
+        Some(v) => match v.parse::<usize>() {
+            Ok(num_lines) => num_lines,
+            Err(_) => {
+                eprintln!("Ignoring bad value for number_of_lines");
+                default_height
+            }
+        },
+        None => default_height,
+    };
 
     let no_colors = init_color(options.is_present("no_colors"));
     let use_apparent_size = options.is_present("display_apparent_size");
@@ -297,10 +301,10 @@ fn main() {
     let tree = {
         match (depth, summarize_file_types) {
             (_, true) => get_all_file_types(top_level_nodes, number_of_lines),
-            (Some(depth), _) => get_by_depth(top_level_nodes, depth),
-            (_, _) => get_biggest(
+            (depth, _) => get_biggest(
                 top_level_nodes,
                 number_of_lines,
+                depth,
                 options.values_of("filter").is_some()
                     || options.value_of("invert_filter").is_some(),
             ),

@@ -34,7 +34,7 @@ pub fn walk_it(dirs: HashSet<PathBuf>, walk_data: WalkData) -> (Vec<Node>, bool)
     let top_level_nodes: Vec<_> = dirs
         .into_iter()
         .filter_map(|d| {
-            let n = walk(d, &permissions_flag, &walk_data);
+            let n = walk(d, &permissions_flag, &walk_data, 0);
             match n {
                 Some(n) => {
                     let mut inodes: HashSet<(u64, u64)> = HashSet::new();
@@ -73,6 +73,7 @@ fn clean_inodes(
         size: x.size + new_children.iter().map(|c| c.size).sum::<u64>(),
         children: new_children,
         inode_device: x.inode_device,
+        depth: x.depth,
     });
 }
 
@@ -108,7 +109,12 @@ fn ignore_file(entry: &DirEntry, walk_data: &WalkData) -> bool {
     (is_dot_file && walk_data.ignore_hidden) || is_ignored_path
 }
 
-fn walk(dir: PathBuf, permissions_flag: &AtomicBool, walk_data: &WalkData) -> Option<Node> {
+fn walk(
+    dir: PathBuf,
+    permissions_flag: &AtomicBool,
+    walk_data: &WalkData,
+    depth: usize,
+) -> Option<Node> {
     let mut children = vec![];
 
     if let Ok(entries) = fs::read_dir(dir.clone()) {
@@ -126,7 +132,7 @@ fn walk(dir: PathBuf, permissions_flag: &AtomicBool, walk_data: &WalkData) -> Op
                     if !ignore_file(entry, walk_data) {
                         if let Ok(data) = entry.file_type() {
                             if data.is_dir() && !data.is_symlink() {
-                                return walk(entry.path(), permissions_flag, walk_data);
+                                return walk(entry.path(), permissions_flag, walk_data, depth + 1);
                             }
                             return build_node(
                                 entry.path(),
@@ -137,6 +143,7 @@ fn walk(dir: PathBuf, permissions_flag: &AtomicBool, walk_data: &WalkData) -> Op
                                 data.is_symlink(),
                                 data.is_file(),
                                 walk_data.by_filecount,
+                                depth,
                             );
                         }
                     }
@@ -158,6 +165,7 @@ fn walk(dir: PathBuf, permissions_flag: &AtomicBool, walk_data: &WalkData) -> Op
         false,
         false,
         walk_data.by_filecount,
+        depth,
     )
 }
 
@@ -172,6 +180,7 @@ mod tests {
             size: 10,
             children: vec![],
             inode_device: Some((5, 6)),
+            depth: 0,
         }
     }
 
