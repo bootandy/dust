@@ -69,19 +69,19 @@ pub fn get_all_file_types(top_level_nodes: Vec<Node>, n: usize) -> Option<Displa
 
 fn add_children<'a>(
     using_a_filter: bool,
-    line: &'a Node,
+    file_or_folder: &'a Node,
     depth: usize,
     mut heap: BinaryHeap<&'a Node>,
 ) -> BinaryHeap<&'a Node> {
-    if depth > line.depth {
+    if depth > file_or_folder.depth {
         if using_a_filter {
-            line.children.iter().for_each(|c| {
+            file_or_folder.children.iter().for_each(|c| {
                 if c.name.is_file() || c.size > 0 {
                     heap.push(c)
                 }
             });
         } else {
-            line.children.iter().for_each(|c| heap.push(c));
+            file_or_folder.children.iter().for_each(|c| heap.push(c));
         }
     }
     heap
