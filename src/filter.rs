@@ -51,6 +51,7 @@ pub fn get_all_file_types(top_level_nodes: Vec<Node>, n: usize) -> Option<Displa
         let remaining = DisplayNode {
             name: PathBuf::from("(others)"),
             size: rest.iter().map(|a| a.size).sum(),
+            depth: 1,
             children: vec![],
         };
 
@@ -62,6 +63,7 @@ pub fn get_all_file_types(top_level_nodes: Vec<Node>, n: usize) -> Option<Displa
     let result = DisplayNode {
         name: PathBuf::from("(total)"),
         size: displayed.iter().map(|a| a.size).sum(),
+        depth: 0,
         children: displayed,
     };
     Some(result)
@@ -98,6 +100,7 @@ fn build_by_all_file_types(top_level_nodes: Vec<Node>, counter: &mut HashMap<Str
             let mut display_node = counter.entry(key.clone()).or_insert(DisplayNode {
                 name: PathBuf::from(key),
                 size: 0,
+                depth: node.depth,
                 children: vec![],
             });
             display_node.size += node.size;
@@ -141,6 +144,7 @@ fn recursive_rebuilder<'a>(
     let newnode = DisplayNode {
         name: current.name.clone(),
         size: current.size,
+        depth: current.depth,
         children: new_children,
     };
     Some(newnode)

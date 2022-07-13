@@ -5,6 +5,7 @@ use std::path::PathBuf;
 pub struct DisplayNode {
     pub name: PathBuf, //todo: consider moving to a string?
     pub size: u64,
+    pub depth: usize,
     pub children: Vec<DisplayNode>,
 }
 

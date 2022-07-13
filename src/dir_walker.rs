@@ -143,7 +143,7 @@ fn walk(
                                 data.is_symlink(),
                                 data.is_file(),
                                 walk_data.by_filecount,
-                                depth,
+                                depth + 1,
                             );
                         }
                     }

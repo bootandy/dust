@@ -84,13 +84,13 @@ impl DrawData<'_> {
     }
 
     // TODO: can we test this?
-    fn generate_bar(&self, node: &DisplayNode, level: usize) -> String {
+    fn generate_bar(&self, node: &DisplayNode) -> String {
         let chars_in_bar = self.percent_bar.chars().count();
         let num_bars = chars_in_bar as f32 * self.display_data.percent_size(node);
         let mut num_not_my_bar = (chars_in_bar as i32) - num_bars as i32;
 
         let mut new_bar = "".to_string();
-        let idx = 5 - min(4, max(1, level));
+        let idx = 5 - min(4, max(1, node.depth));
 
         for c in self.percent_bar.chars() {
             num_not_my_bar -= 1;
@@ -181,10 +181,8 @@ fn find_longest_dir_name(
 }
 
 fn display_node(node: DisplayNode, draw_data: &DrawData, is_biggest: bool, is_last: bool) {
-    // hacky way of working out how deep we are in the tree
     let indent = draw_data.get_new_indent(!node.children.is_empty(), is_last);
-    let level = ((indent.chars().count() - 1) / 2) - 1;
-    let bar_text = draw_data.generate_bar(&node, level);
+    let bar_text = draw_data.generate_bar(&node);
 
     let to_print = format_string(
         &node,
@@ -398,6 +396,7 @@ mod tests {
         let n = DisplayNode {
             name: PathBuf::from("/short"),
             size: 2_u64.pow(12), // This is 4.0K
+            depth: 1,
             children: vec![],
         };
         let indent = "┌─┴";
@@ -420,6 +419,7 @@ mod tests {
         let n = DisplayNode {
             name: PathBuf::from(name),
             size: 2_u64.pow(12), // This is 4.0K
+            depth: 1,
             children: vec![],
         };
         let indent = "┌─┴";
