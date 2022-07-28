@@ -21,13 +21,18 @@ travis-ci = { repository = "https://travis-ci.org/bootandy/dust" }
 name = "dust"
 path = "src/main.rs"
 
+[profile.release]
+codegen-units = 1
+lto = true
+strip = true
+
 [dependencies]
 ansi_term = "0.12"
-clap = { version = "=3", features=["cargo"] }
+clap = { version = "=3", features = ["cargo"] }
 lscolors = "0.7"
 terminal_size = "0.1"
 unicode-width = "0.1"
-rayon="1"
+rayon = "1"
 thousands = "0.2"
 stfu8 = "0.2"
 regex = "1"
@@ -46,9 +51,21 @@ path = "tests/tests.rs"
 [package.metadata.deb]
 section = "utils"
 assets = [
-  ["target/release/dust", "usr/bin/", "755"],
-  ["LICENSE", "usr/share/doc/du-dust/", "644"],
-  ["README.md", "usr/share/doc/du-dust/README", "644"],
+  [
+    "target/release/dust",
+    "usr/bin/",
+    "755",
+  ],
+  [
+    "LICENSE",
+    "usr/share/doc/du-dust/",
+    "644",
+  ],
+  [
+    "README.md",
+    "usr/share/doc/du-dust/README",
+    "644",
+  ],
 ]
 extended-description = """\
 Dust is meant to give you an instant overview of which directories are using
