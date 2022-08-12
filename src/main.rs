@@ -295,6 +295,11 @@ fn main() {
         by_filecount,
         ignore_hidden,
     };
+    // Larger stack size to handle cases with lots of nested directories
+    rayon::ThreadPoolBuilder::new()
+        .stack_size(usize::pow(1024, 3))
+        .build_global()
+        .unwrap();
 
     let (top_level_nodes, has_errors) = walk_it(simplified_dirs, walk_data);
 
