@@ -68,13 +68,13 @@ fn clean_inodes(
         .filter_map(|c| clean_inodes(c, inodes, use_apparent_size))
         .collect();
 
-    return Some(Node {
+    Some(Node {
         name: x.name,
         size: x.size + new_children.iter().map(|c| c.size).sum::<u64>(),
         children: new_children,
         inode_device: x.inode_device,
         depth: x.depth,
-    });
+    })
 }
 
 fn ignore_file(entry: &DirEntry, walk_data: &WalkData) -> bool {
