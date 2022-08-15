@@ -369,7 +369,7 @@ fn human_readable_number(size: u64, iso: bool) -> String {
             }
         }
     }
-    return format!("{}B", size);
+    format!("{}B", size)
 }
 
 mod tests {
