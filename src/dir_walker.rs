@@ -170,7 +170,10 @@ fn walk(
             })
             .collect();
     } else {
-        permissions_flag.store(true, atomic::Ordering::Relaxed);
+        // Handle edge case where dust is called with a file instead of a directory
+        if !dir.exists() {
+            permissions_flag.store(true, atomic::Ordering::Relaxed);
+        }
     }
     build_node(
         dir,
