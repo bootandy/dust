@@ -130,7 +130,7 @@ pub fn draw_it(
         let max_size = biggest.size;
         max_size.separate_with_commas().chars().count()
     } else {
-        5 // Under normal usage we need 5 chars to display the size of a directory
+        find_biggest_size_str(&root_node, iso)
     };
 
     assert!(
@@ -180,6 +180,14 @@ pub fn draw_it(
             display_node(c, &draw_data, is_biggest, was_i_last);
         }
     }
+}
+
+fn find_biggest_size_str(node: &DisplayNode, iso: bool) -> usize {
+    let mut mx = human_readable_number(node.size, iso).chars().count();
+    for n in node.children.iter() {
+        mx = max(mx, find_biggest_size_str(n, iso));
+    }
+    mx
 }
 
 fn find_longest_dir_name(
@@ -349,7 +357,7 @@ fn get_pretty_size(node: &DisplayNode, is_biggest: bool, display_data: &DisplayD
         human_readable_number(node.size, display_data.iso)
     };
     let spaces_to_add = display_data.num_chars_needed_on_left_most - output.chars().count();
-    let output = output + " ".repeat(spaces_to_add).as_str();
+    let output = " ".repeat(spaces_to_add) + output.as_str();
 
     if is_biggest && display_data.colors_on {
         format!("{}", Red.paint(output))
