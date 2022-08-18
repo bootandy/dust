@@ -127,7 +127,7 @@ fn build_by_all_file_types<'a>(
 }
 
 fn get_new_root(top_level_nodes: Vec<Node>) -> Node {
-    if top_level_nodes.len() > 1 {
+    if top_level_nodes.len() != 1 {
         Node {
             name: PathBuf::from("(total)"),
             size: top_level_nodes.iter().map(|node| node.size).sum(),
