@@ -62,8 +62,10 @@ fn clean_inodes(
         }
     }
 
-    let new_children: Vec<_> = x
-        .children
+    // Sort Nodes so iteration order is predictable
+    let mut tmp: Vec<_> = x.children;
+    tmp.sort_by(sort_by_inode);
+    let new_children: Vec<_> = tmp
         .into_iter()
         .filter_map(|c| clean_inodes(c, inodes, use_apparent_size))
         .collect();
@@ -75,6 +77,20 @@ fn clean_inodes(
         inode_device: x.inode_device,
         depth: x.depth,
     })
+}
+
+fn sort_by_inode(a: &Node, b: &Node) -> std::cmp::Ordering {
+    // Sorting by inode is quicker than by sorting by name/size
+    if let Some(x) = a.inode_device {
+        if let Some(y) = b.inode_device {
+            if x.0 != y.0 {
+                return x.0.cmp(&y.0);
+            } else if x.1 != y.1 {
+                return x.1.cmp(&y.1);
+            }
+        }
+    }
+    a.name.cmp(&b.name)
 }
 
 fn ignore_file(entry: &DirEntry, walk_data: &WalkData) -> bool {
