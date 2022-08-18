@@ -344,13 +344,12 @@ fn get_name_percent(
 
 fn get_pretty_size(node: &DisplayNode, is_biggest: bool, display_data: &DisplayData) -> String {
     let output = if display_data.by_filecount {
-        let size_as_str = node.size.separate_with_commas();
-        let spaces_to_add =
-            display_data.num_chars_needed_on_left_most - size_as_str.chars().count();
-        size_as_str + " ".repeat(spaces_to_add).as_str()
+        node.size.separate_with_commas()
     } else {
-        format!("{:>5}", human_readable_number(node.size, display_data.iso))
+        human_readable_number(node.size, display_data.iso)
     };
+    let spaces_to_add = display_data.num_chars_needed_on_left_most - output.chars().count();
+    let output = output + " ".repeat(spaces_to_add).as_str();
 
     if is_biggest && display_data.colors_on {
         format!("{}", Red.paint(output))
