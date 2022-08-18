@@ -90,18 +90,17 @@ pub fn test_hard_sym_link() {
         .output();
     assert!(c.is_ok());
 
-    let link_output = format!(" ┌── {}", get_file_name(link_name_s.into()));
     let file_output = format!(" ┌── {}", get_file_name(file_path_s.into()));
     let dirs_output = format!("─┴ {}", dir_s);
 
     let mut cmd = Command::cargo_bin("dust").unwrap();
     let output = cmd.arg("-p").arg("-c").arg(dir_s).unwrap().stdout;
 
-    // Because this is a hard link the file and hard link look identical. Therefore
-    // we cannot guarantee which version will appear first.
+    // The link should not appear in the output because multiple inodes are now ordered
+    // then filtered.
     let output = str::from_utf8(&output).unwrap();
     assert!(output.contains(dirs_output.as_str()));
-    assert!(output.contains(link_output.as_str()) || output.contains(file_output.as_str()));
+    assert!(output.contains(file_output.as_str()));
 }
 
 #[cfg_attr(target_os = "windows", ignore)]
