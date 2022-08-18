@@ -6,7 +6,7 @@ extern crate unicode_width;
 use std::collections::HashSet;
 use std::process;
 
-use self::display::draw_it;
+use self::display::{draw_it, ColorState};
 use clap::{crate_version, Arg};
 use clap::{Command, Values};
 use dir_walker::{walk_it, WalkData};
@@ -29,73 +29,72 @@ mod utils;
 static DEFAULT_NUMBER_OF_LINES: usize = 30;
 static DEFAULT_TERMINAL_WIDTH: usize = 80;
 
-#[cfg(windows)]
-fn init_color(no_color: bool) -> bool {
-    // If no color is already set do not print a warning message
-    if no_color {
-        true
-    } else {
+/// `ansi_term::enable_ansi_support` only exists on Windows; this wrapper
+/// function makes it available on all platforms
+#[inline]
+fn enable_ansi_support() -> Result<(), i32> {
+    #[cfg(windows)]
+    {
+        ansi_term::enable_ansi_support()
+    }
+
+    #[cfg(not(windows))]
+    {
+        Ok(())
+    }
+}
+
+fn init_color(color: ColorState) -> ColorState {
+    match color {
+        // If no color is already set do not print a warning message
+        ColorState::Disabled => ColorState::Disabled,
+
         // Required for windows 10
         // Fails to resolve for windows 8 so disable color
-        match ansi_term::enable_ansi_support() {
-            Ok(_) => no_color,
+        ColorState::Enabled => match enable_ansi_support() {
+            Ok(()) => ColorState::Enabled,
             Err(_) => {
                 eprintln!(
                     "This version of Windows does not support ANSI colors, setting no_color flag"
                 );
-                true
+                ColorState::Disabled
             }
-        }
+        },
     }
-}
-
-#[cfg(not(windows))]
-fn init_color(no_color: bool) -> bool {
-    no_color
 }
 
 fn get_height_of_terminal() -> usize {
-    // Windows CI runners detect a terminal height of 0
-    if let Some((Width(_w), Height(h))) = terminal_size() {
-        max(h as usize, DEFAULT_NUMBER_OF_LINES) - 10
-    } else {
-        DEFAULT_NUMBER_OF_LINES - 10
-    }
+    // Simplify once https://github.com/eminence/terminal-size/pull/41 is
+    // merged
+    terminal_size()
+        // Windows CI runners detect a terminal height of 0
+        .map(|(_, Height(h))| max(h as usize, DEFAULT_NUMBER_OF_LINES))
+        .unwrap_or(DEFAULT_NUMBER_OF_LINES)
+        - 10
 }
 
-#[cfg(windows)]
 fn get_width_of_terminal() -> usize {
-    // Windows CI runners detect a very low terminal width
-    if let Some((Width(w), Height(_h))) = terminal_size() {
-        max(w as usize, DEFAULT_TERMINAL_WIDTH)
-    } else {
-        DEFAULT_TERMINAL_WIDTH
-    }
-}
-
-#[cfg(not(windows))]
-fn get_width_of_terminal() -> usize {
-    if let Some((Width(w), Height(_h))) = terminal_size() {
-        w as usize
-    } else {
-        DEFAULT_TERMINAL_WIDTH
-    }
+    // Simplify once https://github.com/eminence/terminal-size/pull/41 is
+    // merged
+    terminal_size()
+        .map(|(Width(w), _)| match cfg!(windows) {
+            // Windows CI runners detect a very low terminal width
+            true => max(w as usize, DEFAULT_TERMINAL_WIDTH),
+            false => w as usize,
+        })
+        .unwrap_or(DEFAULT_TERMINAL_WIDTH)
 }
 
 fn get_regex_value(maybe_value: Option<Values>) -> Vec<Regex> {
-    let mut result = vec![];
-    if let Some(v) = maybe_value {
-        for reg in v {
-            match Regex::new(reg) {
-                Ok(r) => result.push(r),
-                Err(e) => {
-                    eprintln!("Ignoring bad value for regex {:?}", e);
-                    process::exit(1);
-                }
-            }
-        }
-    }
-    result
+    maybe_value
+        .unwrap_or_default()
+        .map(|reg| {
+            Regex::new(reg).unwrap_or_else(|err| {
+                eprintln!("Ignoring bad value for regex {:?}", err);
+                process::exit(1)
+            })
+        })
+        .collect()
 }
 
 fn main() {
@@ -235,18 +234,15 @@ fn main() {
     let filter_regexs = get_regex_value(options.values_of("filter"));
     let invert_filter_regexs = get_regex_value(options.values_of("invert_filter"));
 
-    let terminal_width = match options.value_of_t("width") {
-        Ok(v) => v,
-        Err(_) => get_width_of_terminal(),
-    };
+    let terminal_width = options
+        .value_of_t("width")
+        .unwrap_or_else(|_| get_width_of_terminal());
 
-    let depth = match options.value_of_t("depth") {
-        Ok(v) => v,
-        Err(_) => {
-            eprintln!("Ignoring bad value for depth");
-            usize::MAX
-        }
-    };
+    let depth = options.value_of_t("depth").unwrap_or_else(|_| {
+        eprintln!("Ignoring bad value for depth");
+        usize::MAX
+    });
+
     // If depth is set we set the default number_of_lines to be max
     // instead of screen height
     let default_height = if depth != usize::MAX {
@@ -255,40 +251,36 @@ fn main() {
         get_height_of_terminal()
     };
 
-    let number_of_lines = match options.value_of("number_of_lines") {
-        Some(v) => match v.parse::<usize>() {
-            Ok(num_lines) => num_lines,
-            Err(_) => {
-                eprintln!("Ignoring bad value for number_of_lines");
-                default_height
-            }
-        },
-        None => default_height,
-    };
+    let number_of_lines = options
+        .value_of("number_of_lines")
+        .and_then(|v| {
+            v.parse()
+                .map_err(|_| eprintln!("Ignoring bad value for number_of_lines"))
+                .ok()
+        })
+        .unwrap_or(default_height);
 
-    let no_colors = init_color(options.is_present("no_colors"));
+    let colors = init_color(match options.is_present("no_colors") {
+        false => ColorState::Enabled,
+        true => ColorState::Disabled,
+    });
     let use_apparent_size = options.is_present("display_apparent_size");
-    let ignore_directories: Vec<PathBuf> = options
+    let ignore_directories = options
         .values_of("ignore_directory")
-        .map(|i| i.map(PathBuf::from).collect())
-        .unwrap_or_default();
+        .unwrap_or_default()
+        .map(PathBuf::from);
 
     let by_filecount = options.is_present("by_filecount");
     let ignore_hidden = options.is_present("ignore_hidden");
     let limit_filesystem = options.is_present("limit_filesystem");
 
     let simplified_dirs = simplify_dir_names(target_dirs);
-    let allowed_filesystems = {
-        if limit_filesystem {
-            get_filesystem_devices(simplified_dirs.iter())
-        } else {
-            HashSet::new()
-        }
-    };
+    let allowed_filesystems = limit_filesystem
+        .then(|| get_filesystem_devices(simplified_dirs.iter()))
+        .unwrap_or_default();
 
     let ignored_full_path: HashSet<PathBuf> = ignore_directories
-        .into_iter()
-        .flat_map(|x| simplified_dirs.iter().map(move |d| d.join(x.clone())))
+        .flat_map(|x| simplified_dirs.iter().map(move |d| d.join(&x)))
         .collect();
 
     let walk_data = WalkData {
@@ -308,34 +300,31 @@ fn main() {
 
     let (top_level_nodes, has_errors) = walk_it(simplified_dirs, walk_data);
 
-    let tree = {
-        match (depth, summarize_file_types) {
-            (_, true) => get_all_file_types(top_level_nodes, number_of_lines),
-            (depth, _) => get_biggest(
-                top_level_nodes,
-                number_of_lines,
-                depth,
-                options.values_of("filter").is_some()
-                    || options.value_of("invert_filter").is_some(),
-            ),
-        }
+    let tree = match summarize_file_types {
+        true => get_all_file_types(&top_level_nodes, number_of_lines),
+        false => get_biggest(
+            top_level_nodes,
+            number_of_lines,
+            depth,
+            options.values_of("filter").is_some() || options.value_of("invert_filter").is_some(),
+        ),
     };
 
     if has_errors {
         eprintln!("Did not have permissions for all directories");
     }
-    match tree {
-        None => {}
-        Some(root_node) => draw_it(
+
+    if let Some(root_node) = tree {
+        draw_it(
             options.is_present("display_full_paths"),
             !options.is_present("reverse"),
-            no_colors,
+            colors,
             options.is_present("no_bars"),
             terminal_width,
             by_filecount,
-            root_node,
+            &root_node,
             options.is_present("iso"),
             options.is_present("skip_total"),
-        ),
+        )
     }
 }

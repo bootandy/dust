@@ -67,7 +67,7 @@ pub fn test_d_flag_works_and_still_recurses_down() {
     assert!(output.contains("4 ┌─┴ test_dir2"));
 }
 
-// Check against directories and files whos names are substrings of each other
+// Check against directories and files whose names are substrings of each other
 #[test]
 pub fn test_ignore_dir() {
     let output = build_command(vec!["-c", "-X", "dir_substring", "tests/test_dir2/"]);

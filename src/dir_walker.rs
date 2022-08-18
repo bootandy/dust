@@ -34,14 +34,11 @@ pub fn walk_it(dirs: HashSet<PathBuf>, walk_data: WalkData) -> (Vec<Node>, bool)
     let top_level_nodes: Vec<_> = dirs
         .into_iter()
         .filter_map(|d| {
-            let n = walk(d, &permissions_flag, &walk_data, 0);
-            match n {
-                Some(n) => {
-                    let mut inodes: HashSet<(u64, u64)> = HashSet::new();
-                    clean_inodes(n, &mut inodes, walk_data.use_apparent_size)
-                }
-                None => None,
-            }
+            clean_inodes(
+                walk(d, &permissions_flag, &walk_data, 0)?,
+                &mut HashSet::new(),
+                walk_data.use_apparent_size,
+            )
         })
         .collect();
     (top_level_nodes, permissions_flag.into_inner())
@@ -55,10 +52,9 @@ fn clean_inodes(
 ) -> Option<Node> {
     if !use_apparent_size {
         if let Some(id) = x.inode_device {
-            if inodes.contains(&id) {
+            if !inodes.insert(id) {
                 return None;
             }
-            inodes.insert(id);
         }
     }
 
@@ -133,34 +129,35 @@ fn walk(
 ) -> Option<Node> {
     let mut children = vec![];
 
-    if let Ok(entries) = fs::read_dir(dir.clone()) {
+    if let Ok(entries) = fs::read_dir(&dir) {
         children = entries
             .into_iter()
             .par_bridge()
             .filter_map(|entry| {
                 if let Ok(ref entry) = entry {
                     // uncommenting the below line gives simpler code but
-                    // rayon doesn't parallelise as well giving a 3X performance drop
+                    // rayon doesn't parallelize as well giving a 3X performance drop
                     // hence we unravel the recursion a bit
 
                     // return walk(entry.path(), permissions_flag, ignore_directories, allowed_filesystems, use_apparent_size, by_filecount, ignore_hidden);
 
                     if !ignore_file(entry, walk_data) {
                         if let Ok(data) = entry.file_type() {
-                            if data.is_dir() && !data.is_symlink() {
-                                return walk(entry.path(), permissions_flag, walk_data, depth + 1);
-                            }
-                            return build_node(
-                                entry.path(),
-                                vec![],
-                                walk_data.filter_regex,
-                                walk_data.invert_filter_regex,
-                                walk_data.use_apparent_size,
-                                data.is_symlink(),
-                                data.is_file(),
-                                walk_data.by_filecount,
-                                depth,
-                            );
+                            return if data.is_dir() && !data.is_symlink() {
+                                walk(entry.path(), permissions_flag, walk_data, depth + 1)
+                            } else {
+                                build_node(
+                                    entry.path(),
+                                    vec![],
+                                    walk_data.filter_regex,
+                                    walk_data.invert_filter_regex,
+                                    walk_data.use_apparent_size,
+                                    data.is_symlink(),
+                                    data.is_file(),
+                                    walk_data.by_filecount,
+                                    depth,
+                                )
+                            };
                         }
                     }
                 } else {
@@ -204,24 +201,26 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::redundant_clone)]
     fn test_should_ignore_file() {
         let mut inodes = HashSet::new();
         let n = create_node();
 
         // First time we insert the node
-        assert!(clean_inodes(n.clone(), &mut inodes, false) == Some(n.clone()));
+        assert_eq!(clean_inodes(n.clone(), &mut inodes, false), Some(n.clone()));
 
         // Second time is a duplicate - we ignore it
-        assert!(clean_inodes(n.clone(), &mut inodes, false) == None);
+        assert_eq!(clean_inodes(n.clone(), &mut inodes, false), None);
     }
 
     #[test]
+    #[allow(clippy::redundant_clone)]
     fn test_should_not_ignore_files_if_using_apparent_size() {
         let mut inodes = HashSet::new();
         let n = create_node();
 
         // If using apparent size we include Nodes, even if duplicate inodes
-        assert!(clean_inodes(n.clone(), &mut inodes, true) == Some(n.clone()));
-        assert!(clean_inodes(n.clone(), &mut inodes, true) == Some(n.clone()));
+        assert_eq!(clean_inodes(n.clone(), &mut inodes, true), Some(n.clone()));
+        assert_eq!(clean_inodes(n.clone(), &mut inodes, true), Some(n.clone()));
     }
 }

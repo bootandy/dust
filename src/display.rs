@@ -22,7 +22,7 @@ static BLOCKS: [char; 5] = ['█', '▓', '▒', '░', ' '];
 pub struct DisplayData {
     pub short_paths: bool,
     pub is_reversed: bool,
-    pub colors_on: bool,
+    pub colors: ColorState,
     pub by_filecount: bool,
     pub num_chars_needed_on_left_most: usize,
     pub base_size: u64,
@@ -106,26 +106,40 @@ impl DrawData<'_> {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ColorState {
+    Disabled,
+    Enabled,
+}
+
+impl ColorState {
+    #[inline]
+    #[must_use]
+    fn enabled(self) -> bool {
+        self == ColorState::Enabled
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 pub fn draw_it(
     use_full_path: bool,
     is_reversed: bool,
-    no_colors: bool,
+    colors: ColorState,
     no_percents: bool,
     terminal_width: usize,
     by_filecount: bool,
-    root_node: DisplayNode,
+    root_node: &DisplayNode,
     iso: bool,
     skip_total: bool,
 ) {
-    let biggest = if skip_total {
-        root_node
+    let biggest = match skip_total {
+        false => root_node,
+        true => root_node
             .get_children_from_node(false)
             .next()
-            .unwrap_or_else(|| root_node.clone())
-    } else {
-        root_node.clone()
+            .unwrap_or(root_node),
     };
+
     let num_chars_needed_on_left_most = if by_filecount {
         let max_size = biggest.size;
         max_size.separate_with_commas().chars().count()
@@ -141,7 +155,7 @@ pub fn draw_it(
     let allowed_width = terminal_width - num_chars_needed_on_left_most - 2;
     let num_indent_chars = 3;
     let longest_string_length =
-        find_longest_dir_name(&root_node, num_indent_chars, allowed_width, !use_full_path);
+        find_longest_dir_name(root_node, num_indent_chars, allowed_width, !use_full_path);
 
     let max_bar_length = if no_percents || longest_string_length + 7 >= allowed_width as usize {
         0
@@ -149,12 +163,12 @@ pub fn draw_it(
         allowed_width as usize - longest_string_length - 7
     };
 
-    let first_size_bar = repeat(BLOCKS[0]).take(max_bar_length).collect::<String>();
+    let first_size_bar = repeat(BLOCKS[0]).take(max_bar_length).collect();
 
     let display_data = DisplayData {
         short_paths: !use_full_path,
         is_reversed,
-        colors_on: !no_colors,
+        colors,
         by_filecount,
         num_chars_needed_on_left_most,
         base_size: biggest.size,
@@ -209,14 +223,14 @@ fn find_longest_dir_name(
         .fold(longest, max)
 }
 
-fn display_node(node: DisplayNode, draw_data: &DrawData, is_biggest: bool, is_last: bool) {
+fn display_node(node: &DisplayNode, draw_data: &DrawData, is_biggest: bool, is_last: bool) {
     // hacky way of working out how deep we are in the tree
     let indent = draw_data.get_new_indent(!node.children.is_empty(), is_last);
     let level = ((indent.chars().count() - 1) / 2) - 1;
-    let bar_text = draw_data.generate_bar(&node, level);
+    let bar_text = draw_data.generate_bar(node, level);
 
     let to_print = format_string(
-        &node,
+        node,
         &*indent,
         &*bar_text,
         is_biggest,
@@ -359,7 +373,7 @@ fn get_pretty_size(node: &DisplayNode, is_biggest: bool, display_data: &DisplayD
     let spaces_to_add = display_data.num_chars_needed_on_left_most - output.chars().count();
     let output = " ".repeat(spaces_to_add) + output.as_str();
 
-    if is_biggest && display_data.colors_on {
+    if is_biggest && display_data.colors.enabled() {
         format!("{}", Red.paint(output))
     } else {
         output
@@ -371,11 +385,11 @@ fn get_pretty_name(
     name_and_padding: String,
     display_data: &DisplayData,
 ) -> String {
-    if display_data.colors_on {
-        let meta_result = fs::metadata(node.name.clone());
+    if display_data.colors.enabled() {
+        let meta_result = fs::metadata(&node.name);
         let directory_color = display_data
             .ls_colors
-            .style_for_path_with_metadata(node.name.clone(), meta_result.as_ref().ok());
+            .style_for_path_with_metadata(&node.name, meta_result.as_ref().ok());
         let ansi_style = directory_color
             .map(Style::to_ansi_term_style)
             .unwrap_or_default();
@@ -411,7 +425,7 @@ mod tests {
         DisplayData {
             short_paths: true,
             is_reversed: false,
-            colors_on: false,
+            colors: ColorState::Disabled,
             by_filecount: false,
             num_chars_needed_on_left_most: 5,
             base_size: 1,
