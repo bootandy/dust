@@ -73,8 +73,8 @@ pub fn test_ignore_dir() {
 #[test]
 pub fn test_with_bad_param() {
     let mut cmd = Command::cargo_bin("dust").unwrap();
-    let stderr = cmd.arg("-").unwrap().stderr;
-    let stderr = str::from_utf8(&stderr).unwrap();
+    let result = cmd.arg("bad_place").unwrap();
+    let stderr = str::from_utf8(&result.stderr).unwrap();
     assert!(stderr.contains("Did not have permissions for all directories"));
 }
 

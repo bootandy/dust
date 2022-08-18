@@ -1,40 +1,14 @@
 use assert_cmd::Command;
-use std::cmp::max;
 use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
 use std::str;
-
-use terminal_size::{terminal_size, Height, Width};
-use unicode_width::UnicodeWidthStr;
 
 use tempfile::Builder;
 use tempfile::TempDir;
 
 // File sizes differ on both platform and on the format of the disk.
 // Windows: `ln` is not usually an available command; creation of symbolic links requires special enhanced permissions
-
-fn get_width_of_terminal() -> u16 {
-    if let Some((Width(w), Height(_h))) = terminal_size() {
-        max(w, 80)
-    } else {
-        80
-    }
-}
-
-// Mac test runners create tmp files with very long names, hence it may be shortened in the output
-fn get_file_name(name: String) -> String {
-    let terminal_plus_buffer = (get_width_of_terminal() - 12) as usize;
-    if UnicodeWidthStr::width(&*name) > terminal_plus_buffer {
-        let trimmed_name = name
-            .chars()
-            .take(terminal_plus_buffer - 2)
-            .collect::<String>();
-        trimmed_name + ".."
-    } else {
-        name
-    }
-}
 
 fn build_temp_file(dir: &TempDir) -> PathBuf {
     let file_path = dir.path().join("notes.txt");
@@ -60,12 +34,16 @@ pub fn test_soft_sym_link() {
         .output();
     assert!(c.is_ok());
 
-    let c = format!(" ├── {}", get_file_name(link_name_s.into()));
-    let b = format!(" ┌── {}", get_file_name(file_path_s.into()));
+    let c = format!(" ├── {}", link_name_s);
+    let b = format!(" ┌── {}", file_path_s);
     let a = format!("─┴ {}", dir_s);
 
     let mut cmd = Command::cargo_bin("dust").unwrap();
-    let output = cmd.arg("-p").arg("-c").arg("-s").arg(dir_s).unwrap().stdout;
+    // Mac test runners create long filenames in tmp directories
+    let output = cmd
+        .args(["-p", "-c", "-s", "-w 999", dir_s])
+        .unwrap()
+        .stdout;
 
     let output = str::from_utf8(&output).unwrap();
 
@@ -90,11 +68,12 @@ pub fn test_hard_sym_link() {
         .output();
     assert!(c.is_ok());
 
-    let file_output = format!(" ┌── {}", get_file_name(file_path_s.into()));
+    let file_output = format!(" ┌── {}", file_path_s);
     let dirs_output = format!("─┴ {}", dir_s);
 
     let mut cmd = Command::cargo_bin("dust").unwrap();
-    let output = cmd.arg("-p").arg("-c").arg(dir_s).unwrap().stdout;
+    // Mac test runners create long filenames in tmp directories
+    let output = cmd.args(["-p", "-c", "-w 999", dir_s]).unwrap().stdout;
 
     // The link should not appear in the output because multiple inodes are now ordered
     // then filtered.
@@ -120,7 +99,7 @@ pub fn test_recursive_sym_link() {
     assert!(c.is_ok());
 
     let a = format!("─┬ {}", dir_s);
-    let b = format!(" └── {}", get_file_name(link_name_s.into()));
+    let b = format!(" └── {}", link_name_s);
 
     let mut cmd = Command::cargo_bin("dust").unwrap();
     let output = cmd
@@ -128,6 +107,7 @@ pub fn test_recursive_sym_link() {
         .arg("-c")
         .arg("-r")
         .arg("-s")
+        .arg("-w 999")
         .arg(dir_s)
         .unwrap()
         .stdout;
