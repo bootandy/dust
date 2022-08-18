@@ -113,6 +113,17 @@ pub fn test_show_files_by_type() {
 }
 
 #[test]
+pub fn test_output_skip_total() {
+    let output = build_command(vec![
+        "--skip-total",
+        "tests/test_dir/many/hello_file",
+        "tests/test_dir/many/a_file",
+    ]);
+    assert!(output.contains("hello_file"));
+    assert!(!output.contains("(total)"));
+}
+
+#[test]
 pub fn test_show_files_by_regex_match_lots() {
     // Check we can see '.rs' files in the tests directory
     let output = build_command(vec!["-c", "-e", "\\.rs$", "tests"]);
