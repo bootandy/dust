@@ -164,6 +164,11 @@ fn main() {
                 .help("No percent bars or percentages will be displayed"),
         )
         .arg(
+            Arg::new("skip_total")
+                .long("skip-total")
+                .help("No total row will be displayed"),
+        )
+        .arg(
             Arg::new("by_filecount")
                 .short('f')
                 .long("filecount")
@@ -330,6 +335,7 @@ fn main() {
             by_filecount,
             root_node,
             options.is_present("iso"),
+            options.is_present("skip_total"),
         ),
     }
 }
