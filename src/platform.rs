@@ -5,7 +5,7 @@ use std::path::Path;
 
 #[cfg(target_family = "unix")]
 fn get_block_size() -> u64 {
-    // All os specific implementations of MetatdataExt seem to define a block as 512 bytes
+    // All os specific implementations of MetadataExt seem to define a block as 512 bytes
     // https://doc.rust-lang.org/std/os/linux/fs/trait.MetadataExt.html#tymethod.st_blocks
     512
 }
@@ -105,12 +105,12 @@ pub fn get_metadata(d: &Path, _use_apparent_size: bool) -> Option<(u64, Option<(
     use std::os::windows::fs::MetadataExt;
     match d.metadata() {
         Ok(ref md) => {
-            const FILE_ATTRIBUTE_ARCHIVE: u32 = 0x20u32;
-            const FILE_ATTRIBUTE_READONLY: u32 = 0x1u32;
-            const FILE_ATTRIBUTE_HIDDEN: u32 = 0x2u32;
-            const FILE_ATTRIBUTE_SYSTEM: u32 = 0x4u32;
-            const FILE_ATTRIBUTE_NORMAL: u32 = 0x80u32;
-            const FILE_ATTRIBUTE_DIRECTORY: u32 = 0x10u32;
+            const FILE_ATTRIBUTE_ARCHIVE: u32 = 0x20;
+            const FILE_ATTRIBUTE_READONLY: u32 = 0x01;
+            const FILE_ATTRIBUTE_HIDDEN: u32 = 0x02;
+            const FILE_ATTRIBUTE_SYSTEM: u32 = 0x04;
+            const FILE_ATTRIBUTE_NORMAL: u32 = 0x80;
+            const FILE_ATTRIBUTE_DIRECTORY: u32 = 0x10;
 
             let attr_filtered = md.file_attributes()
                 & !(FILE_ATTRIBUTE_HIDDEN | FILE_ATTRIBUTE_READONLY | FILE_ATTRIBUTE_SYSTEM);

@@ -1,33 +1,11 @@
-use std::cmp::Ordering;
 use std::path::PathBuf;
 
-#[derive(Debug, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub struct DisplayNode {
-    pub name: PathBuf, //todo: consider moving to a string?
+    // Note: the order of fields in important here, for PartialEq and PartialOrd
     pub size: u64,
+    pub name: PathBuf, //todo: consider moving to a string?
     pub children: Vec<DisplayNode>,
-}
-
-impl Ord for DisplayNode {
-    fn cmp(&self, other: &Self) -> Ordering {
-        if self.size == other.size {
-            self.name.cmp(&other.name)
-        } else {
-            self.size.cmp(&other.size)
-        }
-    }
-}
-
-impl PartialOrd for DisplayNode {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl PartialEq for DisplayNode {
-    fn eq(&self, other: &Self) -> bool {
-        self.name == other.name && self.size == other.size && self.children == other.children
-    }
 }
 
 impl DisplayNode {
@@ -35,12 +13,12 @@ impl DisplayNode {
         self.children.len() as u64
     }
 
-    pub fn get_children_from_node(&self, is_reversed: bool) -> impl Iterator<Item = DisplayNode> {
+    pub fn get_children_from_node(&self, is_reversed: bool) -> impl Iterator<Item = &DisplayNode> {
         // we box to avoid the clippy lint warning
-        let out: Box<dyn Iterator<Item = DisplayNode>> = if is_reversed {
-            Box::new(self.children.clone().into_iter().rev())
+        let out: Box<dyn Iterator<Item = &DisplayNode>> = if is_reversed {
+            Box::new(self.children.iter().rev())
         } else {
-            Box::new(self.children.clone().into_iter())
+            Box::new(self.children.iter())
         };
         out
     }

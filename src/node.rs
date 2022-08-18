@@ -27,36 +27,33 @@ pub fn build_node(
     by_filecount: bool,
     depth: usize,
 ) -> Option<Node> {
-    match get_metadata(&dir, use_apparent_size) {
-        Some(data) => {
-            let inode_device = if is_symlink && !use_apparent_size {
-                None
-            } else {
-                data.1
-            };
+    get_metadata(&dir, use_apparent_size).map(|data| {
+        let inode_device = if is_symlink && !use_apparent_size {
+            None
+        } else {
+            data.1
+        };
 
-            let size = if is_filtered_out_due_to_regex(filter_regex, &dir)
-                || is_filtered_out_due_to_invert_regex(invert_filter_regex, &dir)
-                || (is_symlink && !use_apparent_size)
-                || by_filecount && !is_file
-            {
-                0
-            } else if by_filecount {
-                1
-            } else {
-                data.0
-            };
+        let size = if is_filtered_out_due_to_regex(filter_regex, &dir)
+            || is_filtered_out_due_to_invert_regex(invert_filter_regex, &dir)
+            || (is_symlink && !use_apparent_size)
+            || by_filecount && !is_file
+        {
+            0
+        } else if by_filecount {
+            1
+        } else {
+            data.0
+        };
 
-            Some(Node {
-                name: dir,
-                size,
-                children,
-                inode_device,
-                depth,
-            })
+        Node {
+            name: dir,
+            size,
+            children,
+            inode_device,
+            depth,
         }
-        None => None,
-    }
+    })
 }
 
 impl PartialEq for Node {
@@ -67,11 +64,10 @@ impl PartialEq for Node {
 
 impl Ord for Node {
     fn cmp(&self, other: &Self) -> Ordering {
-        if self.size == other.size {
-            self.name.cmp(&other.name)
-        } else {
-            self.size.cmp(&other.size)
-        }
+        self.size
+            .cmp(&other.size)
+            .then_with(|| self.name.cmp(&other.name))
+            .then_with(|| self.children.cmp(&other.children))
     }
 }
 

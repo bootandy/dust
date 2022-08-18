@@ -7,6 +7,7 @@ use regex::Regex;
 
 pub fn simplify_dir_names<P: AsRef<Path>>(filenames: Vec<P>) -> HashSet<PathBuf> {
     let mut top_level_names: HashSet<PathBuf> = HashSet::with_capacity(filenames.len());
+
     for t in filenames {
         let top_level_name = normalize_path(t);
         let mut can_add = true;
@@ -26,6 +27,7 @@ pub fn simplify_dir_names<P: AsRef<Path>>(filenames: Vec<P>) -> HashSet<PathBuf>
             top_level_names.insert(top_level_name);
         }
     }
+
     top_level_names
 }
 
@@ -33,14 +35,9 @@ pub fn get_filesystem_devices<'a, P: IntoIterator<Item = &'a PathBuf>>(paths: P)
     // Gets the device ids for the filesystems which are used by the argument paths
     paths
         .into_iter()
-        .filter_map(|p| {
-            let meta = get_metadata(p, false);
-
-            if let Some((_size, Some((_id, dev)))) = meta {
-                Some(dev)
-            } else {
-                None
-            }
+        .filter_map(|p| match get_metadata(p, false) {
+            Some((_size, Some((_id, dev)))) => Some(dev),
+            _ => None,
         })
         .collect()
 }
@@ -52,7 +49,7 @@ pub fn normalize_path<P: AsRef<Path>>(path: P) -> PathBuf {
     // 3. removing trailing extra separators and '.' ("current directory") path segments
     // * `Path.components()` does all the above work; ref: <https://doc.rust-lang.org/std/path/struct.Path.html#method.components>
     // 4. changing to os preferred separator (automatically done by recollecting components back into a PathBuf)
-    path.as_ref().components().collect::<PathBuf>()
+    path.as_ref().components().collect()
 }
 
 pub fn is_filtered_out_due_to_regex(filter_regex: &[Regex], dir: &Path) -> bool {

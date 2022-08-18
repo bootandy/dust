@@ -20,14 +20,11 @@ fn copy_test_data(dir: &str) {
     // First remove the existing directory - just incase it is there and has incorrect data
     let last_slash = dir.rfind('/').unwrap();
     let last_part_of_dir = dir.chars().skip(last_slash).collect::<String>();
-    match Command::new("rm")
+    let _ = Command::new("rm")
         .arg("-rf")
         .arg("/tmp/".to_owned() + &*last_part_of_dir)
-        .ok()
-    {
-        Ok(_) => {}
-        Err(_) => {}
-    };
+        .ok();
+
     match Command::new("cp").arg("-r").arg(dir).arg("/tmp/").ok() {
         Ok(_) => {}
         Err(err) => {
@@ -48,14 +45,14 @@ fn exact_output_test<T: AsRef<OsStr>>(valid_outputs: Vec<String>, command_args: 
     initialize();
 
     let mut a = &mut Command::cargo_bin("dust").unwrap();
+
     for p in command_args {
         a = a.arg(p);
     }
-    let output: String = str::from_utf8(&a.unwrap().stdout).unwrap().into();
 
-    assert!(valid_outputs
-        .iter()
-        .fold(false, |sum, i| sum || output.contains(i)));
+    let output = str::from_utf8(&a.unwrap().stdout).unwrap().to_owned();
+
+    assert!(valid_outputs.iter().any(|i| output.contains(i)));
 }
 
 // "windows" result data can vary by host (size seems to be variable by one byte); fix code vs test and re-enable
@@ -129,7 +126,7 @@ fn main_output_long_paths() -> Vec<String> {
     vec![mac_and_some_linux, ubuntu]
 }
 
-// Check against directories and files whos names are substrings of each other
+// Check against directories and files whose names are substrings of each other
 #[cfg_attr(target_os = "windows", ignore)]
 #[test]
 pub fn test_substring_of_names_and_long_names() {
