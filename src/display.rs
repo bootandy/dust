@@ -116,9 +116,18 @@ pub fn draw_it(
     by_filecount: bool,
     root_node: DisplayNode,
     iso: bool,
+    skip_total: bool,
 ) {
+    let biggest = if skip_total {
+        root_node
+            .get_children_from_node(false)
+            .next()
+            .unwrap_or_else(|| root_node.clone())
+    } else {
+        root_node.clone()
+    };
     let num_chars_needed_on_left_most = if by_filecount {
-        let max_size = root_node.size;
+        let max_size = biggest.size;
         max_size.separate_with_commas().chars().count()
     } else {
         5 // Under normal usage we need 5 chars to display the size of a directory
@@ -148,7 +157,7 @@ pub fn draw_it(
         colors_on: !no_colors,
         by_filecount,
         num_chars_needed_on_left_most,
-        base_size: root_node.size,
+        base_size: biggest.size,
         longest_string_length,
         ls_colors: LsColors::from_env().unwrap_or_default(),
         iso,
@@ -158,7 +167,19 @@ pub fn draw_it(
         percent_bar: first_size_bar,
         display_data: &display_data,
     };
-    display_node(root_node, &draw_data, true, true);
+
+    if !skip_total {
+        display_node(root_node, &draw_data, true, true);
+    } else {
+        for (count, c) in root_node
+            .get_children_from_node(draw_data.display_data.is_reversed)
+            .enumerate()
+        {
+            let is_biggest = display_data.is_biggest(count, root_node.num_siblings());
+            let was_i_last = display_data.is_last(count, root_node.num_siblings());
+            display_node(c, &draw_data, is_biggest, was_i_last);
+        }
+    }
 }
 
 fn find_longest_dir_name(
