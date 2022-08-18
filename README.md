@@ -56,17 +56,20 @@ Usage: dust <dir>
 Usage: dust <dir>  <another_dir> <and_more>
 Usage: dust -p (full-path - Show fullpath of the subdirectories)
 Usage: dust -s (apparent-size - shows the length of the file as opposed to the amount of disk space it uses)
-Usage: dust -n 30 (shows 30 directories instead of the default [default is terminal height])
-Usage: dust -d 3  (shows 3 levels of subdirectories)
-Usage: dust -r  (reverse order of output)
+Usage: dust -n 30  (Shows 30 directories instead of the default [default is terminal height])
+Usage: dust -d 3  (Shows 3 levels of subdirectories)
+Usage: dust -r (reverse order of output)
+Usage: dust -H (si print sizes in powers of 1000 instead of 1024)
 Usage: dust -X ignore  (ignore all files and directories with the name 'ignore')
-Usage: dust -x (only show directories on the same filesystem)
-Usage: dust -b (do not show percentages or draw ASCII bars)
-Usage: dust -i (do not show hidden files)
+Usage: dust -x (Only show directories on the same filesystem)
+Usage: dust -b (Do not show percentages or draw ASCII bars)
+Usage: dust -i (Do not show hidden files)
 Usage: dust -c (No colors [monochrome])
 Usage: dust -f (Count files instead of diskspace)
-Usage: dust -t Group by filetype
-Usage: dust -e regex Only include files matching this regex (eg dust -e "\.png$" would match png files)
+Usage: dust -t (Group by filetype)
+Usage: dust -e regex (Only include files matching this regex (eg dust -e "\.png$" would match png files))
+Usage: dust -v regex (Exculde files matching this regex (eg dust -v "\.png$" would ignore png files))
+
 ```
 
 
