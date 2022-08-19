@@ -9,6 +9,7 @@ use std::process;
 use self::display::draw_it;
 use clap::{crate_version, Arg};
 use clap::{Command, Values};
+use config::get_config;
 use dir_walker::{walk_it, WalkData};
 use filter::{get_all_file_types, get_biggest};
 use regex::Regex;
@@ -18,6 +19,7 @@ use terminal_size::{terminal_size, Height, Width};
 use utils::get_filesystem_devices;
 use utils::simplify_dir_names;
 
+mod config;
 mod dir_walker;
 mod display;
 mod display_node;
@@ -216,14 +218,16 @@ fn main() {
                 .number_of_values(1)
                 .help("Specify width of output overriding the auto detection of terminal width"),
         )
-        .arg(Arg::new("inputs").multiple_occurrences(true).default_value("."))
         .arg(
             Arg::new("iso")
                 .short('H')
                 .long("si")
                 .help("print sizes in powers of 1000 (e.g., 1.1G)")
         )
+        .arg(Arg::new("inputs").multiple_occurrences(true).default_value("."))
         .get_matches();
+
+    let config = get_config();
 
     let target_dirs = options
         .values_of("inputs")
@@ -266,15 +270,14 @@ fn main() {
         None => default_height,
     };
 
-    let no_colors = init_color(options.is_present("no_colors"));
-    let use_apparent_size = options.is_present("display_apparent_size");
+    let no_colors = init_color(config.get_no_colors(&options));
+
     let ignore_directories: Vec<PathBuf> = options
         .values_of("ignore_directory")
         .map(|i| i.map(PathBuf::from).collect())
         .unwrap_or_default();
 
     let by_filecount = options.is_present("by_filecount");
-    let ignore_hidden = options.is_present("ignore_hidden");
     let limit_filesystem = options.is_present("limit_filesystem");
 
     let simplified_dirs = simplify_dir_names(target_dirs);
@@ -296,9 +299,9 @@ fn main() {
         filter_regex: &filter_regexs,
         invert_filter_regex: &invert_filter_regexs,
         allowed_filesystems,
-        use_apparent_size,
+        use_apparent_size: config.get_apparent_size(&options),
         by_filecount,
-        ignore_hidden,
+        ignore_hidden: config.get_ignore_hidden(&options),
     };
     // Larger stack size to handle cases with lots of nested directories
     rayon::ThreadPoolBuilder::new()
@@ -327,15 +330,15 @@ fn main() {
     match tree {
         None => {}
         Some(root_node) => draw_it(
-            options.is_present("display_full_paths"),
-            !options.is_present("reverse"),
+            config.get_full_paths(&options),
+            !config.get_reverse(&options),
             no_colors,
-            options.is_present("no_bars"),
+            config.get_no_bars(&options),
             terminal_width,
             by_filecount,
             root_node,
-            options.is_present("iso"),
-            options.is_present("skip_total"),
+            config.get_iso(&options),
+            config.get_skip_total(&options),
         ),
     }
 }

@@ -36,6 +36,9 @@ rayon = "1"
 thousands = "0.2"
 stfu8 = "0.2"
 regex = "1"
+config-file = "0.2"
+serde = { version = "1.0", features = ["derive"] }
+directories = "4"
 
 [target.'cfg(windows)'.dependencies]
 winapi-util = "0.1"
