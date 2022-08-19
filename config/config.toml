@@ -1,0 +1,13 @@
+# Sample Config file, works with toml and yaml
+# Place in either:
+#   ~/.config/dust/config.toml
+#   ~/.dust.toml
+
+reverse=true
+display-full-paths=true
+display-apparent-size=true
+no-colors=true
+no-bars=true
+skip-total=true
+ignore-hidden=true
+iso=true
