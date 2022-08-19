@@ -9,11 +9,15 @@ use std::str;
  */
 
 fn build_command<T: AsRef<OsStr>>(command_args: Vec<T>) -> String {
-    let mut a = &mut Command::cargo_bin("dust").unwrap();
+    let mut cmd = &mut Command::cargo_bin("dust").unwrap();
     for p in command_args {
-        a = a.arg(p);
+        cmd = cmd.arg(p);
     }
-    str::from_utf8(&a.unwrap().stdout).unwrap().into()
+    let finished = &cmd.unwrap();
+    let stderr = str::from_utf8(&finished.stderr).unwrap();
+    assert_eq!(stderr, "");
+
+    str::from_utf8(&finished.stdout).unwrap().into()
 }
 
 // We can at least test the file names are there
