@@ -32,7 +32,7 @@ static DEFAULT_TERMINAL_WIDTH: usize = 80;
 /// `ansi_term::enable_ansi_support` only exists on Windows; this wrapper
 /// function makes it available on all platforms
 #[inline]
-fn enable_ansi_support() -> Result<(), i32> {
+fn enable_ansi_support() -> Result<(), u32> {
     #[cfg(windows)]
     {
         ansi_term::enable_ansi_support()
