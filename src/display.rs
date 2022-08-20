@@ -111,7 +111,7 @@ pub fn draw_it(
     use_full_path: bool,
     is_reversed: bool,
     no_colors: bool,
-    no_percents: bool,
+    no_percent_bars: bool,
     terminal_width: usize,
     by_filecount: bool,
     root_node: &DisplayNode,
@@ -143,7 +143,7 @@ pub fn draw_it(
     let longest_string_length =
         find_longest_dir_name(root_node, num_indent_chars, allowed_width, !use_full_path);
 
-    let max_bar_length = if no_percents || longest_string_length + 7 >= allowed_width as usize {
+    let max_bar_length = if no_percent_bars || longest_string_length + 7 >= allowed_width as usize {
         0
     } else {
         allowed_width as usize - longest_string_length - 7
