@@ -39,12 +39,9 @@ pub fn test_soft_sym_link() {
     let a = format!("─┴ {}", dir_s);
 
     let mut cmd = Command::cargo_bin("dust").unwrap();
+    // Mac test runners create long filenames in tmp directories
     let output = cmd
-        .arg("-p")
-        .arg("-c")
-        .arg("-s")
-        .args(["-w", "999"])
-        .arg(dir_s)
+        .args(["-p", "-c", "-s", "-w 999", dir_s])
         .unwrap()
         .stdout;
 
@@ -75,13 +72,8 @@ pub fn test_hard_sym_link() {
     let dirs_output = format!("─┴ {}", dir_s);
 
     let mut cmd = Command::cargo_bin("dust").unwrap();
-    let output = cmd
-        .arg("-p")
-        .arg("-c")
-        .args(["-w", "999"])
-        .arg(dir_s)
-        .unwrap()
-        .stdout;
+    // Mac test runners create long filenames in tmp directories
+    let output = cmd.args(["-p", "-c", "-w 999", dir_s]).unwrap().stdout;
 
     // The link should not appear in the output because multiple inodes are now ordered
     // then filtered.
