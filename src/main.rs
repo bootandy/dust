@@ -6,7 +6,7 @@ extern crate unicode_width;
 use std::collections::HashSet;
 use std::process;
 
-use self::display::{draw_it, ColorState};
+use self::display::draw_it;
 use clap::{crate_version, Arg};
 use clap::{Command, Values};
 use dir_walker::{walk_it, WalkData};
@@ -29,37 +29,28 @@ mod utils;
 static DEFAULT_NUMBER_OF_LINES: usize = 30;
 static DEFAULT_TERMINAL_WIDTH: usize = 80;
 
-/// `ansi_term::enable_ansi_support` only exists on Windows; this wrapper
-/// function makes it available on all platforms
-#[inline]
-fn enable_ansi_support() -> Result<(), u32> {
-    #[cfg(windows)]
-    {
-        ansi_term::enable_ansi_support()
-    }
-
-    #[cfg(not(windows))]
-    {
-        Ok(())
-    }
+#[cfg(not(windows))]
+fn init_color(no_color: bool) -> bool {
+    no_color
 }
 
-fn init_color(color: ColorState) -> ColorState {
-    match color {
-        // If no color is already set do not print a warning message
-        ColorState::Disabled => ColorState::Disabled,
-
+#[cfg(windows)]
+fn init_color(no_color: bool) -> bool {
+    // If no color is already set do not print a warning message
+    if no_color {
+        true
+    } else {
         // Required for windows 10
         // Fails to resolve for windows 8 so disable color
-        ColorState::Enabled => match enable_ansi_support() {
-            Ok(()) => ColorState::Enabled,
+        match ansi_term::enable_ansi_support() {
+            Ok(_) => no_color,
             Err(_) => {
                 eprintln!(
                     "This version of Windows does not support ANSI colors, setting no_color flag"
                 );
-                ColorState::Disabled
+                true
             }
-        },
+        }
     }
 }
 
@@ -260,10 +251,7 @@ fn main() {
         })
         .unwrap_or(default_height);
 
-    let colors = init_color(match options.is_present("no_colors") {
-        false => ColorState::Enabled,
-        true => ColorState::Disabled,
-    });
+    let no_colors = init_color(options.is_present("no_colors"));
     let use_apparent_size = options.is_present("display_apparent_size");
     let ignore_directories = options
         .values_of("ignore_directory")
@@ -318,7 +306,7 @@ fn main() {
         draw_it(
             options.is_present("display_full_paths"),
             !options.is_present("reverse"),
-            colors,
+            no_colors,
             options.is_present("no_bars"),
             terminal_width,
             by_filecount,

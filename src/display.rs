@@ -22,7 +22,7 @@ static BLOCKS: [char; 5] = ['█', '▓', '▒', '░', ' '];
 pub struct DisplayData {
     pub short_paths: bool,
     pub is_reversed: bool,
-    pub colors: ColorState,
+    pub colors_on: bool,
     pub by_filecount: bool,
     pub num_chars_needed_on_left_most: usize,
     pub base_size: u64,
@@ -106,25 +106,11 @@ impl DrawData<'_> {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ColorState {
-    Disabled,
-    Enabled,
-}
-
-impl ColorState {
-    #[inline]
-    #[must_use]
-    fn enabled(self) -> bool {
-        self == ColorState::Enabled
-    }
-}
-
 #[allow(clippy::too_many_arguments)]
 pub fn draw_it(
     use_full_path: bool,
     is_reversed: bool,
-    colors: ColorState,
+    no_colors: bool,
     no_percents: bool,
     terminal_width: usize,
     by_filecount: bool,
@@ -168,7 +154,7 @@ pub fn draw_it(
     let display_data = DisplayData {
         short_paths: !use_full_path,
         is_reversed,
-        colors,
+        colors_on: !no_colors,
         by_filecount,
         num_chars_needed_on_left_most,
         base_size: biggest.size,
@@ -373,7 +359,7 @@ fn get_pretty_size(node: &DisplayNode, is_biggest: bool, display_data: &DisplayD
     let spaces_to_add = display_data.num_chars_needed_on_left_most - output.chars().count();
     let output = " ".repeat(spaces_to_add) + output.as_str();
 
-    if is_biggest && display_data.colors.enabled() {
+    if is_biggest && display_data.colors_on {
         format!("{}", Red.paint(output))
     } else {
         output
@@ -385,7 +371,7 @@ fn get_pretty_name(
     name_and_padding: String,
     display_data: &DisplayData,
 ) -> String {
-    if display_data.colors.enabled() {
+    if display_data.colors_on {
         let meta_result = fs::metadata(&node.name);
         let directory_color = display_data
             .ls_colors
@@ -425,7 +411,7 @@ mod tests {
         DisplayData {
             short_paths: true,
             is_reversed: false,
-            colors: ColorState::Disabled,
+            colors_on: false,
             by_filecount: false,
             num_chars_needed_on_left_most: 5,
             base_size: 1,
