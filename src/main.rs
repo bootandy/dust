@@ -31,28 +31,29 @@ mod utils;
 static DEFAULT_NUMBER_OF_LINES: usize = 30;
 static DEFAULT_TERMINAL_WIDTH: usize = 80;
 
-#[cfg(not(windows))]
 fn init_color(no_color: bool) -> bool {
-    no_color
-}
-
-#[cfg(windows)]
-fn init_color(no_color: bool) -> bool {
-    // If no color is already set do not print a warning message
-    if no_color {
-        true
-    } else {
-        // Required for windows 10
-        // Fails to resolve for windows 8 so disable color
-        match ansi_term::enable_ansi_support() {
-            Ok(_) => no_color,
-            Err(_) => {
-                eprintln!(
+    #[cfg(windows)]
+    {
+        // If no color is already set do not print a warning message
+        if no_color {
+            true
+        } else {
+            // Required for windows 10
+            // Fails to resolve for windows 8 so disable color
+            match ansi_term::enable_ansi_support() {
+                Ok(_) => no_color,
+                Err(_) => {
+                    eprintln!(
                     "This version of Windows does not support ANSI colors, setting no_color flag"
                 );
-                true
+                    true
+                }
             }
         }
+    }
+    #[cfg(not(windows))]
+    {
+        no_color
     }
 }
 
