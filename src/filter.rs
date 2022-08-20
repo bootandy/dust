@@ -56,9 +56,10 @@ fn add_children<'a>(
 
 fn get_new_root(top_level_nodes: Vec<Node>) -> Node {
     if top_level_nodes.len() != 1 {
+        let size = top_level_nodes.iter().map(|node| node.size).sum();
         Node {
             name: PathBuf::from("(total)"),
-            size: top_level_nodes.iter().map(|node| node.size).sum(),
+            size,
             children: top_level_nodes,
             inode_device: None,
             depth: 0,
