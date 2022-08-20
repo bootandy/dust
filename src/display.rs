@@ -144,7 +144,7 @@ pub fn draw_it(
         let max_size = biggest.size;
         max_size.separate_with_commas().chars().count()
     } else {
-        find_biggest_size_str(&root_node, iso)
+        find_biggest_size_str(root_node, iso)
     };
 
     assert!(
