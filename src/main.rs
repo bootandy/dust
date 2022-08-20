@@ -236,7 +236,7 @@ fn main() {
         usize::MAX
     });
 
-    // If depth is set we set the default number_of_lines to be max
+    // If depth is set, then we set the default number_of_lines to be max
     // instead of screen height
     let default_height = if depth != usize::MAX {
         usize::MAX
