@@ -25,12 +25,12 @@ fn copy_test_data(dir: &str) {
         .arg("/tmp/".to_owned() + &*last_part_of_dir)
         .ok();
 
-    match Command::new("cp").arg("-r").arg(dir).arg("/tmp/").ok() {
-        Ok(_) => {}
-        Err(err) => {
-            eprintln!("Error copying directory {:?}", err);
-        }
-    };
+    let _ = Command::new("cp")
+        .arg("-r")
+        .arg(dir)
+        .arg("/tmp/")
+        .ok()
+        .map_err(|err| eprintln!("Error copying directory for test setup\n{:?}", err));
 }
 
 fn initialize() {
