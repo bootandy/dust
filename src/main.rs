@@ -90,7 +90,7 @@ fn get_regex_value(maybe_value: Option<Values>) -> Vec<Regex> {
 }
 
 fn main() {
-    let options = build_cli().get_matches();
+    let options = build_cli(&usize::MAX.to_string()).get_matches();
 
     let config = get_config();
 
