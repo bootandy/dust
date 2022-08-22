@@ -1,10 +1,10 @@
+use clap::Arg;
 use clap::Command;
-use clap::{crate_version, Arg};
 
 pub fn build_cli() -> Command<'static> {
     Command::new("Dust")
         .about("Like du but more intuitive")
-        .version(crate_version!())
+        .version(env!("CARGO_PKG_VERSION"))
         .trailing_var_arg(true)
         .arg(
             Arg::new("depth")

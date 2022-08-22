@@ -215,20 +215,14 @@ fn display_node(node: &DisplayNode, draw_data: &DrawData, is_biggest: bool, is_l
     let level = ((indent.chars().count() - 1) / 2) - 1;
     let bar_text = draw_data.generate_bar(node, level);
 
-    let to_print = format_string(
-        node,
-        &*indent,
-        &*bar_text,
-        is_biggest,
-        draw_data.display_data,
-    );
+    let to_print = format_string(node, &indent, &bar_text, is_biggest, draw_data.display_data);
 
     if !draw_data.display_data.is_reversed {
         println!("{}", to_print)
     }
 
     let dd = DrawData {
-        indent: clean_indentation_string(&*indent),
+        indent: clean_indentation_string(&indent),
         percent_bar: bar_text,
         display_data: draw_data.display_data,
     };
