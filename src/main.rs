@@ -90,7 +90,7 @@ fn get_regex_value(maybe_value: Option<Values>) -> Vec<Regex> {
 }
 
 fn main() {
-    let options = build_cli(&usize::MAX.to_string()).get_matches();
+    let options = build_cli().get_matches();
 
     let config = get_config();
 
@@ -108,10 +108,7 @@ fn main() {
         .value_of_t("width")
         .unwrap_or_else(|_| get_width_of_terminal());
 
-    let depth = options.value_of_t("depth").unwrap_or_else(|_| {
-        eprintln!("Ignoring bad value for depth");
-        usize::MAX
-    });
+    let depth = options.value_of_t("depth").unwrap_or(usize::MAX);
 
     // If depth is set, then we set the default number_of_lines to be max
     // instead of screen height
