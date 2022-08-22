@@ -24,6 +24,8 @@ set edit:completion:arg-completer[dust] = {|@words|
             cand --number-of-lines 'Number of lines of output to show. (Default is terminal_height - 10)'
             cand -X 'Exclude any file or directory with this name'
             cand --ignore-directory 'Exclude any file or directory with this name'
+            cand -z 'Minimum size file to include in output'
+            cand --min-size 'Minimum size file to include in output'
             cand -v 'Exclude filepaths matching this regex. To ignore png files type: -v "\.png$" '
             cand --invert-filter 'Exclude filepaths matching this regex. To ignore png files type: -v "\.png$" '
             cand -e 'Only include filepaths matching this regex. For png files type: -e "\.png$" '

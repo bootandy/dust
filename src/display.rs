@@ -14,7 +14,7 @@ use std::iter::repeat;
 use std::path::Path;
 use thousands::Separable;
 
-static UNITS: [char; 4] = ['T', 'G', 'M', 'K'];
+pub static UNITS: [char; 4] = ['T', 'G', 'M', 'K'];
 static BLOCKS: [char; 5] = ['█', '▓', '▒', '░', ' '];
 
 pub struct DisplayData {
