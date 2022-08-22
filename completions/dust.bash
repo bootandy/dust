@@ -19,7 +19,7 @@ _dust() {
 
     case "${cmd}" in
         dust)
-            opts="-h -V -d -n -p -X -x -s -r -c -b -f -i -v -e -t -w -H --help --version --depth --number-of-lines --full-paths --ignore-directory --limit-filesystem --apparent-size --reverse --no-colors --no-percent-bars --skip-total --filecount --ignore_hidden --invert-filter --filter --file_types --terminal_width --si <inputs>..."
+            opts="-h -V -d -n -p -X -x -s -r -c -b -z -f -i -v -e -t -w -H --help --version --depth --number-of-lines --full-paths --ignore-directory --limit-filesystem --apparent-size --reverse --no-colors --no-percent-bars --min-size --skip-total --filecount --ignore_hidden --invert-filter --filter --file_types --terminal_width --si <inputs>..."
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 1 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -46,6 +46,14 @@ _dust() {
                     return 0
                     ;;
                 -X)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --min-size)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                -z)
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;

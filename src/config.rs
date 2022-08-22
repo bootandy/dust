@@ -4,6 +4,8 @@ use serde::Deserialize;
 use std::path::Path;
 use std::path::PathBuf;
 
+use crate::display::UNITS;
+
 #[derive(Deserialize, Default)]
 #[serde(rename_all = "kebab-case")]
 #[serde(deny_unknown_fields)]
@@ -16,6 +18,7 @@ pub struct Config {
     pub skip_total: Option<bool>,
     pub ignore_hidden: Option<bool>,
     pub iso: Option<bool>,
+    pub min_size: Option<String>,
 }
 
 impl Config {
@@ -43,6 +46,46 @@ impl Config {
     pub fn get_skip_total(&self, options: &ArgMatches) -> bool {
         Some(true) == self.skip_total || options.is_present("skip_total")
     }
+    pub fn get_min_size(&self, options: &ArgMatches, iso: bool) -> Option<usize> {
+        let size_from_param = options.value_of("min_size");
+        self._get_min_size(size_from_param, iso)
+    }
+    fn _get_min_size(&self, min_size: Option<&str>, iso: bool) -> Option<usize> {
+        let size_from_param = min_size.and_then(|a| convert_min_size(a, iso));
+
+        if size_from_param.is_none() {
+            self.min_size
+                .as_ref()
+                .and_then(|a| convert_min_size(a.as_ref(), iso))
+        } else {
+            size_from_param
+        }
+    }
+}
+
+fn convert_min_size(input: &str, iso: bool) -> Option<usize> {
+    let chars_as_vec: Vec<char> = input.chars().collect();
+    match chars_as_vec.split_last() {
+        Some((last, start)) => {
+            let mut starts: String = start.iter().collect::<String>();
+
+            for (i, u) in UNITS.iter().enumerate() {
+                if Some(*u) == last.to_uppercase().next() {
+                    return match starts.parse::<usize>() {
+                        Ok(pure) => {
+                            let num: u64 = if iso { 1000 } else { 1024 };
+                            let marker = pure * num.pow((UNITS.len() - i) as u32) as usize;
+                            Some(marker)
+                        }
+                        Err(_) => None,
+                    };
+                }
+            }
+            starts.push(*last);
+            starts.parse().ok()
+        }
+        None => None,
+    }
 }
 
 fn get_config_locations(base: &Path) -> Vec<PathBuf> {
@@ -64,5 +107,35 @@ pub fn get_config() -> Config {
     }
     Config {
         ..Default::default()
+    }
+}
+
+mod tests {
+    #[allow(unused_imports)]
+    use super::*;
+
+    #[test]
+    fn test_conversion() {
+        assert_eq!(convert_min_size("55", false), Some(55));
+        assert_eq!(convert_min_size("12344321", false), Some(12344321));
+        assert_eq!(convert_min_size("95RUBBISH", false), None);
+        assert_eq!(convert_min_size("10K", false), Some(10 * 1024));
+        assert_eq!(convert_min_size("10M", false), Some(10 * 1024usize.pow(2)));
+        assert_eq!(convert_min_size("10M", true), Some(10 * 1000usize.pow(2)));
+        assert_eq!(convert_min_size("2G", false), Some(2 * 1024usize.pow(3)));
+    }
+
+    #[test]
+    fn test_config_min_size() {
+        let c = Config {
+            min_size: Some("1K".to_owned()),
+            ..Default::default()
+        };
+        assert_eq!(c._get_min_size(None, false), Some(1024));
+        assert_eq!(c._get_min_size(Some("100"), false), Some(100));
+        assert_eq!(c._get_min_size(Some("2K"), false), Some(2048));
+
+        assert_eq!(c._get_min_size(None, true), Some(1000));
+        assert_eq!(c._get_min_size(Some("2K"), true), Some(2000));
     }
 }
