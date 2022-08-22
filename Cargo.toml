@@ -3,7 +3,7 @@ name = "du-dust"
 description = "A more intuitive version of du"
 version = "0.8.1"
 authors = ["bootandy <bootandy@gmail.com>", "nebkor <code@ardent.nebcorp.com>"]
-edition = "2018"
+edition = "2021"
 readme = "README.md"
 
 documentation = "https://github.com/bootandy/dust"
@@ -28,7 +28,7 @@ strip = true
 
 [dependencies]
 ansi_term = "0.12"
-clap = { version = "=3", features = ["cargo"] }
+clap = "3.2.17"
 lscolors = "0.7"
 terminal_size = "0.1"
 unicode-width = "0.1"
@@ -46,6 +46,10 @@ winapi-util = "0.1"
 [dev-dependencies]
 assert_cmd = "1"
 tempfile = "=3"
+
+[build-dependencies]
+clap = "3.2.17"
+clap_complete = "3.2.4"
 
 [[test]]
 name = "integration"
