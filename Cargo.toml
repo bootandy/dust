@@ -3,7 +3,7 @@ name = "du-dust"
 description = "A more intuitive version of du"
 version = "0.8.1"
 authors = ["bootandy <bootandy@gmail.com>", "nebkor <code@ardent.nebcorp.com>"]
-edition = "2018"
+edition = "2021"
 readme = "README.md"
 
 documentation = "https://github.com/bootandy/dust"
