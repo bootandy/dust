@@ -16,6 +16,7 @@ pub struct Config {
     pub skip_total: Option<bool>,
     pub ignore_hidden: Option<bool>,
     pub iso: Option<bool>,
+    pub min_size: Option<usize>,
 }
 
 impl Config {
@@ -42,6 +43,13 @@ impl Config {
     }
     pub fn get_skip_total(&self, options: &ArgMatches) -> bool {
         Some(true) == self.skip_total || options.is_present("skip_total")
+    }
+    pub fn get_min_size(&self, options: &ArgMatches) -> Option<usize> {
+        if let Some(min_size) = options.value_of("min_size") {
+            min_size.parse().map_err(|_| self.min_size).ok()
+        } else {
+            return self.min_size;
+        }
     }
 }
 

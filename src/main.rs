@@ -164,6 +164,14 @@ fn main() {
                 .help("No total row will be displayed"),
         )
         .arg(
+            Arg::new("min_size")
+                .short('z')
+                .long("min-size")
+                .takes_value(true)
+                .number_of_values(1)
+                .help("Minimum size file to include in output"),
+        )
+        .arg(
             Arg::new("by_filecount")
                 .short('f')
                 .long("filecount")
@@ -298,6 +306,7 @@ fn main() {
         true => get_all_file_types(&top_level_nodes, number_of_lines),
         false => get_biggest(
             top_level_nodes,
+            config.get_min_size(&options),
             number_of_lines,
             depth,
             options.values_of("filter").is_some() || options.value_of("invert_filter").is_some(),
