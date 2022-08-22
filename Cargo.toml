@@ -44,6 +44,10 @@ winapi-util = "0.1"
 assert_cmd = "1"
 tempfile = "=3"
 
+[build-dependencies]
+clap = "*"
+clap_complete = "*"
+
 [[test]]
 name = "integration"
 path = "tests/tests.rs"

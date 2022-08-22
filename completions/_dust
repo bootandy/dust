@@ -1,0 +1,65 @@
+#compdef dust
+
+autoload -U is-at-least
+
+_dust() {
+    typeset -A opt_args
+    typeset -a _arguments_options
+    local ret=1
+
+    if is-at-least 5.2; then
+        _arguments_options=(-s -S -C)
+    else
+        _arguments_options=(-s -C)
+    fi
+
+    local context curcontext="$curcontext" state line
+    _arguments "${_arguments_options[@]}" \
+'-d+[Depth to show]: : ' \
+'--depth=[Depth to show]: : ' \
+'-n+[Number of lines of output to show. (Default is terminal_height - 10)]: : ' \
+'--number-of-lines=[Number of lines of output to show. (Default is terminal_height - 10)]: : ' \
+'*-X+[Exclude any file or directory with this name]: : ' \
+'*--ignore-directory=[Exclude any file or directory with this name]: : ' \
+'(-e --filter -t --file_types)*-v+[Exclude filepaths matching this regex. To ignore png files type: -v "\\.png$" ]: : ' \
+'(-e --filter -t --file_types)*--invert-filter=[Exclude filepaths matching this regex. To ignore png files type: -v "\\.png$" ]: : ' \
+'(-t --file_types)*-e+[Only include filepaths matching this regex. For png files type: -e "\\.png$" ]: : ' \
+'(-t --file_types)*--filter=[Only include filepaths matching this regex. For png files type: -e "\\.png$" ]: : ' \
+'-w+[Specify width of output overriding the auto detection of terminal width]: : ' \
+'--terminal_width=[Specify width of output overriding the auto detection of terminal width]: : ' \
+'-h[Print help information]' \
+'--help[Print help information]' \
+'-V[Print version information]' \
+'--version[Print version information]' \
+'-p[Subdirectories will not have their path shortened]' \
+'--full-paths[Subdirectories will not have their path shortened]' \
+'-x[Only count the files and directories on the same filesystem as the supplied directory]' \
+'--limit-filesystem[Only count the files and directories on the same filesystem as the supplied directory]' \
+'-s[Use file length instead of blocks]' \
+'--apparent-size[Use file length instead of blocks]' \
+'-r[Print tree upside down (biggest highest)]' \
+'--reverse[Print tree upside down (biggest highest)]' \
+'-c[No colors will be printed (Useful for commands like: watch)]' \
+'--no-colors[No colors will be printed (Useful for commands like: watch)]' \
+'-b[No percent bars or percentages will be displayed]' \
+'--no-percent-bars[No percent bars or percentages will be displayed]' \
+'--skip-total[No total row will be displayed]' \
+'-f[Directory '\''size'\'' is number of child files/dirs not disk size]' \
+'--filecount[Directory '\''size'\'' is number of child files/dirs not disk size]' \
+'-i[Do not display hidden files]' \
+'--ignore_hidden[Do not display hidden files]' \
+'(-d --depth)-t[show only these file types]' \
+'(-d --depth)--file_types[show only these file types]' \
+'-H[print sizes in powers of 1000 (e.g., 1.1G)]' \
+'--si[print sizes in powers of 1000 (e.g., 1.1G)]' \
+'*::inputs:' \
+&& ret=0
+}
+
+(( $+functions[_dust_commands] )) ||
+_dust_commands() {
+    local commands; commands=()
+    _describe -t commands 'dust commands' commands "$@"
+}
+
+_dust "$@"
