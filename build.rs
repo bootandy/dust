@@ -1,5 +1,4 @@
 use clap_complete::{generate_to, shells::*};
-use std::env;
 use std::io::Error;
 
 include!("src/cli.rs");
