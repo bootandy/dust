@@ -1,6 +1,6 @@
 use clap::{Arg, Command};
 
-pub fn build_cli(max_depth: &str) -> Command {
+pub fn build_cli() -> Command<'static> {
     Command::new("Dust")
         .about("Like du but more intuitive")
         .version(env!("CARGO_PKG_VERSION"))
@@ -11,7 +11,6 @@ pub fn build_cli(max_depth: &str) -> Command {
                 .long("depth")
                 .help("Depth to show")
                 .takes_value(true)
-                .default_value(max_depth)
         )
         .arg(
             Arg::new("number_of_lines")
