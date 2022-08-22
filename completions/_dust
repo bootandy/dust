@@ -21,6 +21,8 @@ _dust() {
 '--number-of-lines=[Number of lines of output to show. (Default is terminal_height - 10)]: : ' \
 '*-X+[Exclude any file or directory with this name]: : ' \
 '*--ignore-directory=[Exclude any file or directory with this name]: : ' \
+'-z+[Minimum size file to include in output]: : ' \
+'--min-size=[Minimum size file to include in output]: : ' \
 '(-e --filter -t --file_types)*-v+[Exclude filepaths matching this regex. To ignore png files type: -v "\\.png$" ]: : ' \
 '(-e --filter -t --file_types)*--invert-filter=[Exclude filepaths matching this regex. To ignore png files type: -v "\\.png$" ]: : ' \
 '(-t --file_types)*-e+[Only include filepaths matching this regex. For png files type: -e "\\.png$" ]: : ' \

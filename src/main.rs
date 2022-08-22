@@ -91,7 +91,6 @@ fn get_regex_value(maybe_value: Option<Values>) -> Vec<Regex> {
 
 fn main() {
     let options = build_cli().get_matches();
-
     let config = get_config();
 
     let target_dirs = options
@@ -161,12 +160,14 @@ fn main() {
         .build_global()
         .unwrap();
 
+    let iso = config.get_iso(&options);
     let (top_level_nodes, has_errors) = walk_it(simplified_dirs, walk_data);
 
     let tree = match summarize_file_types {
         true => get_all_file_types(&top_level_nodes, number_of_lines),
         false => get_biggest(
             top_level_nodes,
+            config.get_min_size(&options, iso),
             number_of_lines,
             depth,
             options.values_of("filter").is_some() || options.value_of("invert_filter").is_some(),
@@ -185,7 +186,7 @@ fn main() {
             terminal_width,
             by_filecount,
             &root_node,
-            config.get_iso(&options),
+            iso,
             config.get_skip_total(&options),
         )
     }

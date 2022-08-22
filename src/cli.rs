@@ -65,6 +65,14 @@ pub fn build_cli() -> Command<'static> {
                 .help("No percent bars or percentages will be displayed"),
         )
         .arg(
+            Arg::new("min_size")
+                .short('z')
+                .long("min-size")
+                .takes_value(true)
+                .number_of_values(1)
+                .help("Minimum size file to include in output"),
+        )
+        .arg(
             Arg::new("skip_total")
                 .long("skip-total")
                 .help("No total row will be displayed"),
