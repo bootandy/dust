@@ -76,9 +76,9 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
 name = "clap"
-version = "3.2.11"
+version = "3.2.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d646c7ade5eb07c4aa20e907a922750df0c448892513714fd3e4acbc7130829f"
+checksum = "29e724a68d9319343bb3328c9cc2dfde263f4b3142ee1059a9980580171c954b"
 dependencies = [
  "atty",
  "bitflags",
@@ -88,6 +88,15 @@ dependencies = [
  "strsim",
  "termcolor",
  "textwrap",
+]
+
+[[package]]
+name = "clap_complete"
+version = "3.2.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e4179da71abd56c26b54dd0c248cc081c1f43b0a1a7e8448e28e57a29baa993d"
+dependencies = [
+ "clap",
 ]
 
 [[package]]
@@ -101,9 +110,9 @@ dependencies = [
 
 [[package]]
 name = "crossbeam-channel"
-version = "0.5.5"
+version = "0.5.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4c02a4d71819009c192cf4872265391563fd6a84c81ff2c0f2a7026ca4c1d85c"
+checksum = "c2dd04ddaf88237dc3b8d8f9a3c1004b506b54b3313403944054d23c0870c521"
 dependencies = [
  "cfg-if",
  "crossbeam-utils",
@@ -111,9 +120,9 @@ dependencies = [
 
 [[package]]
 name = "crossbeam-deque"
-version = "0.8.1"
+version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6455c0ca19f0d2fbf751b908d5c55c1f5cbc65e03c4225427254b46890bdde1e"
+checksum = "715e8152b692bba2d374b53d4875445368fdf21a94751410af607a5ac677d1fc"
 dependencies = [
  "cfg-if",
  "crossbeam-epoch",
@@ -122,9 +131,9 @@ dependencies = [
 
 [[package]]
 name = "crossbeam-epoch"
-version = "0.9.9"
+version = "0.9.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "07db9d94cbd326813772c968ccd25999e5f8ae22f4f8d1b11effa37ef6ce281d"
+checksum = "045ebe27666471bb549370b4b0b3e51b07f56325befa4284db65fc89c02511b1"
 dependencies = [
  "autocfg",
  "cfg-if",
@@ -136,9 +145,9 @@ dependencies = [
 
 [[package]]
 name = "crossbeam-utils"
-version = "0.8.10"
+version = "0.8.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7d82ee10ce34d7bc12c2122495e7593a9c41347ecdd64185af4ecf72cb1a7f83"
+checksum = "51887d4adc7b564537b15adcfb307936f8075dfcd5f00dde9a9f1d29383682bc"
 dependencies = [
  "cfg-if",
  "once_cell",
@@ -163,6 +172,7 @@ dependencies = [
  "ansi_term",
  "assert_cmd",
  "clap",
+ "clap_complete",
  "lscolors",
  "rayon",
  "regex",
@@ -176,24 +186,24 @@ dependencies = [
 
 [[package]]
 name = "either"
-version = "1.7.0"
+version = "1.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3f107b87b6afc2a64fd13cac55fe06d6c8859f12d4b14cbcdd2c67d0976781be"
+checksum = "90e5c1c8368803113bf0c9584fc495a58b86dc8a29edbf8fe877d21d9507e797"
 
 [[package]]
 name = "fastrand"
-version = "1.7.0"
+version = "1.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c3fcf0cee53519c866c09b5de1f6c56ff9d647101f81c1964fa632e148896cdf"
+checksum = "a7a407cfaa3385c4ae6b23e84623d48c2798d06e3e6a1878f7f59f17b3f86499"
 dependencies = [
  "instant",
 ]
 
 [[package]]
 name = "hashbrown"
-version = "0.12.2"
+version = "0.12.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "607c8a29735385251a339424dd462993c0fed8fa09d378f259377df08c126022"
+checksum = "8a9ee70c43aaf417c914396645a0fa852624801b24ebb7ae78fe8272889ac888"
 
 [[package]]
 name = "hermit-abi"
@@ -240,9 +250,9 @@ checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
 
 [[package]]
 name = "libc"
-version = "0.2.126"
+version = "0.2.132"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "349d5a591cd28b49e1d1037471617a32ddcda5731b99419008085f72d5a53836"
+checksum = "8371e4e5341c3a96db127eb2465ac681ced4c433e01dd0e938adbef26ba93ba5"
 
 [[package]]
 name = "lscolors"
@@ -280,15 +290,15 @@ dependencies = [
 
 [[package]]
 name = "once_cell"
-version = "1.13.0"
+version = "1.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "18a6dbe30758c9f83eb00cbea4ac95966305f5a7772f3f42ebfc7fc7eddbd8e1"
+checksum = "074864da206b4973b84eb91683020dbefd6a8c3f0f38e054d93954e891935e4e"
 
 [[package]]
 name = "os_str_bytes"
-version = "6.1.0"
+version = "6.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "21326818e99cfe6ce1e524c2a805c189a99b5ae555a35d19f9a284b427d86afa"
+checksum = "9ff7415e9ae3fff1225851df9e0d9e4e5479f947619774677a63572e55e80eff"
 
 [[package]]
 name = "predicates"
@@ -343,9 +353,9 @@ dependencies = [
 
 [[package]]
 name = "redox_syscall"
-version = "0.2.13"
+version = "0.2.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "62f25bc4c7e55e0b0b7a1d43fb893f4fa1361d0abe38b9ce4f323c2adfe6ef42"
+checksum = "fb5a58c1855b4b6819d59012155603f0b22ad30cad752600aadfcb695265519a"
 dependencies = [
  "bitflags",
 ]
