@@ -77,12 +77,20 @@ fn convert_min_size(input: &str, iso: bool) -> Option<usize> {
                             let marker = pure * num.pow((i + 1) as u32);
                             Some(marker)
                         }
-                        Err(_) => None,
+                        Err(_) => {
+                            eprintln!("Ignoring invalid min-size: {}", input);
+                            None
+                        }
                     };
                 }
             }
             starts.push(*last);
-            starts.parse().ok()
+            starts
+                .parse()
+                .map_err(|_| {
+                    eprintln!("Ignoring invalid min-size: {}", input);
+                })
+                .ok()
         }
         None => None,
     }
@@ -126,13 +134,12 @@ mod tests {
     }
 
     #[test]
-    fn test_config_min_size() {
+    fn test_min_size_from_config_applied_or_overridden() {
         let c = Config {
             min_size: Some("1K".to_owned()),
             ..Default::default()
         };
         assert_eq!(c._get_min_size(None, false), Some(1024));
-        assert_eq!(c._get_min_size(Some("100"), false), Some(100));
         assert_eq!(c._get_min_size(Some("2K"), false), Some(2048));
 
         assert_eq!(c._get_min_size(None, true), Some(1000));
