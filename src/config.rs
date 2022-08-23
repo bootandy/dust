@@ -69,12 +69,12 @@ fn convert_min_size(input: &str, iso: bool) -> Option<usize> {
         Some((last, start)) => {
             let mut starts: String = start.iter().collect::<String>();
 
-            for (i, u) in UNITS.iter().enumerate() {
+            for (i, u) in UNITS.iter().rev().enumerate() {
                 if Some(*u) == last.to_uppercase().next() {
                     return match starts.parse::<usize>() {
                         Ok(pure) => {
                             let num: usize = if iso { 1000 } else { 1024 };
-                            let marker = pure * num.pow((UNITS.len() - i) as u32);
+                            let marker = pure * num.pow((i + 1) as u32);
                             Some(marker)
                         }
                         Err(_) => None,
