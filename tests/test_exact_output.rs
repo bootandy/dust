@@ -17,7 +17,7 @@ static INIT: Once = Once::new();
 /// Copy to /tmp dir - we assume that the formatting of the /tmp partition
 /// is consistent. If the tests fail your /tmp filesystem probably differs
 fn copy_test_data(dir: &str) {
-    // First remove the existing directory - just incase it is there and has incorrect data
+    // First remove the existing directory - just in case it is there and has incorrect data
     let last_slash = dir.rfind('/').unwrap();
     let last_part_of_dir = dir.chars().skip(last_slash).collect::<String>();
     let _ = Command::new("rm")
@@ -196,7 +196,7 @@ pub fn test_apparent_size() {
 }
 
 fn apparent_size_output() -> Vec<String> {
-    // The apparent directory sizes are too unpredictable and system dependant to try and match
+    // The apparent directory sizes are too unpredictable and system dependent to try and match
     let files = r#"
   0B     ┌── a_file
   6B     ├── hello_file

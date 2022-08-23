@@ -69,7 +69,7 @@ Usage: dust -f (Count files instead of diskspace)
 Usage: dust -t (Group by filetype)
 Usage: dust -z 10M (min-size, Only include files larger than 10M)
 Usage: dust -e regex (Only include files matching this regex (eg dust -e "\.png$" would match png files))
-Usage: dust -v regex (Exculde files matching this regex (eg dust -v "\.png$" would ignore png files))
+Usage: dust -v regex (Exclude files matching this regex (eg dust -v "\.png$" would ignore png files))
 
 ```
 
