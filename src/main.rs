@@ -158,7 +158,7 @@ fn main() {
     rayon::ThreadPoolBuilder::new()
         .stack_size(usize::pow(1024, 3))
         .build_global()
-        .unwrap();
+        .unwrap_or_else(|e| eprintln!("Warning: Could not configure threads {:?}", e));
 
     let iso = config.get_iso(&options);
     let (top_level_nodes, has_errors) = walk_it(simplified_dirs, walk_data);
