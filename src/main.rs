@@ -12,6 +12,7 @@ mod utils;
 use crate::cli::build_cli;
 use std::collections::HashSet;
 use std::process;
+use sysinfo::{System, SystemExt};
 
 use self::display::draw_it;
 use clap::Values;
@@ -19,6 +20,7 @@ use config::get_config;
 use dir_walker::{walk_it, WalkData};
 use filter::get_biggest;
 use filter_type::get_all_file_types;
+use rayon::ThreadPoolBuildError;
 use regex::Regex;
 use std::cmp::max;
 use std::path::PathBuf;
@@ -154,11 +156,7 @@ fn main() {
         by_filecount,
         ignore_hidden: config.get_ignore_hidden(&options),
     };
-    // Larger stack size to handle cases with lots of nested directories
-    rayon::ThreadPoolBuilder::new()
-        .stack_size(usize::pow(1024, 3))
-        .build_global()
-        .unwrap();
+    let _rayon = init_rayon();
 
     let iso = config.get_iso(&options);
     let (top_level_nodes, has_errors) = walk_it(simplified_dirs, walk_data);
@@ -189,5 +187,21 @@ fn main() {
             iso,
             config.get_skip_total(&options),
         )
+    }
+}
+
+fn init_rayon() -> Result<(), ThreadPoolBuildError> {
+    let large_stack = usize::pow(1024, 3);
+    // Warning: Creating System is slow, takes ~ 100ms
+    let s = System::new();
+    let available = s.get_available_memory() * 1024;
+
+    if available > large_stack.try_into().unwrap() {
+        // Larger stack size to handle cases with lots of nested directories
+        rayon::ThreadPoolBuilder::new()
+            .stack_size(large_stack)
+            .build_global()
+    } else {
+        Ok(())
     }
 }

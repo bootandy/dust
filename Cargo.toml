@@ -1,7 +1,7 @@
 [package]
 name = "du-dust"
 description = "A more intuitive version of du"
-version = "0.8.2"
+version = "0.8.3"
 authors = ["bootandy <bootandy@gmail.com>", "nebkor <code@ardent.nebcorp.com>"]
 edition = "2021"
 readme = "README.md"
@@ -39,6 +39,7 @@ regex = "1"
 config-file = "0.2"
 serde = { version = "1.0", features = ["derive"] }
 directories = "4"
+sysinfo = "0.15"
 
 [target.'cfg(windows)'.dependencies]
 winapi-util = "0.1"
