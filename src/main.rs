@@ -11,6 +11,7 @@ mod utils;
 
 use crate::cli::build_cli;
 use std::collections::HashSet;
+use std::panic;
 use std::process;
 
 use self::display::draw_it;
@@ -19,6 +20,7 @@ use config::get_config;
 use dir_walker::{walk_it, WalkData};
 use filter::get_biggest;
 use filter_type::get_all_file_types;
+use rayon::ThreadPoolBuildError;
 use regex::Regex;
 use std::cmp::max;
 use std::path::PathBuf;
@@ -154,11 +156,10 @@ fn main() {
         by_filecount,
         ignore_hidden: config.get_ignore_hidden(&options),
     };
-    // Larger stack size to handle cases with lots of nested directories
-    rayon::ThreadPoolBuilder::new()
-        .stack_size(usize::pow(1024, 3))
-        .build_global()
-        .unwrap_or_else(|e| eprintln!("Warning: Could not configure threads {:?}", e));
+    let pool = panic::catch_unwind(init_rayon);
+    if pool.is_err() {
+        eprintln!("Warning: Could not configure threads {:?}", pool.err());
+    }
 
     let iso = config.get_iso(&options);
     let (top_level_nodes, has_errors) = walk_it(simplified_dirs, walk_data);
@@ -190,4 +191,11 @@ fn main() {
             config.get_skip_total(&options),
         )
     }
+}
+
+fn init_rayon() -> Result<(), ThreadPoolBuildError> {
+    // Larger stack size to handle cases with lots of nested directories
+    rayon::ThreadPoolBuilder::new()
+        .stack_size(usize::pow(1024, 3))
+        .build_global()
 }
