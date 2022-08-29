@@ -13,6 +13,7 @@ use crate::cli::build_cli;
 use std::collections::HashSet;
 use std::panic;
 use std::process;
+use sysinfo::{System, SystemExt};
 
 use self::display::draw_it;
 use clap::Values;
@@ -194,8 +195,14 @@ fn main() {
 }
 
 fn init_rayon() -> Result<(), ThreadPoolBuildError> {
+    let s = System::new_all();
+    let av = s.get_available_memory();
+    let free = s.get_free_memory();
+    println!("{}", av);
+    println!("{}", free);
     // Larger stack size to handle cases with lots of nested directories
     rayon::ThreadPoolBuilder::new()
         .stack_size(usize::pow(1024, 3))
         .build_global()
+
 }
