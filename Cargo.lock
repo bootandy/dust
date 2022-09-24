@@ -213,6 +213,7 @@ version = "0.8.3"
 dependencies = [
  "ansi_term",
  "assert_cmd",
+ "atty",
  "clap",
  "clap_complete",
  "config-file",
