@@ -181,6 +181,7 @@ fn main() {
         false => get_biggest(
             top_level_nodes,
             config.get_min_size(&options, iso),
+            config.get_only_dir(&options),
             number_of_lines,
             depth,
             options.values_of("filter").is_some() || options.value_of("invert_filter").is_some(),

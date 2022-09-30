@@ -132,4 +132,10 @@ pub fn build_cli() -> Command<'static> {
                 .help("print sizes in powers of 1000 (e.g., 1.1G)")
         )
         .arg(Arg::new("inputs").multiple_occurrences(true))
+        .arg(
+            Arg::new("only_dir")
+                .short('D')
+                .long("only-dir")
+                .help("Only directories will be displayed."), 
+        )
 }

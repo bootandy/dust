@@ -54,6 +54,8 @@ _dust() {
 '(-d --depth)--file_types[show only these file types]' \
 '-H[print sizes in powers of 1000 (e.g., 1.1G)]' \
 '--si[print sizes in powers of 1000 (e.g., 1.1G)]' \
+'-D[Only directories will be displayed.]' \
+'--only-dir[Only directories will be displayed.]' \
 '*::inputs:' \
 && ret=0
 }
