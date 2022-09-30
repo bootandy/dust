@@ -19,6 +19,7 @@ pub struct Config {
     pub ignore_hidden: Option<bool>,
     pub iso: Option<bool>,
     pub min_size: Option<String>,
+    pub only_dir: Option<bool>,
 }
 
 impl Config {
@@ -60,6 +61,9 @@ impl Config {
         } else {
             size_from_param
         }
+    }
+    pub fn get_only_dir(&self, options: &ArgMatches) -> bool {
+        Some(true) == self.only_dir || options.is_present("only_dir")
     }
 }
 

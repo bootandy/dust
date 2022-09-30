@@ -60,6 +60,8 @@ Register-ArgumentCompleter -Native -CommandName 'dust' -ScriptBlock {
             [CompletionResult]::new('--file_types', 'file_types', [CompletionResultType]::ParameterName, 'show only these file types')
             [CompletionResult]::new('-H', 'H', [CompletionResultType]::ParameterName, 'print sizes in powers of 1000 (e.g., 1.1G)')
             [CompletionResult]::new('--si', 'si', [CompletionResultType]::ParameterName, 'print sizes in powers of 1000 (e.g., 1.1G)')
+            [CompletionResult]::new('-D', 'D', [CompletionResultType]::ParameterName, 'Only directories will be displayed.')
+            [CompletionResult]::new('--only-dir', 'only-dir', [CompletionResultType]::ParameterName, 'Only directories will be displayed.')
             break
         }
     })

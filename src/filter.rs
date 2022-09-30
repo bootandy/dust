@@ -8,6 +8,7 @@ use std::path::PathBuf;
 pub fn get_biggest(
     top_level_nodes: Vec<Node>,
     min_size: Option<usize>,
+    only_dir: bool,
     n: usize,
     depth: usize,
     using_a_filter: bool,
@@ -23,14 +24,14 @@ pub fn get_biggest(
     let mut allowed_nodes = HashSet::new();
 
     allowed_nodes.insert(root.name.as_path());
-    heap = add_children(using_a_filter, min_size, &root, depth, heap);
+    heap = add_children(using_a_filter, min_size, only_dir, &root, depth, heap);
 
     for _ in number_top_level_nodes..n {
         let line = heap.pop();
         match line {
             Some(line) => {
                 allowed_nodes.insert(line.name.as_path());
-                heap = add_children(using_a_filter, min_size, line, depth, heap);
+                heap = add_children(using_a_filter, min_size, only_dir, line, depth, heap);
             }
             None => break,
         }
@@ -41,15 +42,22 @@ pub fn get_biggest(
 fn add_children<'a>(
     using_a_filter: bool,
     min_size: Option<usize>,
+    only_dir: bool,
     file_or_folder: &'a Node,
     depth: usize,
     mut heap: BinaryHeap<&'a Node>,
 ) -> BinaryHeap<&'a Node> {
     if depth > file_or_folder.depth {
-        heap.extend(file_or_folder.children.iter().filter(|c| match min_size {
-            Some(ms) => c.size > ms as u64,
-            None => !using_a_filter || c.name.is_file() || c.size > 0,
-        }))
+        heap.extend(
+            file_or_folder
+                .children
+                .iter()
+                .filter(|c| match min_size {
+                    Some(ms) => c.size > ms as u64,
+                    None => !using_a_filter || c.name.is_file() || c.size > 0,
+                })
+                .filter(|c| if only_dir { c.name.is_dir() } else { true }),
+        )
     }
     heap
 }
