@@ -30,6 +30,10 @@ Because I want an easy way to see where my disk is being used.
 
 - `pacstall -I dust-bin`
 
+#### [deb-get](https://github.com/wimpysworld/deb-get) (Debian/Ubuntu)
+
+- `deb-get install du-dust`
+
 #### Windows:
 
 - Windows GNU version - works
