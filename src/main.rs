@@ -5,6 +5,7 @@ mod display;
 mod display_node;
 mod filter;
 mod filter_type;
+mod info;
 mod node;
 mod platform;
 mod progress;

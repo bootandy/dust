@@ -206,16 +206,21 @@ fn walk(
                             }
 
                             return n;
+                        } else {
+                            None
                         }
                     } else {
                         info_data.files_skipped.add(1);
+
+                        None
                     }
                 } else {
                     permissions_flag.store(true, atomic::Ordering::Relaxed);
 
                     info_data.directories_skipped.add(1);
+
+                    None
                 }
-                None
             })
             .collect();
     } else {
