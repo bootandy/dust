@@ -5,11 +5,13 @@ mod display;
 mod display_node;
 mod filter;
 mod filter_type;
+mod info;
 mod node;
 mod platform;
 mod utils;
 
 use crate::cli::build_cli;
+use info::Info;
 use std::collections::HashSet;
 use std::io::BufRead;
 use std::process;
@@ -174,7 +176,12 @@ fn main() {
     let _rayon = init_rayon();
 
     let iso = config.get_iso(&options);
-    let (top_level_nodes, has_errors) = walk_it(simplified_dirs, walk_data);
+
+    let info = Info::spawn();
+
+    let (top_level_nodes, has_errors) = walk_it(simplified_dirs, walk_data, info.data.clone());
+
+    info.stop();
 
     let tree = match summarize_file_types {
         true => get_all_file_types(&top_level_nodes, number_of_lines),

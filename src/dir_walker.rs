@@ -1,5 +1,8 @@
 use std::fs;
+use std::sync::Arc;
 
+use crate::info;
+use crate::info::AtomicInfoData;
 use crate::node::Node;
 use crate::utils::is_filtered_out_due_to_invert_regex;
 use crate::utils::is_filtered_out_due_to_regex;
@@ -28,15 +31,20 @@ pub struct WalkData<'a> {
     pub ignore_hidden: bool,
 }
 
-pub fn walk_it(dirs: HashSet<PathBuf>, walk_data: WalkData) -> (Vec<Node>, bool) {
+pub fn walk_it(
+    dirs: HashSet<PathBuf>,
+    walk_data: WalkData,
+    info_data: Arc<AtomicInfoData>,
+) -> (Vec<Node>, bool) {
     let permissions_flag = AtomicBool::new(false);
 
     let top_level_nodes: Vec<_> = dirs
         .into_iter()
         .filter_map(|d| {
             clean_inodes(
-                walk(d, &permissions_flag, &walk_data, 0)?,
+                walk(d, &permissions_flag, &walk_data, &info_data, 0)?,
                 &mut HashSet::new(),
+                &info_data,
                 walk_data.use_apparent_size,
             )
         })
@@ -48,8 +56,13 @@ pub fn walk_it(dirs: HashSet<PathBuf>, walk_data: WalkData) -> (Vec<Node>, bool)
 fn clean_inodes(
     x: Node,
     inodes: &mut HashSet<(u64, u64)>,
+    info_data: &Arc<AtomicInfoData>,
     use_apparent_size: bool,
 ) -> Option<Node> {
+    info_data
+        .state
+        .store(info::State::CLEANING, info::ATOMIC_ORDERING);
+
     if !use_apparent_size {
         if let Some(id) = x.inode_device {
             if !inodes.insert(id) {
@@ -63,7 +76,7 @@ fn clean_inodes(
     tmp.sort_by(sort_by_inode);
     let new_children: Vec<_> = tmp
         .into_iter()
-        .filter_map(|c| clean_inodes(c, inodes, use_apparent_size))
+        .filter_map(|c| clean_inodes(c, inodes, info_data, use_apparent_size))
         .collect();
 
     Some(Node {
@@ -125,8 +138,13 @@ fn walk(
     dir: PathBuf,
     permissions_flag: &AtomicBool,
     walk_data: &WalkData,
+    info_data: &Arc<AtomicInfoData>,
     depth: usize,
 ) -> Option<Node> {
+    info_data
+        .state
+        .store(info::State::WALKING, info::ATOMIC_ORDERING);
+
     let mut children = vec![];
 
     if let Ok(entries) = fs::read_dir(&dir) {
@@ -144,9 +162,15 @@ fn walk(
                     if !ignore_file(entry, walk_data) {
                         if let Ok(data) = entry.file_type() {
                             return if data.is_dir() && !data.is_symlink() {
-                                walk(entry.path(), permissions_flag, walk_data, depth + 1)
+                                walk(
+                                    entry.path(),
+                                    permissions_flag,
+                                    walk_data,
+                                    info_data,
+                                    depth + 1,
+                                )
                             } else {
-                                build_node(
+                                let n = build_node(
                                     entry.path(),
                                     vec![],
                                     walk_data.filter_regex,
@@ -156,7 +180,17 @@ fn walk(
                                     data.is_file(),
                                     walk_data.by_filecount,
                                     depth,
-                                )
+                                );
+
+                                if let Some(ref node) = n {
+                                    info_data.file_number.fetch_add(1, info::ATOMIC_ORDERING);
+                                    info_data
+                                        .total_file_size
+                                        .inner
+                                        .fetch_add(node.size, info::ATOMIC_ORDERING);
+                                }
+
+                                n
                             };
                         }
                     }
@@ -205,12 +239,16 @@ mod tests {
     fn test_should_ignore_file() {
         let mut inodes = HashSet::new();
         let n = create_node();
+        let info = Arc::new(AtomicInfoData::default());
 
         // First time we insert the node
-        assert_eq!(clean_inodes(n.clone(), &mut inodes, false), Some(n.clone()));
+        assert_eq!(
+            clean_inodes(n.clone(), &mut inodes, &info, false),
+            Some(n.clone())
+        );
 
         // Second time is a duplicate - we ignore it
-        assert_eq!(clean_inodes(n.clone(), &mut inodes, false), None);
+        assert_eq!(clean_inodes(n.clone(), &mut inodes, &info, false), None);
     }
 
     #[test]
@@ -218,9 +256,16 @@ mod tests {
     fn test_should_not_ignore_files_if_using_apparent_size() {
         let mut inodes = HashSet::new();
         let n = create_node();
+        let info = Arc::new(AtomicInfoData::default());
 
         // If using apparent size we include Nodes, even if duplicate inodes
-        assert_eq!(clean_inodes(n.clone(), &mut inodes, true), Some(n.clone()));
-        assert_eq!(clean_inodes(n.clone(), &mut inodes, true), Some(n.clone()));
+        assert_eq!(
+            clean_inodes(n.clone(), &mut inodes, &info, true),
+            Some(n.clone())
+        );
+        assert_eq!(
+            clean_inodes(n.clone(), &mut inodes, &info, true),
+            Some(n.clone())
+        );
     }
 }
