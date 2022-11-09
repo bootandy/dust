@@ -29,7 +29,7 @@ pub mod Operation {
 }
 
 #[derive(Default)]
-pub struct AtomicInfoData {
+pub struct PAtomicInfo {
     pub file_number: AtomicU64,
     pub total_file_size: TotalSize,
     pub state: AtomicU8,
@@ -68,33 +68,33 @@ impl Display for TotalSize {
     }
 }
 
-impl AtomicInfoData {
-    fn get_data(&self) -> InfoData {
-        InfoData {
+impl PAtomicInfo {
+    fn get_data(&self) -> PInfo {
+        PInfo {
             file_number: self.file_number.load(ATOMIC_ORDERING),
             total_file_size: self.total_file_size.inner.load(ATOMIC_ORDERING),
         }
     }
 }
 
-pub struct InfoData {
+pub struct PInfo {
     pub file_number: u64,
     pub total_file_size: u64,
 }
 
 /* -------------------------------------------------------------------------- */
 
-pub struct Info {
+pub struct PIndicator {
     thread_run: Arc<AtomicBool>,
     thread: JoinHandle<()>,
-    pub data: Arc<AtomicInfoData>,
+    pub data: Arc<PAtomicInfo>,
 }
 
-impl Info {
+impl PIndicator {
     pub fn spawn() -> Self {
         init_shared_data!(let instant, instant2 = Instant::now());
         init_shared_data!(let time_thread_run, time_thread_run2 = AtomicBool::new(true));
-        init_shared_data!(let data, data2 = AtomicInfoData::default());
+        init_shared_data!(let data, data2 = PAtomicInfo::default());
 
         let time_info_thread = std::thread::spawn(move || {
             const SHOW_WALKING_AFTER: u64 = 2;
@@ -155,7 +155,7 @@ impl Info {
         }
     }
 
-    pub fn stop(self) -> InfoData {
+    pub fn stop(self) -> PInfo {
         self.thread_run.store(false, ATOMIC_ORDERING);
         self.thread.join().unwrap();
 

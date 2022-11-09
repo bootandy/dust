@@ -5,13 +5,13 @@ mod display;
 mod display_node;
 mod filter;
 mod filter_type;
-mod info;
+mod progress;
 mod node;
 mod platform;
 mod utils;
 
 use crate::cli::build_cli;
-use info::Info;
+use progress::PIndicator;
 use std::collections::HashSet;
 use std::io::BufRead;
 use std::process;
@@ -177,7 +177,7 @@ fn main() {
 
     let iso = config.get_iso(&options);
 
-    let info = Info::spawn();
+    let info = PIndicator::spawn();
 
     let (top_level_nodes, has_errors) = walk_it(simplified_dirs, walk_data, info.data.clone());
 
