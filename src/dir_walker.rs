@@ -61,7 +61,7 @@ fn clean_inodes(
 ) -> Option<Node> {
     info_data
         .state
-        .store(info::State::CLEANING, info::ATOMIC_ORDERING);
+        .store(info::Operation::PREPARING, info::ATOMIC_ORDERING);
 
     if !use_apparent_size {
         if let Some(id) = x.inode_device {
@@ -143,7 +143,7 @@ fn walk(
 ) -> Option<Node> {
     info_data
         .state
-        .store(info::State::WALKING, info::ATOMIC_ORDERING);
+        .store(info::Operation::INDEXING, info::ATOMIC_ORDERING);
 
     let mut children = vec![];
 

@@ -23,9 +23,9 @@ macro_rules! init_shared_data {
 
 // it's easier to create an "enum" this way because of the atomic loading
 #[allow(non_snake_case)]
-pub mod State {
-    pub const WALKING: u8 = 0;
-    pub const CLEANING: u8 = 1;
+pub mod Operation {
+    pub const INDEXING: u8 = 0;
+    pub const PREPARING: u8 = 1;
 }
 
 #[derive(Default)]
@@ -116,13 +116,13 @@ impl Info {
                     print!("\r{:width$}", " ", width = last_msg_len);
 
                     let msg = match data2.state.load(ATOMIC_ORDERING) {
-                        State::WALKING => format!(
+                        Operation::INDEXING => format!(
                             "\rIndexing... {} - {} ({} files)",
                             PROGRESS_CHARS[progress_char_i],
                             data2.total_file_size,
                             data2.file_number.load(ATOMIC_ORDERING)
                         ),
-                        State::CLEANING => {
+                        Operation::PREPARING => {
                             format!("\rPreparing... {}", PROGRESS_CHARS[progress_char_i],)
                         }
                         _ => panic!("Unknown State"),
