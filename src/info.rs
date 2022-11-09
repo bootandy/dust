@@ -140,8 +140,10 @@ impl Info {
                 }
             }
 
-            // clear the walking line before showing the result
-            // TODO : test if this works on windows
+            // clear the line for the last time
+            print!("\r{:width$}", " ", width = last_msg_len);
+
+            // Return at the start of the line so the output can be printed correctly
             print!("\r");
             stdout.flush().unwrap();
         });
