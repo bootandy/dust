@@ -167,6 +167,9 @@ impl PIndicator {
                     progress_char_i %= PROGRESS_CHARS_LEN;
 
                     std::thread::sleep(Duration::from_millis(PROGRESS_CHARS_DELTA))
+                } else {
+                    // wait duration is in seconds so we need only to check each second
+                    std::thread::sleep(Duration::from_secs(1));
                 }
             }
 
