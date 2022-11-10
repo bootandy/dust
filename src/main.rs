@@ -177,9 +177,9 @@ fn main() {
 
     let iso = config.get_iso(&options);
 
-    let info = PIndicator::spawn();
+    let info = PIndicator::spawn(&walk_data);
 
-    let (top_level_nodes, has_errors) = walk_it(simplified_dirs, walk_data, info.data.clone());
+    let (top_level_nodes, has_errors) = walk_it(simplified_dirs, walk_data, info.data.clone(), info.config.clone());
 
     let tree = match summarize_file_types {
         true => get_all_file_types(&top_level_nodes, number_of_lines),

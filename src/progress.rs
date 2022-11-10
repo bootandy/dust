@@ -9,6 +9,8 @@ use std::{
     time::{Duration, Instant},
 };
 
+use crate::dir_walker::WalkData;
+
 pub const ATOMIC_ORDERING: Ordering = Ordering::SeqCst;
 
 #[macro_export]
@@ -84,17 +86,30 @@ pub struct PInfo {
 
 /* -------------------------------------------------------------------------- */
 
+#[derive(Default)]
+pub struct PConfig {
+    pub file_count_only: bool
+}
+
+impl From<&'_ WalkData<'_>> for PConfig {
+    fn from(c: &WalkData) -> Self {
+        Self { file_count_only: c.by_filecount }
+    }
+}
+
 pub struct PIndicator {
     thread_run: Arc<AtomicBool>,
     thread: JoinHandle<()>,
     pub data: Arc<PAtomicInfo>,
+    pub config: Arc<PConfig>
 }
 
 impl PIndicator {
-    pub fn spawn() -> Self {
+    pub fn spawn(config: &WalkData) -> Self {
         init_shared_data!(let instant, instant2 = Instant::now());
         init_shared_data!(let time_thread_run, time_thread_run2 = AtomicBool::new(true));
         init_shared_data!(let data, data2 = PAtomicInfo::default());
+        init_shared_data!(let config, config2 = PConfig::from(config));
 
         let time_info_thread = std::thread::spawn(move || {
             const SHOW_WALKING_AFTER: u64 = 2;
@@ -116,12 +131,27 @@ impl PIndicator {
                     print!("\r{:width$}", " ", width = last_msg_len);
 
                     let msg = match data2.state.load(ATOMIC_ORDERING) {
-                        Operation::INDEXING => format!(
-                            "\rIndexing... {} - {} ({} files)",
-                            PROGRESS_CHARS[progress_char_i],
-                            data2.total_file_size,
-                            data2.file_number.load(ATOMIC_ORDERING)
-                        ),
+                        Operation::INDEXING => {
+                            let base = format!(
+                                "\rIndexing... {}",
+                                PROGRESS_CHARS[progress_char_i],
+                            );
+
+                            if config2.file_count_only {
+                                format!(
+                                    "{} - {} files",
+                                    base,
+                                    data2.file_number.load(ATOMIC_ORDERING)
+                                )
+                            } else {
+                                format!(
+                                    "{} - {} ({} files)",
+                                    base,
+                                    data2.total_file_size,
+                                    data2.file_number.load(ATOMIC_ORDERING)
+                                )
+                            }
+                        },
                         Operation::PREPARING => {
                             format!("\rPreparing... {}", PROGRESS_CHARS[progress_char_i],)
                         }
@@ -151,7 +181,8 @@ impl PIndicator {
         Self {
             thread_run: time_thread_run,
             thread: time_info_thread,
-            data: data,
+            data,
+            config
         }
     }
 
