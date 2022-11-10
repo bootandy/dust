@@ -9,6 +9,10 @@ use std::{
     time::{Duration, Instant},
 };
 
+use crate::dir_walker::WalkData;
+
+use crate::dir_walker::WalkData;
+
 /* -------------------------------------------------------------------------- */
 
 pub const ATOMIC_ORDERING: Ordering = Ordering::Relaxed;
