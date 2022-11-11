@@ -21,7 +21,6 @@ use crate::node::build_node;
 use std::fs::DirEntry;
 
 use crate::platform::get_metadata;
-
 pub struct WalkData<'a> {
     pub ignore_directories: HashSet<PathBuf>,
     pub filter_regex: &'a [Regex],
@@ -186,15 +185,19 @@ fn walk(
                                     depth,
                                 );
 
-                                if let Some(ref node) = n {
-                                    info_data.file_number.fetch_add(1, progress::ATOMIC_ORDERING);
+                                if !ignore_file(entry, walk_data) {
+                                    if let Some(ref node) = n {
+                                        info_data.file_number.fetch_add(1, progress::ATOMIC_ORDERING);
 
-                                    if !info_conf.file_count_only {
-                                        info_data
-                                            .total_file_size
-                                            .inner
-                                            .fetch_add(node.size, progress::ATOMIC_ORDERING);
+                                        if !info_conf.file_count_only {
+                                            info_data
+                                                .total_file_size
+                                                .inner
+                                                .fetch_add(node.size, progress::ATOMIC_ORDERING);
+                                        }
                                     }
+                                } else {
+                                    info_data.files_skipped.fetch_add(1, progress::ATOMIC_ORDERING);
                                 }
 
                                 n
@@ -203,6 +206,8 @@ fn walk(
                     }
                 } else {
                     permissions_flag.store(true, atomic::Ordering::Relaxed);
+
+                    info_data.directories_skipped.fetch_add(1, progress::ATOMIC_ORDERING);
                 }
                 None
             })
@@ -211,6 +216,8 @@ fn walk(
         // Handle edge case where dust is called with a file instead of a directory
         if !dir.exists() {
             permissions_flag.store(true, atomic::Ordering::Relaxed);
+        } else {
+            info_data.directories_skipped.fetch_add(1, progress::ATOMIC_ORDERING);
         }
     }
     build_node(

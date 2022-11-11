@@ -33,6 +33,8 @@ pub mod Operation {
 #[derive(Default)]
 pub struct PAtomicInfo {
     pub file_number: AtomicU64,
+    pub files_skipped: AtomicU64,
+    pub directories_skipped: AtomicU64,
     pub total_file_size: TotalSize,
     pub state: AtomicU8,
 }
@@ -51,6 +53,7 @@ impl TotalSize {
 
         let showed_number = inner / (1024_u64.pow(number_len / 3));
         format!("{} {}", showed_number, end)
+        // format!("{} bytes", inner)
     }
 
     fn get_size_end(&self, size: u32) -> &'static str {
@@ -88,12 +91,13 @@ pub struct PInfo {
 
 #[derive(Default)]
 pub struct PConfig {
-    pub file_count_only: bool
+    pub file_count_only: bool,
+    pub ignore_hidden: bool
 }
 
 impl From<&'_ WalkData<'_>> for PConfig {
     fn from(c: &WalkData) -> Self {
-        Self { file_count_only: c.by_filecount }
+        Self { file_count_only: c.by_filecount, ignore_hidden: c.ignore_hidden }
     }
 }
 
@@ -112,7 +116,7 @@ impl PIndicator {
         init_shared_data!(let config, config2 = PConfig::from(config));
 
         let time_info_thread = std::thread::spawn(move || {
-            const SHOW_WALKING_AFTER: u64 = 2;
+            const SHOW_WALKING_AFTER: u64 = 0;
 
             const PROGRESS_CHARS_DELTA: u64 = 100;
             const PROGRESS_CHARS: [char; 4] = ['-', '\\', '|', '/'];
@@ -137,7 +141,7 @@ impl PIndicator {
                                 PROGRESS_CHARS[progress_char_i],
                             );
 
-                            if config2.file_count_only {
+                            let base = if config2.file_count_only {
                                 format!(
                                     "{} - {} files",
                                     base,
@@ -150,6 +154,42 @@ impl PIndicator {
                                     data2.total_file_size,
                                     data2.file_number.load(ATOMIC_ORDERING)
                                 )
+                            };
+
+                            let ds = data2.directories_skipped.load(ATOMIC_ORDERING);
+                            let fs = data2.files_skipped.load(ATOMIC_ORDERING);
+
+                            macro_rules! format_property {
+                                ($value: ident, $singular: expr, $plural: expr) => {
+                                    format!(
+                                        "{} {}", 
+                                        $value,
+                                        if $value > 1 {
+                                            $plural
+                                        } else {
+                                            $singular
+                                        }
+                                    )
+                                };
+                            }
+
+                            if ds + fs != 0  {
+                                let mut strs = Vec::new();
+                                if fs != 0 {
+                                    strs.push(format_property!(fs, "file", "files"))
+                                }
+
+                                if ds != 0 {
+                                    strs.push(format_property!(ds, "directory", "directories"))
+                                }
+
+                                format!(
+                                    "{} ({} skipped)",
+                                    base,
+                                    strs.join(",")
+                                )
+                            } else {
+                                base
                             }
                         },
                         Operation::PREPARING => {
