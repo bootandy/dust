@@ -134,7 +134,7 @@ impl PIndicator {
         init_shared_data!(let data, data2 = PAtomicInfo::new(&config));
 
         let time_info_thread = std::thread::spawn(move || {
-            const SHOW_WALKING_AFTER: u64 = 0;
+            const SHOW_WALKING_AFTER: u64 = 2;
 
             const PROGRESS_CHARS_DELTA: u64 = 100;
             const PROGRESS_CHARS: [char; 4] = ['-', '\\', '|', '/'];
