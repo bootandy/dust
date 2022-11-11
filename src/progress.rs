@@ -49,7 +49,7 @@ impl TotalSize {
 
         let end = self.get_size_end(number_len);
 
-        let showed_number = inner / (10_u64.pow(number_len / 3 * 3));
+        let showed_number = inner / (1024_u64.pow(number_len / 3));
         format!("{} {}", showed_number, end)
     }
 
