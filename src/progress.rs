@@ -9,9 +9,6 @@ use std::{
     time::{Duration, Instant},
 };
 
-use crate::dir_walker::WalkData;
-
-use crate::dir_walker::WalkData;
 
 /* -------------------------------------------------------------------------- */
 
@@ -168,7 +165,8 @@ impl ThreadSyncMathTrait<u64> for TotalSize {
 #[derive(Default)]
 pub struct PConfig {
     pub file_count_only: bool,
-    pub use_iso: bool,
+    pub ignore_hidden: bool,
+    pub use_iso: bool
 }
 
 pub struct PIndicator {
@@ -193,7 +191,7 @@ impl PIndicator {
         init_shared_data!(let data, data2 = PAtomicInfo::new(&config));
 
         let time_info_thread = std::thread::spawn(move || {
-            const SHOW_WALKING_AFTER: u64 = 2;
+            const SHOW_WALKING_AFTER: u64 = 0;
 
             const PROGRESS_CHARS_DELTA: u64 = 100;
             const PROGRESS_CHARS: [char; 4] = ['-', '\\', '|', '/'];
@@ -266,7 +264,12 @@ impl PIndicator {
 
                                 format!("{} ({} skipped)", base, strs.join(PROPS_SEPARATOR))
                             } else {
-                                base
+                                format!(
+                                    "{} - {} ({} files)",
+                                    base,
+                                    data2.total_file_size,
+                                    data2.file_number.get()
+                                )
                             }
                         }
                         Operation::PREPARING => {

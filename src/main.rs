@@ -186,6 +186,7 @@ fn main() {
     let conf = PConfig {
         file_count_only: walk_data.by_filecount,
         use_iso: config.get_iso(&options),
+        ignore_hidden: walk_data.ignore_hidden
     };
     let info = PIndicator::spawn(conf);
 

@@ -197,12 +197,16 @@ fn walk(
                                 depth,
                             );
 
-                            if let Some(ref node) = n {
-                                info_data.file_number.add(1);
+                            if !ignore_file(entry, walk_data) {
+                                if let Some(ref node) = n {
+                                    info_data.file_number.add(1);
 
-                                if !info_conf.file_count_only {
-                                    info_data.total_file_size.add(node.size);
+                                    if !info_conf.file_count_only {
+                                        info_data.total_file_size.add(node.size);
+                                    }
                                 }
+                            } else {
+                                info_data.files_skipped.add(1);
                             }
 
                             return n;
