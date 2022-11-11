@@ -9,7 +9,6 @@ use std::{
     time::{Duration, Instant},
 };
 
-
 /* -------------------------------------------------------------------------- */
 
 pub const ATOMIC_ORDERING: Ordering = Ordering::Relaxed;
