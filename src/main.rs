@@ -178,7 +178,7 @@ fn main() {
 
     let iso = config.get_iso(&options);
 
-    let info = PIndicator::spawn(&walk_data);
+    let info = PIndicator::spawn(&walk_data, &config);
 
     let (top_level_nodes, has_errors) = walk_it(simplified_dirs, walk_data, info.data.clone(), info.config.clone());
 

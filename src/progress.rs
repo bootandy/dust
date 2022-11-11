@@ -9,9 +9,9 @@ use std::{
     time::{Duration, Instant},
 };
 
-use crate::dir_walker::WalkData;
+use crate::{dir_walker::WalkData, config::Config};
 
-pub const ATOMIC_ORDERING: Ordering = Ordering::SeqCst;
+pub const ATOMIC_ORDERING: Ordering = Ordering::Relaxed;
 
 #[macro_export]
 macro_rules! init_shared_data {
@@ -39,19 +39,31 @@ pub struct PAtomicInfo {
     pub state: AtomicU8,
 }
 
+impl PAtomicInfo {
+    fn new(c: &PConfig) -> Self {
+        Self { total_file_size: TotalSize::new(c), ..Default::default() }
+    }
+}
+
 #[derive(Default)]
 pub struct TotalSize {
+    use_iso: bool, 
     pub inner: AtomicU64,
 }
 
 impl TotalSize {
+    fn new(c: &PConfig) -> Self {
+        Self { use_iso: c.use_iso, ..Default::default() }
+    }
+
     fn format_size(&self) -> String {
         let inner = self.inner.load(ATOMIC_ORDERING);
         let number_len = (inner as f32).log10().floor() as u32;
 
         let end = self.get_size_end(number_len);
 
-        let showed_number = inner / (1024_u64.pow(number_len / 3));
+        let size_base: u64 = if self.use_iso { 1000 } else { 1024 };
+        let showed_number = inner / (size_base.pow(number_len / 3));
         format!("{} {}", showed_number, end)
         // format!("{} bytes", inner)
     }
@@ -92,12 +104,18 @@ pub struct PInfo {
 #[derive(Default)]
 pub struct PConfig {
     pub file_count_only: bool,
-    pub ignore_hidden: bool
+    use_iso: bool
 }
 
-impl From<&'_ WalkData<'_>> for PConfig {
-    fn from(c: &WalkData) -> Self {
-        Self { file_count_only: c.by_filecount, ignore_hidden: c.ignore_hidden }
+impl From<(&'_ WalkData<'_>, &'_ Config)> for PConfig {
+    fn from(c: (&WalkData, &Config)) -> Self {
+        let w = c.0;
+        let c = c.1;
+        
+        Self { 
+            file_count_only: w.by_filecount, 
+            use_iso: c.iso.unwrap_or(false)
+        }
     }
 }
 
@@ -109,11 +127,11 @@ pub struct PIndicator {
 }
 
 impl PIndicator {
-    pub fn spawn(config: &WalkData) -> Self {
+    pub fn spawn(walk_config: &WalkData, config: &Config) -> Self {
         init_shared_data!(let instant, instant2 = Instant::now());
         init_shared_data!(let time_thread_run, time_thread_run2 = AtomicBool::new(true));
-        init_shared_data!(let data, data2 = PAtomicInfo::default());
-        init_shared_data!(let config, config2 = PConfig::from(config));
+        init_shared_data!(let config, config2 = PConfig::from((walk_config, config)));
+        init_shared_data!(let data, data2 = PAtomicInfo::new(&config));
 
         let time_info_thread = std::thread::spawn(move || {
             const SHOW_WALKING_AFTER: u64 = 0;
