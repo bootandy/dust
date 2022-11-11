@@ -7,3 +7,6 @@
 *.swp
 .vscode/*
 *.idea/*
+
+#ignore macos files
+.DS_Store
