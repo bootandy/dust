@@ -5,9 +5,9 @@ mod display;
 mod display_node;
 mod filter;
 mod filter_type;
-mod progress;
 mod node;
 mod platform;
+mod progress;
 mod utils;
 
 use crate::cli::build_cli;

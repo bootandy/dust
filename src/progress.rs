@@ -9,7 +9,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use crate::{dir_walker::WalkData, config::Config};
+use crate::{config::Config, dir_walker::WalkData};
 
 pub const ATOMIC_ORDERING: Ordering = Ordering::Relaxed;
 
@@ -23,6 +23,40 @@ macro_rules! init_shared_data {
 
 /* -------------------------------------------------------------------------- */
 
+pub trait AtomicWrapperTrait<T> {
+    fn set(&self, val: T);
+    fn add(&self, val: T);
+    fn get(&self) -> T;
+}
+
+macro_rules! create_atomic_wrapper {
+    ($ident: ident, $atomic_type: ty, $type: ty, $ordering: ident) => {
+        #[derive(Default)]
+        pub struct $ident {
+            inner: $atomic_type,
+        }
+
+        impl AtomicWrapperTrait<$type> for $ident {
+            fn set(&self, val: $type) {
+                self.inner.store(val, $ordering)
+            }
+
+            fn add(&self, val: $type) {
+                self.inner.fetch_add(val, $ordering);
+            }
+
+            fn get(&self) -> $type {
+                self.inner.load($ordering)
+            }
+        }
+    };
+}
+
+create_atomic_wrapper!(AtomicU64Wrapper, AtomicU64, u64, ATOMIC_ORDERING);
+create_atomic_wrapper!(AtomicU8Wrapper, AtomicU8, u8, ATOMIC_ORDERING);
+
+/* -------------------------------------------------------------------------- */
+
 // it's easier to create an "enum" this way because of the atomic loading
 #[allow(non_snake_case)]
 pub mod Operation {
@@ -32,28 +66,34 @@ pub mod Operation {
 
 #[derive(Default)]
 pub struct PAtomicInfo {
-    pub file_number: AtomicU64,
-    pub files_skipped: AtomicU64,
-    pub directories_skipped: AtomicU64,
+    pub file_number: AtomicU64Wrapper,
+    pub files_skipped: AtomicU64Wrapper,
+    pub directories_skipped: AtomicU64Wrapper,
     pub total_file_size: TotalSize,
-    pub state: AtomicU8,
+    pub state: AtomicU8Wrapper,
 }
 
 impl PAtomicInfo {
     fn new(c: &PConfig) -> Self {
-        Self { total_file_size: TotalSize::new(c), ..Default::default() }
+        Self {
+            total_file_size: TotalSize::new(c),
+            ..Default::default()
+        }
     }
 }
 
 #[derive(Default)]
 pub struct TotalSize {
-    use_iso: bool, 
+    use_iso: bool,
     pub inner: AtomicU64,
 }
 
 impl TotalSize {
     fn new(c: &PConfig) -> Self {
-        Self { use_iso: c.use_iso, ..Default::default() }
+        Self {
+            use_iso: c.use_iso,
+            ..Default::default()
+        }
     }
 
     fn format_size(&self) -> String {
@@ -90,17 +130,17 @@ impl Display for TotalSize {
 #[derive(Default)]
 pub struct PConfig {
     pub file_count_only: bool,
-    use_iso: bool
+    use_iso: bool,
 }
 
 impl From<(&'_ WalkData<'_>, &'_ Config)> for PConfig {
     fn from(c: (&WalkData, &Config)) -> Self {
         let w = c.0;
         let c = c.1;
-        
-        Self { 
-            file_count_only: w.by_filecount, 
-            use_iso: c.iso.unwrap_or(false)
+
+        Self {
+            file_count_only: w.by_filecount,
+            use_iso: c.iso.unwrap_or(false),
         }
     }
 }
@@ -109,7 +149,7 @@ pub struct PIndicator {
     thread_run: Arc<AtomicBool>,
     thread: JoinHandle<()>,
     pub data: Arc<PAtomicInfo>,
-    pub config: Arc<PConfig>
+    pub config: Arc<PConfig>,
 }
 
 impl PIndicator {
@@ -138,46 +178,36 @@ impl PIndicator {
                     // clear the line
                     print!("\r{:width$}", " ", width = last_msg_len);
 
-                    let msg = match data2.state.load(ATOMIC_ORDERING) {
+                    let msg = match data2.state.get() {
                         Operation::INDEXING => {
-                            let base = format!(
-                                "\rIndexing... {}",
-                                PROGRESS_CHARS[progress_char_i],
-                            );
+                            let base =
+                                format!("\rIndexing... {}", PROGRESS_CHARS[progress_char_i],);
 
                             let base = if config2.file_count_only {
-                                format!(
-                                    "{} - {} files",
-                                    base,
-                                    data2.file_number.load(ATOMIC_ORDERING)
-                                )
+                                format!("{} - {} files", base, data2.file_number.get())
                             } else {
                                 format!(
                                     "{} - {} ({} files)",
                                     base,
                                     data2.total_file_size,
-                                    data2.file_number.load(ATOMIC_ORDERING)
+                                    data2.file_number.get()
                                 )
                             };
 
-                            let ds = data2.directories_skipped.load(ATOMIC_ORDERING);
-                            let fs = data2.files_skipped.load(ATOMIC_ORDERING);
+                            let ds = data2.directories_skipped.get();
+                            let fs = data2.files_skipped.get();
 
                             macro_rules! format_property {
                                 ($value: ident, $singular: expr, $plural: expr) => {
                                     format!(
-                                        "{} {}", 
+                                        "{} {}",
                                         $value,
-                                        if $value > 1 {
-                                            $plural
-                                        } else {
-                                            $singular
-                                        }
+                                        if $value > 1 { $plural } else { $singular }
                                     )
                                 };
                             }
 
-                            if ds + fs != 0  {                     
+                            if ds + fs != 0 {
                                 let mut strs = Vec::new();
                                 if fs != 0 {
                                     strs.push(format_property!(fs, "file", "files"))
@@ -187,15 +217,11 @@ impl PIndicator {
                                     strs.push(format_property!(ds, "directory", "directories"))
                                 }
 
-                                format!(
-                                    "{} ({} skipped)",
-                                    base,
-                                    strs.join(", ")
-                                )
+                                format!("{} ({} skipped)", base, strs.join(", "))
                             } else {
                                 base
                             }
-                        },
+                        }
                         Operation::PREPARING => {
                             format!("\rPreparing... {}", PROGRESS_CHARS[progress_char_i],)
                         }
@@ -229,7 +255,7 @@ impl PIndicator {
             thread_run: time_thread_run,
             thread: time_info_thread,
             data,
-            config
+            config,
         }
     }
 

@@ -1,9 +1,10 @@
 use std::fs;
 use std::sync::Arc;
 
-use crate::progress;
-use crate::progress::PAtomicInfo;
 use crate::node::Node;
+use crate::progress;
+use crate::progress::AtomicWrapperTrait;
+use crate::progress::PAtomicInfo;
 use crate::progress::PConfig;
 use crate::utils::is_filtered_out_due_to_invert_regex;
 use crate::utils::is_filtered_out_due_to_regex;
@@ -60,9 +61,7 @@ fn clean_inodes(
     info_data: &Arc<PAtomicInfo>,
     use_apparent_size: bool,
 ) -> Option<Node> {
-    info_data
-        .state
-        .store(progress::Operation::PREPARING, progress::ATOMIC_ORDERING);
+    info_data.state.set(progress::Operation::PREPARING);
 
     if !use_apparent_size {
         if let Some(id) = x.inode_device {
@@ -143,9 +142,7 @@ fn walk(
     info_conf: &Arc<PConfig>,
     depth: usize,
 ) -> Option<Node> {
-    info_data
-        .state
-        .store(progress::Operation::INDEXING, progress::ATOMIC_ORDERING);
+    info_data.state.set(progress::Operation::INDEXING);
 
     let mut children = vec![];
 
@@ -186,7 +183,7 @@ fn walk(
                                 );
 
                                 if let Some(ref node) = n {
-                                    info_data.file_number.fetch_add(1, progress::ATOMIC_ORDERING);
+                                    info_data.file_number.add(1);
 
                                     if !info_conf.file_count_only {
                                         info_data
@@ -200,12 +197,12 @@ fn walk(
                             };
                         }
                     } else {
-                        info_data.files_skipped.fetch_add(1, progress::ATOMIC_ORDERING);
+                        info_data.files_skipped.add(1);
                     }
                 } else {
                     permissions_flag.store(true, atomic::Ordering::Relaxed);
 
-                    info_data.directories_skipped.fetch_add(1, progress::ATOMIC_ORDERING);
+                    info_data.directories_skipped.add(1);
                 }
                 None
             })
@@ -215,9 +212,9 @@ fn walk(
         if !dir.exists() {
             permissions_flag.store(true, atomic::Ordering::Relaxed);
 
-            info_data.files_skipped.fetch_add(1, progress::ATOMIC_ORDERING);
+            info_data.files_skipped.add(1);
         } else {
-            info_data.directories_skipped.fetch_add(1, progress::ATOMIC_ORDERING);
+            info_data.directories_skipped.add(1);
         }
     }
     build_node(
