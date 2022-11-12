@@ -85,20 +85,6 @@ impl Display for TotalSize {
     }
 }
 
-impl PAtomicInfo {
-    fn get_data(&self) -> PInfo {
-        PInfo {
-            file_number: self.file_number.load(ATOMIC_ORDERING),
-            total_file_size: self.total_file_size.inner.load(ATOMIC_ORDERING),
-        }
-    }
-}
-
-pub struct PInfo {
-    pub file_number: u64,
-    pub total_file_size: u64,
-}
-
 /* -------------------------------------------------------------------------- */
 
 #[derive(Default)]
@@ -247,10 +233,8 @@ impl PIndicator {
         }
     }
 
-    pub fn stop(self) -> PInfo {
+    pub fn stop(self) {
         self.thread_run.store(false, ATOMIC_ORDERING);
         self.thread.join().unwrap();
-
-        self.data.get_data()
     }
 }
