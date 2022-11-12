@@ -261,14 +261,9 @@ impl PIndicator {
                                     strs.push(format_property!(ds, "directory", "directories"))
                                 }
 
-                                format!("{} ({} skipped)", base, strs.join(PROPS_SEPARATOR))
+                                format!("{} ({} skipped)", base, strs.join(", "))
                             } else {
-                                format!(
-                                    "{} - {} ({} files)",
-                                    base,
-                                    data2.total_file_size,
-                                    data2.file_number.get()
-                                )
+                                base
                             }
                         }
                         Operation::PREPARING => {
