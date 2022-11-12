@@ -23,6 +23,7 @@ macro_rules! init_shared_data {
 
 /* -------------------------------------------------------------------------- */
 
+// a small wrapper for atomic number to reduce overhead
 pub trait AtomicWrapperTrait<T> {
     fn set(&self, val: T);
     fn add(&self, val: T);
@@ -57,7 +58,7 @@ create_atomic_wrapper!(AtomicU8Wrapper, AtomicU8, u8, ATOMIC_ORDERING);
 
 /* -------------------------------------------------------------------------- */
 
-// it's easier to create an "enum" this way because of the atomic loading
+// creating an enum this way allows to have simpler syntax compared to a Mutex or a RwLock
 #[allow(non_snake_case)]
 pub mod Operation {
     pub const INDEXING: u8 = 0;
