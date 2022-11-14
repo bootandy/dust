@@ -112,10 +112,10 @@ impl TotalSize {
     fn get_size_end(&self, size: u32) -> &'static str {
         match size / 3 {
             0 => "bytes",
-            1 => "Kb",
-            2 => "Mb",
-            3 => "Gb",
-            _ => "Tb",
+            1 => "K",
+            2 => "M",
+            3 => "G",
+            _ => "T",
         }
     }
 }
