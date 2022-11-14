@@ -184,22 +184,10 @@ impl PIndicator {
 
                     let msg = match data2.state.get() {
                         Operation::INDEXING => {
+                            const PROPS_SEPARATOR: &str = ", ";
+
                             let base =
                                 format!("\rIndexing... {}", PROGRESS_CHARS[progress_char_i],);
-
-                            let base = if config2.file_count_only {
-                                format!("{} - {} files", base, data2.file_number.get())
-                            } else {
-                                format!(
-                                    "{} - {} ({} files)",
-                                    base,
-                                    data2.total_file_size,
-                                    data2.file_number.get()
-                                )
-                            };
-
-                            let ds = data2.directories_skipped.get();
-                            let fs = data2.files_skipped.get();
 
                             macro_rules! format_property {
                                 ($value: ident, $singular: expr, $plural: expr) => {
@@ -211,6 +199,22 @@ impl PIndicator {
                                 };
                             }
 
+                            let mut main_props = Vec::new();
+
+                            let fn_ = data2.file_number.get();
+                            if config2.file_count_only {
+                                main_props.push(format_property!(fn_, "file", "files"));
+                            } else {
+                                main_props.push(format!("{}", data2.total_file_size));
+                                main_props.push(format_property!(fn_, "file", "files"));
+                            };
+                            
+                            let main_props_str = main_props.join(PROPS_SEPARATOR);
+                            let base = format!("{} - {}", base, main_props_str);
+
+                            let ds = data2.directories_skipped.get();
+                            let fs = data2.files_skipped.get();
+
                             if ds + fs != 0 {
                                 let mut strs = Vec::new();
                                 if fs != 0 {
@@ -221,7 +225,7 @@ impl PIndicator {
                                     strs.push(format_property!(ds, "directory", "directories"))
                                 }
 
-                                format!("{} ({} skipped)", base, strs.join(", "))
+                                format!("{} ({} skipped)", base, strs.join(PROPS_SEPARATOR))
                             } else {
                                 base
                             }
