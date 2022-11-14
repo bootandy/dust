@@ -9,6 +9,8 @@ use std::{
     time::{Duration, Instant},
 };
 
+use clap::ArgMatches;
+
 use crate::{config::Config, dir_walker::WalkData};
 
 pub const ATOMIC_ORDERING: Ordering = Ordering::Relaxed;
@@ -134,14 +136,15 @@ pub struct PConfig {
     use_iso: bool,
 }
 
-impl From<(&'_ WalkData<'_>, &'_ Config)> for PConfig {
-    fn from(c: (&WalkData, &Config)) -> Self {
-        let w = c.0;
-        let c = c.1;
+impl From<(&'_ WalkData<'_>, &'_ Config, &'_ ArgMatches)> for PConfig {
+    fn from(in_: (&WalkData, &Config, &ArgMatches)) -> Self {
+        let w = in_.0;
+        let c = in_.1;
+        let o = in_.2;
 
         Self {
             file_count_only: w.by_filecount,
-            use_iso: c.iso.unwrap_or(false),
+            use_iso: c.get_iso(o),
         }
     }
 }
@@ -154,10 +157,10 @@ pub struct PIndicator {
 }
 
 impl PIndicator {
-    pub fn spawn(walk_config: &WalkData, config: &Config) -> Self {
+    pub fn spawn(walk_config: &WalkData, config: &Config, args: &ArgMatches) -> Self {
         init_shared_data!(let instant, instant2 = Instant::now());
         init_shared_data!(let time_thread_run, time_thread_run2 = AtomicBool::new(true));
-        init_shared_data!(let config, config2 = PConfig::from((walk_config, config)));
+        init_shared_data!(let config, config2 = PConfig::from((walk_config, config, args)));
         init_shared_data!(let data, data2 = PAtomicInfo::new(&config));
 
         let time_info_thread = std::thread::spawn(move || {
