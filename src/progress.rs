@@ -13,17 +13,9 @@ use clap::ArgMatches;
 
 use crate::{config::Config, dir_walker::WalkData};
 
-pub const ATOMIC_ORDERING: Ordering = Ordering::Relaxed;
-
-#[macro_export]
-macro_rules! init_shared_data {
-    (let $ident: ident, $ident2: ident = $value: expr) => {
-        let $ident = Arc::new($value);
-        let $ident2 = $ident.clone();
-    };
-}
-
 /* -------------------------------------------------------------------------- */
+
+pub const ATOMIC_ORDERING: Ordering = Ordering::Relaxed;
 
 // a small wrapper for atomic number to reduce overhead
 pub trait AtomicWrapperTrait<T> {
@@ -158,6 +150,13 @@ pub struct PIndicator {
 
 impl PIndicator {
     pub fn spawn(walk_config: &WalkData, config: &Config, args: &ArgMatches) -> Self {
+        macro_rules! init_shared_data {
+            (let $ident: ident, $ident2: ident = $value: expr) => {
+                let $ident = Arc::new($value);
+                let $ident2 = $ident.clone();
+            };
+        }
+
         init_shared_data!(let instant, instant2 = Instant::now());
         init_shared_data!(let time_thread_run, time_thread_run2 = AtomicBool::new(true));
         init_shared_data!(let config, config2 = PConfig::from((walk_config, config, args)));
