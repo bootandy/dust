@@ -104,7 +104,7 @@ impl TotalSize {
         let end = self.get_size_end(number_len);
 
         let size_base: u64 = if self.use_iso { 1000 } else { 1024 };
-        let showed_number = inner / (size_base.pow(number_len / 3));
+        let showed_number = inner / (size_base.pow((number_len / 3).min(4)));
         format!("{} {}", showed_number, end)
         // format!("{} bytes", inner)
     }
