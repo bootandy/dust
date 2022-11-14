@@ -189,7 +189,7 @@ fn walk(
                                         info_data
                                             .total_file_size
                                             .inner
-                                            .fetch_add(node.size, progress::ATOMIC_ORDERING);
+                                            .add(node.size);
                                     }
                                 }
 

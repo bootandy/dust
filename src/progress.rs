@@ -86,7 +86,7 @@ impl PAtomicInfo {
 #[derive(Default)]
 pub struct TotalSize {
     use_iso: bool,
-    pub inner: AtomicU64,
+    pub inner: AtomicU64Wrapper,
 }
 
 impl TotalSize {
@@ -98,7 +98,7 @@ impl TotalSize {
     }
 
     fn format_size(&self) -> String {
-        let inner = self.inner.load(ATOMIC_ORDERING);
+        let inner = self.inner.get();
         let number_len = (inner as f32).log10().floor() as u32;
 
         let end = self.get_size_end(number_len);
