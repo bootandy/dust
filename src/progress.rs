@@ -236,8 +236,7 @@ impl PIndicator {
                     };
                     last_msg_len = msg.len();
 
-                    print!("{}", msg);
-
+                    write!(stdout, "{}", msg).unwrap();
                     stdout.flush().unwrap();
 
                     progress_char_i += 1;
