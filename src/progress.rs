@@ -49,7 +49,7 @@ macro_rules! create_atomic_wrapper {
                 self.inner.fetch_add(val, $ordering);
             }
         }
-    }
+    };
 }
 
 create_atomic_wrapper!(AtomicU64Wrapper, AtomicU64, u64, ATOMIC_ORDERING + add);
@@ -57,7 +57,7 @@ create_atomic_wrapper!(AtomicU8Wrapper, AtomicU8, u8, ATOMIC_ORDERING + add);
 
 #[derive(Default)]
 pub struct ThreadStringWrapper {
-    inner: RwLock<String>
+    inner: RwLock<String>,
 }
 
 impl ThreadSyncTrait<String> for ThreadStringWrapper {
@@ -86,7 +86,7 @@ pub struct PAtomicInfo {
     pub directories_skipped: AtomicU64Wrapper,
     pub total_file_size: TotalSize,
     pub state: AtomicU8Wrapper,
-    pub current_path: ThreadStringWrapper
+    pub current_path: ThreadStringWrapper,
 }
 
 impl PAtomicInfo {
@@ -191,11 +191,12 @@ impl PIndicator {
 
                     macro_rules! format_base {
                         ($state: expr) => {
-                            format!("\r{} \"{}\"... {}", 
-                            $state,
-                            data2.current_path.get(),
-                            PROGRESS_CHARS[progress_char_i],
-                        )
+                            format!(
+                                "\r{} \"{}\"... {}",
+                                $state,
+                                data2.current_path.get(),
+                                PROGRESS_CHARS[progress_char_i],
+                            )
                         };
                     }
 
@@ -224,7 +225,7 @@ impl PIndicator {
                                 main_props.push(format!("{}", data2.total_file_size));
                                 main_props.push(format_property!(fn_, "file", "files"));
                             };
-                            
+
                             let main_props_str = main_props.join(PROPS_SEPARATOR);
                             let base = format!("{} - {}", base, main_props_str);
 

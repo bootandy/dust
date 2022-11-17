@@ -3,10 +3,10 @@ use std::sync::Arc;
 
 use crate::node::Node;
 use crate::progress;
-use crate::progress::ThreadSyncMathTrait;
-use crate::progress::ThreadSyncTrait;
 use crate::progress::PAtomicInfo;
 use crate::progress::PConfig;
+use crate::progress::ThreadSyncMathTrait;
+use crate::progress::ThreadSyncTrait;
 use crate::utils::is_filtered_out_due_to_invert_regex;
 use crate::utils::is_filtered_out_due_to_regex;
 use rayon::iter::ParallelBridge;
@@ -145,7 +145,9 @@ fn walk(
 ) -> Option<Node> {
     info_data.state.set(progress::Operation::INDEXING);
     if depth == 0 {
-        info_data.current_path.set(dir.to_string_lossy().to_string());
+        info_data
+            .current_path
+            .set(dir.to_string_lossy().to_string());
     }
 
     let mut children = vec![];
@@ -190,10 +192,7 @@ fn walk(
                                     info_data.file_number.add(1);
 
                                     if !info_conf.file_count_only {
-                                        info_data
-                                            .total_file_size
-                                            .inner
-                                            .add(node.size);
+                                        info_data.total_file_size.inner.add(node.size);
                                     }
                                 }
 
