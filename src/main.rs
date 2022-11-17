@@ -11,6 +11,7 @@ mod progress;
 mod utils;
 
 use crate::cli::build_cli;
+use progress::PConfig;
 use progress::PIndicator;
 use std::collections::HashSet;
 use std::io::BufRead;
@@ -178,7 +179,11 @@ fn main() {
 
     let iso = config.get_iso(&options);
 
-    let info = PIndicator::spawn(&walk_data, &config, &options);
+    let conf = PConfig {
+        file_count_only: walk_data.by_filecount,
+        use_iso: config.get_iso(&options),
+    };
+    let info = PIndicator::spawn(conf);
 
     let (top_level_nodes, has_errors) = walk_it(
         simplified_dirs,
