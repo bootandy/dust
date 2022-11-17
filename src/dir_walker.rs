@@ -144,6 +144,9 @@ fn walk(
     depth: usize,
 ) -> Option<Node> {
     info_data.state.set(progress::Operation::INDEXING);
+    if depth == 0 {
+        info_data.current_path.set(dir.to_string_lossy().to_string());
+    }
 
     let mut children = vec![];
 
