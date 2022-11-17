@@ -14,10 +14,13 @@ use std::{
 pub const ATOMIC_ORDERING: Ordering = Ordering::Relaxed;
 
 // a small wrapper for atomic number to reduce overhead
-pub trait AtomicWrapperTrait<T> {
+pub trait ThreadSyncTrait<T> {
     fn set(&self, val: T);
-    fn add(&self, val: T);
     fn get(&self) -> T;
+}
+
+pub trait ThreadSyncMathTrait<T> {
+    fn add(&self, val: T);
 }
 
 macro_rules! create_atomic_wrapper {
@@ -27,13 +30,9 @@ macro_rules! create_atomic_wrapper {
             inner: $atomic_type,
         }
 
-        impl AtomicWrapperTrait<$type> for $ident {
+        impl ThreadSyncTrait<$type> for $ident {
             fn set(&self, val: $type) {
                 self.inner.store(val, $ordering)
-            }
-
-            fn add(&self, val: $type) {
-                self.inner.fetch_add(val, $ordering);
             }
 
             fn get(&self) -> $type {
@@ -41,10 +40,20 @@ macro_rules! create_atomic_wrapper {
             }
         }
     };
+
+    ($ident: ident, $atomic_type: ty, $type: ty, $ordering: ident + add) => {
+        create_atomic_wrapper!($ident, $atomic_type, $type, $ordering);
+
+        impl ThreadSyncMathTrait<$type> for $ident {
+            fn add(&self, val: $type) {
+                self.inner.fetch_add(val, $ordering);
+            }
+        }
+    }
 }
 
-create_atomic_wrapper!(AtomicU64Wrapper, AtomicU64, u64, ATOMIC_ORDERING);
-create_atomic_wrapper!(AtomicU8Wrapper, AtomicU8, u8, ATOMIC_ORDERING);
+create_atomic_wrapper!(AtomicU64Wrapper, AtomicU64, u64, ATOMIC_ORDERING + add);
+create_atomic_wrapper!(AtomicU8Wrapper, AtomicU8, u8, ATOMIC_ORDERING + add);
 
 /* -------------------------------------------------------------------------- */
 

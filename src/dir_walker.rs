@@ -3,7 +3,8 @@ use std::sync::Arc;
 
 use crate::node::Node;
 use crate::progress;
-use crate::progress::AtomicWrapperTrait;
+use crate::progress::ThreadSyncMathTrait;
+use crate::progress::ThreadSyncTrait;
 use crate::progress::PAtomicInfo;
 use crate::progress::PConfig;
 use crate::utils::is_filtered_out_due_to_invert_regex;
