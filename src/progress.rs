@@ -164,12 +164,17 @@ impl PIndicator {
                     // clear the line
                     print!("\r{:width$}", " ", width = last_msg_len);
 
+                    macro_rules! format_base {
+                        ($state: expr) => {
+                            format!("\r{}... {}", $state, PROGRESS_CHARS[progress_char_i],)
+                        };
+                    }
+
                     let msg = match data2.state.get() {
                         Operation::INDEXING => {
                             const PROPS_SEPARATOR: &str = ", ";
 
-                            let base =
-                                format!("\rIndexing... {}", PROGRESS_CHARS[progress_char_i],);
+                            let base = format_base!("Indexing");
 
                             macro_rules! format_property {
                                 ($value: ident, $singular: expr, $plural: expr) => {
@@ -213,7 +218,7 @@ impl PIndicator {
                             }
                         }
                         Operation::PREPARING => {
-                            format!("\rPreparing... {}", PROGRESS_CHARS[progress_char_i],)
+                            format_base!("Preparing")
                         }
                         _ => panic!("Unknown State"),
                     };
