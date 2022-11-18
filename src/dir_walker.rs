@@ -148,6 +148,12 @@ fn walk(
         info_data
             .current_path
             .set(dir.to_string_lossy().to_string());
+
+        // reset the value between each target dirs
+        info_data.files_skipped.set(0);
+        info_data.directories_skipped.set(0);
+        info_data.total_file_size.inner.set(0);
+        info_data.file_number.set(0);
     }
 
     let mut children = vec![];
