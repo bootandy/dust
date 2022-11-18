@@ -13,7 +13,7 @@ use std::{
 
 pub const ATOMIC_ORDERING: Ordering = Ordering::Relaxed;
 
-// a small wrapper for atomic number to reduce overhead
+// small wrappers for atomic number to reduce overhead
 pub trait ThreadSyncTrait<T> {
     fn set(&self, val: T);
     fn get(&self) -> T;
