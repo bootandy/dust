@@ -98,10 +98,12 @@ impl PAtomicInfo {
     }
 }
 
+/* -------------------------------------------------------------------------- */
+
 #[derive(Default)]
 pub struct TotalSize {
     use_iso: bool,
-    pub inner: AtomicU64Wrapper,
+    inner: AtomicU64Wrapper,
 }
 
 impl TotalSize {
@@ -138,6 +140,22 @@ impl TotalSize {
 impl Display for TotalSize {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(self.format_size().as_str())
+    }
+}
+
+impl ThreadSyncTrait<u64> for TotalSize {
+    fn set(&self, val: u64) {
+        self.inner.set(val)
+    }
+
+    fn get(&self) -> u64 {
+        self.inner.get()
+    }
+}
+
+impl ThreadSyncMathTrait<u64> for TotalSize {
+    fn add(&self, val: u64) {
+        self.inner.add(val)
     }
 }
 

@@ -152,7 +152,7 @@ fn walk(
         // reset the value between each target dirs
         info_data.files_skipped.set(0);
         info_data.directories_skipped.set(0);
-        info_data.total_file_size.inner.set(0);
+        info_data.total_file_size.set(0);
         info_data.file_number.set(0);
     }
 
@@ -198,7 +198,7 @@ fn walk(
                                     info_data.file_number.add(1);
 
                                     if !info_conf.file_count_only {
-                                        info_data.total_file_size.inner.add(node.size);
+                                        info_data.total_file_size.add(node.size);
                                     }
                                 }
 
