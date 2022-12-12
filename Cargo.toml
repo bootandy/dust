@@ -46,7 +46,7 @@ sysinfo = "0.15"
 winapi-util = "0.1"
 
 [dev-dependencies]
-assert_cmd = "1"
+assert_cmd = "2"
 tempfile = "=3"
 
 [build-dependencies]
