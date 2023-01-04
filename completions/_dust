@@ -35,6 +35,8 @@ _dust() {
 '--version[Print version information]' \
 '-p[Subdirectories will not have their path shortened]' \
 '--full-paths[Subdirectories will not have their path shortened]' \
+'-l[Ignore links]' \
+'--ignore-links[Ignore links]' \
 '-x[Only count the files and directories on the same filesystem as the supplied directory]' \
 '--limit-filesystem[Only count the files and directories on the same filesystem as the supplied directory]' \
 '-s[Use file length instead of blocks]' \

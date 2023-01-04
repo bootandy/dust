@@ -38,6 +38,8 @@ set edit:completion:arg-completer[dust] = {|@words|
             cand --version 'Print version information'
             cand -p 'Subdirectories will not have their path shortened'
             cand --full-paths 'Subdirectories will not have their path shortened'
+            cand -l 'Ignore links'
+            cand --ignore-links 'Ignore links'
             cand -x 'Only count the files and directories on the same filesystem as the supplied directory'
             cand --limit-filesystem 'Only count the files and directories on the same filesystem as the supplied directory'
             cand -s 'Use file length instead of blocks'

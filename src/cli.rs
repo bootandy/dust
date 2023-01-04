@@ -35,6 +35,12 @@ pub fn build_cli() -> Command<'static> {
                 .help("Exclude any file or directory with this name"),
         )
         .arg(
+            Arg::new("ignore_links")
+                .short('l')
+                .long("ignore-links")
+                .help("Ignore links"),
+        )
+        .arg(
             Arg::new("limit_filesystem")
                 .short('x')
                 .long("limit-filesystem")
@@ -136,6 +142,6 @@ pub fn build_cli() -> Command<'static> {
             Arg::new("only_dir")
                 .short('D')
                 .long("only-dir")
-                .help("Only directories will be displayed."), 
+                .help("Only directories will be displayed."),
         )
 }

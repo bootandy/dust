@@ -21,7 +21,9 @@ pub fn get_metadata(d: &Path, use_apparent_size: bool) -> Option<(u64, Option<(u
                 Some((md.blocks() * get_block_size(), Some((md.ino(), md.dev()))))
             }
         }
-        Err(_e) => None,
+        Err(_e) => {
+            None
+        }
     }
 }
 

@@ -8,6 +8,7 @@ complete -c dust -s w -l terminal_width -d 'Specify width of output overriding t
 complete -c dust -s h -l help -d 'Print help information'
 complete -c dust -s V -l version -d 'Print version information'
 complete -c dust -s p -l full-paths -d 'Subdirectories will not have their path shortened'
+complete -c dust -s l -l ignore-links -d 'Ignore links'
 complete -c dust -s x -l limit-filesystem -d 'Only count the files and directories on the same filesystem as the supplied directory'
 complete -c dust -s s -l apparent-size -d 'Use file length instead of blocks'
 complete -c dust -s r -l reverse -d 'Print tree upside down (biggest highest)'
