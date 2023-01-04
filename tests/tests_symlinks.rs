@@ -47,7 +47,7 @@ pub fn test_soft_sym_link() {
     let mut cmd = Command::cargo_bin("dust").unwrap();
     // Mac test runners create long filenames in tmp directories
     let output = cmd
-        .args(["-p", "-c", "-s", "-w 999", dir_s])
+        .args(["-p", "-c", "-s", "-w", "999", dir_s])
         .unwrap()
         .stdout;
 
@@ -74,7 +74,7 @@ pub fn test_hard_sym_link() {
 
     let mut cmd = Command::cargo_bin("dust").unwrap();
     // Mac test runners create long filenames in tmp directories
-    let output = cmd.args(["-p", "-c", "-w 999", dir_s]).unwrap().stdout;
+    let output = cmd.args(["-p", "-c", "-w", "999", dir_s]).unwrap().stdout;
 
     // The link should not appear in the output because multiple inodes are now ordered
     // then filtered.
@@ -100,17 +100,15 @@ pub fn test_hard_sym_link_no_dup_multi_arg() {
 
     // Mac test runners create long filenames in tmp directories
     let output = cmd
-        .args(["-p", "-c", "-w 999", "-b", dir_link_s, dir_s])
+        .args(["-p", "-c", "-w", "999", "-b", dir_link_s, dir_s])
         .unwrap()
         .stdout;
 
-    // The link or the file should appeart but not both
+    // The link or the file should appear but not both
     let output = str::from_utf8(&output).unwrap();
-    println!("cmd:\n{:?}", cmd);
-    println!("output:\n{:?}", output);
     let has_file_only = output.contains(file_path_s) && !output.contains(&link_name_s);
     let has_link_only = !output.contains(file_path_s) && output.contains(&link_name_s);
-    assert!(has_file_only || has_link_only)
+    assert!(has_file_only || has_link_only);
 }
 
 #[cfg_attr(target_os = "windows", ignore)]
@@ -131,7 +129,8 @@ pub fn test_recursive_sym_link() {
         .arg("-c")
         .arg("-r")
         .arg("-s")
-        .arg("-w 999")
+        .arg("-w")
+        .arg("999")
         .arg(dir_s)
         .unwrap()
         .stdout;

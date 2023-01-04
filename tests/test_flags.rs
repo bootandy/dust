@@ -73,6 +73,7 @@ pub fn test_ignore_dir() {
     let output = build_command(vec!["-c", "-X", "dir_substring", "tests/test_dir2/"]);
     assert!(!output.contains("dir_substring"));
 }
+// Add test for multiple dirs - with -d 0 and maybe -d 1 check the
 
 #[test]
 pub fn test_with_bad_param() {
