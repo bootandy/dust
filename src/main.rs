@@ -208,8 +208,8 @@ fn main() {
 
 fn init_rayon() -> Result<(), ThreadPoolBuildError> {
     let large_stack = usize::pow(1024, 3);
-    // Warning: Creating System is slow, takes ~ 100ms
-    let s = System::new();
+    let mut s = System::new();
+    s.refresh_memory();
     let available = s.available_memory();
 
     if available > large_stack.try_into().unwrap() {
