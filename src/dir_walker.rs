@@ -31,12 +31,13 @@ pub struct WalkData<'a> {
 pub fn walk_it(dirs: HashSet<PathBuf>, walk_data: WalkData) -> (Vec<Node>, bool) {
     let permissions_flag = AtomicBool::new(false);
 
+    let mut inodes = HashSet::new();
     let top_level_nodes: Vec<_> = dirs
         .into_iter()
         .filter_map(|d| {
             clean_inodes(
                 walk(d, &permissions_flag, &walk_data, 0)?,
-                &mut HashSet::new(),
+                &mut inodes,
                 walk_data.use_apparent_size,
             )
         })
