@@ -143,28 +143,27 @@ fn walk(
 
                     // return walk(entry.path(), permissions_flag, ignore_directories, allowed_filesystems, use_apparent_size, by_filecount, ignore_hidden);
 
-                    if !ignore_file(entry, walk_data) {
-                        if let Ok(data) = entry.file_type() {
-                            if data.is_symlink() && walk_data.ignore_links {
-                                return None;
-                            }
-                            return if data.is_dir() || (walk_data.follow_links && data.is_symlink())
-                            {
-                                walk(entry.path(), permissions_flag, walk_data, depth + 1)
-                            } else {
-                                build_node(
-                                    entry.path(),
-                                    vec![],
-                                    walk_data.filter_regex,
-                                    walk_data.invert_filter_regex,
-                                    walk_data.use_apparent_size,
-                                    data.is_symlink(),
-                                    data.is_file(),
-                                    walk_data.by_filecount,
-                                    depth,
-                                )
-                            };
+                    if ignore_file(entry, walk_data) {
+                        return None;
+                    }
+                    if let Ok(data) = entry.file_type() {
+                        if data.is_symlink() && walk_data.ignore_links {
+                            return None;
                         }
+                        if data.is_dir() || (walk_data.follow_links && data.is_symlink()) {
+                            return walk(entry.path(), permissions_flag, walk_data, depth + 1);
+                        }
+                        return build_node(
+                            entry.path(),
+                            vec![],
+                            walk_data.filter_regex,
+                            walk_data.invert_filter_regex,
+                            walk_data.use_apparent_size,
+                            data.is_symlink(),
+                            data.is_file(),
+                            walk_data.by_filecount,
+                            depth,
+                        );
                     }
                 } else {
                     permissions_flag.store(true, atomic::Ordering::Relaxed);
