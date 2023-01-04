@@ -17,6 +17,18 @@ fn build_temp_file(dir: &TempDir) -> PathBuf {
     file_path
 }
 
+fn link_it(link_path: PathBuf, file_path_s: &str, is_soft: bool) -> String {
+    let link_name_s = link_path.to_str().unwrap();
+    let mut c = Command::new("ln");
+    if is_soft {
+        c.arg("-s");
+    }
+    c.arg(file_path_s);
+    c.arg(link_name_s);
+    assert!(c.output().is_ok());
+    return link_name_s.into();
+}
+
 #[cfg_attr(target_os = "windows", ignore)]
 #[test]
 pub fn test_soft_sym_link() {
@@ -26,13 +38,7 @@ pub fn test_soft_sym_link() {
     let file_path_s = file.to_str().unwrap();
 
     let link_name = dir.path().join("the_link");
-    let link_name_s = link_name.to_str().unwrap();
-    let c = Command::new("ln")
-        .arg("-s")
-        .arg(file_path_s)
-        .arg(link_name_s)
-        .output();
-    assert!(c.is_ok());
+    let link_name_s = link_it(link_name, file_path_s, true);
 
     let c = format!(" ├── {}", link_name_s);
     let b = format!(" ┌── {}", file_path_s);
@@ -61,12 +67,7 @@ pub fn test_hard_sym_link() {
     let file_path_s = file.to_str().unwrap();
 
     let link_name = dir.path().join("the_link");
-    let link_name_s = link_name.to_str().unwrap();
-    let c = Command::new("ln")
-        .arg(file_path_s)
-        .arg(link_name_s)
-        .output();
-    assert!(c.is_ok());
+    link_it(link_name, file_path_s, false);
 
     let file_output = format!(" ┌── {}", file_path_s);
     let dirs_output = format!("─┴ {}", dir_s);
@@ -84,19 +85,42 @@ pub fn test_hard_sym_link() {
 
 #[cfg_attr(target_os = "windows", ignore)]
 #[test]
+pub fn test_hard_sym_link_no_dup_multi_arg() {
+    let dir = Builder::new().tempdir().unwrap();
+    let dir_link = Builder::new().tempdir().unwrap();
+    let file = build_temp_file(&dir);
+    let dir_s = dir.path().to_str().unwrap();
+    let dir_link_s = dir_link.path().to_str().unwrap();
+    let file_path_s = file.to_str().unwrap();
+
+    let link_name = dir_link.path().join("the_link");
+    let link_name_s = link_it(link_name, file_path_s, false);
+
+    let mut cmd = Command::cargo_bin("dust").unwrap();
+
+    // Mac test runners create long filenames in tmp directories
+    let output = cmd
+        .args(["-p", "-c", "-w 999", "-b", dir_link_s, dir_s])
+        .unwrap()
+        .stdout;
+
+    // The link or the file should appeart but not both
+    let output = str::from_utf8(&output).unwrap();
+    println!("cmd:\n{:?}", cmd);
+    println!("output:\n{:?}", output);
+    let has_file_only = output.contains(file_path_s) && !output.contains(&link_name_s);
+    let has_link_only = !output.contains(file_path_s) && output.contains(&link_name_s);
+    assert!(has_file_only || has_link_only)
+}
+
+#[cfg_attr(target_os = "windows", ignore)]
+#[test]
 pub fn test_recursive_sym_link() {
     let dir = Builder::new().tempdir().unwrap();
     let dir_s = dir.path().to_str().unwrap();
 
     let link_name = dir.path().join("the_link");
-    let link_name_s = link_name.to_str().unwrap();
-
-    let c = Command::new("ln")
-        .arg("-s")
-        .arg(dir_s)
-        .arg(link_name_s)
-        .output();
-    assert!(c.is_ok());
+    let link_name_s = link_it(link_name, dir_s, true);
 
     let a = format!("─┬ {}", dir_s);
     let b = format!(" └── {}", link_name_s);
