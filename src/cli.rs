@@ -38,7 +38,15 @@ pub fn build_cli() -> Command<'static> {
             Arg::new("ignore_links")
                 .short('l')
                 .long("ignore-links")
+                .conflicts_with("dereference_links")
                 .help("Ignore links"),
+        )
+        .arg(
+            Arg::new("dereference_links")
+                .short('L')
+                .long("dereference-links")
+                .conflicts_with("ignore_links")
+                .help("dereference sym links - Treat sym links as directories and go into them"),
         )
         .arg(
             Arg::new("limit_filesystem")

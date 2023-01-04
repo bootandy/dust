@@ -153,6 +153,7 @@ fn main() {
     let by_filecount = options.is_present("by_filecount");
     let limit_filesystem = options.is_present("limit_filesystem");
     let ignore_links = options.is_present("ignore_links");
+    let follow_links = options.is_present("dereference_links");
 
     let simplified_dirs = simplify_dir_names(target_dirs);
     let allowed_filesystems = limit_filesystem
@@ -169,6 +170,7 @@ fn main() {
         invert_filter_regex: &invert_filter_regexs,
         allowed_filesystems,
         ignore_links,
+        follow_links,
         use_apparent_size: config.get_apparent_size(&options),
         by_filecount,
         ignore_hidden: config.get_ignore_hidden(&options),

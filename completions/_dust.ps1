@@ -43,6 +43,8 @@ Register-ArgumentCompleter -Native -CommandName 'dust' -ScriptBlock {
             [CompletionResult]::new('--full-paths', 'full-paths', [CompletionResultType]::ParameterName, 'Subdirectories will not have their path shortened')
             [CompletionResult]::new('-l', 'l', [CompletionResultType]::ParameterName, 'Ignore links')
             [CompletionResult]::new('--ignore-links', 'ignore-links', [CompletionResultType]::ParameterName, 'Ignore links')
+            [CompletionResult]::new('-L', 'L', [CompletionResultType]::ParameterName, 'dereference sym links - Treat sym links as directories and go into them')
+            [CompletionResult]::new('--dereference-links', 'dereference-links', [CompletionResultType]::ParameterName, 'dereference sym links - Treat sym links as directories and go into them')
             [CompletionResult]::new('-x', 'x', [CompletionResultType]::ParameterName, 'Only count the files and directories on the same filesystem as the supplied directory')
             [CompletionResult]::new('--limit-filesystem', 'limit-filesystem', [CompletionResultType]::ParameterName, 'Only count the files and directories on the same filesystem as the supplied directory')
             [CompletionResult]::new('-s', 's', [CompletionResultType]::ParameterName, 'Use file length instead of blocks')

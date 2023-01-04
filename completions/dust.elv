@@ -40,6 +40,8 @@ set edit:completion:arg-completer[dust] = {|@words|
             cand --full-paths 'Subdirectories will not have their path shortened'
             cand -l 'Ignore links'
             cand --ignore-links 'Ignore links'
+            cand -L 'dereference sym links - Treat sym links as directories and go into them'
+            cand --dereference-links 'dereference sym links - Treat sym links as directories and go into them'
             cand -x 'Only count the files and directories on the same filesystem as the supplied directory'
             cand --limit-filesystem 'Only count the files and directories on the same filesystem as the supplied directory'
             cand -s 'Use file length instead of blocks'
