@@ -20,13 +20,20 @@ pub fn get_biggest(
 
     let mut heap = BinaryHeap::new();
     let number_top_level_nodes = top_level_nodes.len();
+
     let root = get_new_root(top_level_nodes);
     let mut allowed_nodes = HashSet::new();
 
     allowed_nodes.insert(root.name.as_path());
-    heap = add_children(using_a_filter, min_size, only_dir, &root, depth, heap);
 
-    for _ in number_top_level_nodes..n {
+    if number_top_level_nodes > 1 {
+        heap = add_children(using_a_filter, min_size, only_dir, &root, usize::MAX, heap);
+    } else {
+        heap = add_children(using_a_filter, min_size, only_dir, &root, depth, heap);
+    }
+
+    let number_of_lines_in_output = n - number_top_level_nodes;
+    for _ in 0..number_of_lines_in_output {
         let line = heap.pop();
         match line {
             Some(line) => {
