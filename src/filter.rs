@@ -19,14 +19,24 @@ pub fn get_biggest(
     }
     let mut heap = BinaryHeap::new();
     let number_top_level_nodes = top_level_nodes.len();
-
-    let root = get_new_root(top_level_nodes);
+    let root;
 
     if number_top_level_nodes > 1 {
+        let size = top_level_nodes.iter().map(|node| node.size).sum();
+        root = Node {
+            name: PathBuf::from("(total)"),
+            size,
+            children: top_level_nodes,
+            inode_device: None,
+            depth: 0,
+        };
+        // Always include the base nodes if we add a 'parent' (total) node
         heap = add_children(using_a_filter, min_size, only_dir, &root, usize::MAX, heap);
     } else {
+        root = top_level_nodes.into_iter().next().unwrap();
         heap = add_children(using_a_filter, min_size, only_dir, &root, depth, heap);
     }
+
     let remaining = n.checked_sub(number_top_level_nodes).unwrap_or(0);
     fill_remaining_lines(
         heap,
@@ -85,21 +95,6 @@ fn add_children<'a>(
         )
     }
     heap
-}
-
-fn get_new_root(top_level_nodes: Vec<Node>) -> Node {
-    if top_level_nodes.len() != 1 {
-        let size = top_level_nodes.iter().map(|node| node.size).sum();
-        Node {
-            name: PathBuf::from("(total)"),
-            size,
-            children: top_level_nodes,
-            inode_device: None,
-            depth: 0,
-        }
-    } else {
-        top_level_nodes.into_iter().next().unwrap()
-    }
 }
 
 fn recursive_rebuilder(allowed_nodes: &HashSet<&Path>, current: &Node) -> Option<DisplayNode> {
