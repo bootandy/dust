@@ -17,23 +17,41 @@ pub fn get_biggest(
         // perhaps change this, bring back Error object?
         return None;
     }
-
     let mut heap = BinaryHeap::new();
     let number_top_level_nodes = top_level_nodes.len();
 
     let root = get_new_root(top_level_nodes);
-    let mut allowed_nodes = HashSet::new();
-
-    allowed_nodes.insert(root.name.as_path());
 
     if number_top_level_nodes > 1 {
         heap = add_children(using_a_filter, min_size, only_dir, &root, usize::MAX, heap);
     } else {
         heap = add_children(using_a_filter, min_size, only_dir, &root, depth, heap);
     }
+    let remaining = n.checked_sub(number_top_level_nodes).unwrap_or(0);
+    fill_remaining_lines(
+        heap,
+        &root,
+        min_size,
+        only_dir,
+        remaining,
+        depth,
+        using_a_filter,
+    )
+}
 
-    let number_of_lines_in_output = n - number_top_level_nodes;
-    for _ in 0..number_of_lines_in_output {
+pub fn fill_remaining_lines<'a>(
+    mut heap: BinaryHeap<&'a Node>,
+    root: &'a Node,
+    min_size: Option<usize>,
+    only_dir: bool,
+    remaining: usize,
+    depth: usize,
+    using_a_filter: bool,
+) -> Option<DisplayNode> {
+    let mut allowed_nodes = HashSet::new();
+    allowed_nodes.insert(root.name.as_path());
+
+    for _ in 0..remaining {
         let line = heap.pop();
         match line {
             Some(line) => {
