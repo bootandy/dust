@@ -88,7 +88,7 @@ impl DrawData<'_> {
         let mut num_not_my_bar = (chars_in_bar as i32) - num_bars as i32;
 
         let mut new_bar = "".to_string();
-        let idx = 5 - min(4, max(1, level));
+        let idx = 5 - level.clamp(1, 4);
 
         for c in self.percent_bar.chars() {
             num_not_my_bar -= 1;
@@ -141,10 +141,10 @@ pub fn draw_it(
     let longest_string_length =
         find_longest_dir_name(root_node, num_indent_chars, allowed_width, !use_full_path);
 
-    let max_bar_length = if no_percent_bars || longest_string_length + 7 >= allowed_width as usize {
+    let max_bar_length = if no_percent_bars || longest_string_length + 7 >= allowed_width {
         0
     } else {
-        allowed_width as usize - longest_string_length - 7
+        allowed_width - longest_string_length - 7
     };
 
     let first_size_bar = repeat(BLOCKS[0]).take(max_bar_length).collect();
