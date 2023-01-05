@@ -5,14 +5,15 @@ use std::collections::HashSet;
 use std::path::Path;
 use std::path::PathBuf;
 
-pub fn get_biggest(
-    top_level_nodes: Vec<Node>,
-    min_size: Option<usize>,
-    only_dir: bool,
-    n: usize,
-    depth: usize,
-    using_a_filter: bool,
-) -> Option<DisplayNode> {
+pub struct AggregateData {
+    pub min_size: Option<usize>,
+    pub only_dir: bool,
+    pub number_of_lines: usize,
+    pub depth: usize,
+    pub using_a_filter: bool,
+}
+
+pub fn get_biggest(top_level_nodes: Vec<Node>, display_data: AggregateData) -> Option<DisplayNode> {
     if top_level_nodes.is_empty() {
         // perhaps change this, bring back Error object?
         return None;
@@ -31,69 +32,72 @@ pub fn get_biggest(
             depth: 0,
         };
         // Always include the base nodes if we add a 'parent' (total) node
-        heap = add_children(using_a_filter, min_size, only_dir, &root, usize::MAX, heap);
+        heap = always_add_children(&display_data, &root, heap);
     } else {
         root = top_level_nodes.into_iter().next().unwrap();
-        heap = add_children(using_a_filter, min_size, only_dir, &root, depth, heap);
+        heap = add_children(&display_data, &root, heap);
     }
 
-    let remaining = n.checked_sub(number_top_level_nodes).unwrap_or(0);
-    fill_remaining_lines(
-        heap,
-        &root,
-        min_size,
-        only_dir,
-        remaining,
-        depth,
-        using_a_filter,
-    )
+    let nol = display_data.number_of_lines;
+    let remaining = nol.saturating_sub(number_top_level_nodes);
+    fill_remaining_lines(heap, &root, remaining, display_data)
 }
 
 pub fn fill_remaining_lines<'a>(
     mut heap: BinaryHeap<&'a Node>,
     root: &'a Node,
-    min_size: Option<usize>,
-    only_dir: bool,
-    remaining: usize,
-    depth: usize,
-    using_a_filter: bool,
+    remaining_lines: usize,
+    display_data: AggregateData,
 ) -> Option<DisplayNode> {
     let mut allowed_nodes = HashSet::new();
     allowed_nodes.insert(root.name.as_path());
 
-    for _ in 0..remaining {
+    for _ in 0..remaining_lines {
         let line = heap.pop();
         match line {
             Some(line) => {
                 allowed_nodes.insert(line.name.as_path());
-                heap = add_children(using_a_filter, min_size, only_dir, line, depth, heap);
+                heap = add_children(&display_data, line, heap);
             }
             None => break,
         }
     }
-    recursive_rebuilder(&allowed_nodes, &root)
+    recursive_rebuilder(&allowed_nodes, root)
 }
 
 fn add_children<'a>(
-    using_a_filter: bool,
-    min_size: Option<usize>,
-    only_dir: bool,
+    display_data: &AggregateData,
     file_or_folder: &'a Node,
-    depth: usize,
+    heap: BinaryHeap<&'a Node>,
+) -> BinaryHeap<&'a Node> {
+    if display_data.depth > file_or_folder.depth {
+        always_add_children(display_data, file_or_folder, heap)
+    } else {
+        heap
+    }
+}
+
+fn always_add_children<'a>(
+    display_data: &AggregateData,
+    file_or_folder: &'a Node,
     mut heap: BinaryHeap<&'a Node>,
 ) -> BinaryHeap<&'a Node> {
-    if depth > file_or_folder.depth {
-        heap.extend(
-            file_or_folder
-                .children
-                .iter()
-                .filter(|c| match min_size {
-                    Some(ms) => c.size > ms as u64,
-                    None => !using_a_filter || c.name.is_file() || c.size > 0,
-                })
-                .filter(|c| if only_dir { c.name.is_dir() } else { true }),
-        )
-    }
+    heap.extend(
+        file_or_folder
+            .children
+            .iter()
+            .filter(|c| match display_data.min_size {
+                Some(ms) => c.size > ms as u64,
+                None => !display_data.using_a_filter || c.name.is_file() || c.size > 0,
+            })
+            .filter(|c| {
+                if display_data.only_dir {
+                    c.name.is_dir()
+                } else {
+                    true
+                }
+            }),
+    );
     heap
 }
 
