@@ -258,10 +258,10 @@ fn clean_indentation_string(s: &str) -> String {
     is
 }
 
-fn get_printable_name<P: AsRef<Path>>(dir_name: &P, long_paths: bool) -> String {
+fn get_printable_name<P: AsRef<Path>>(dir_name: &P, short_paths: bool) -> String {
     let dir_name = dir_name.as_ref();
     let printable_name = {
-        if long_paths {
+        if short_paths {
             match dir_name.parent() {
                 Some(prefix) => match dir_name.strip_prefix(prefix) {
                     Ok(base) => base,
