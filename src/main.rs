@@ -10,6 +10,8 @@ mod platform;
 mod utils;
 
 use crate::cli::build_cli;
+use dir_walker::WalkData;
+use filter::AggregateData;
 use std::collections::HashSet;
 use std::io::BufRead;
 use std::process;
@@ -18,7 +20,7 @@ use sysinfo::{System, SystemExt};
 use self::display::draw_it;
 use clap::Values;
 use config::get_config;
-use dir_walker::{walk_it, WalkData};
+use dir_walker::walk_it;
 use filter::get_biggest;
 use filter_type::get_all_file_types;
 use rayon::ThreadPoolBuildError;
@@ -175,17 +177,19 @@ fn main() {
 
     let iso = config.get_iso(&options);
     let (top_level_nodes, has_errors) = walk_it(simplified_dirs, walk_data);
-
     let tree = match summarize_file_types {
         true => get_all_file_types(&top_level_nodes, number_of_lines),
-        false => get_biggest(
-            top_level_nodes,
-            config.get_min_size(&options, iso),
-            config.get_only_dir(&options),
-            number_of_lines,
-            depth,
-            options.values_of("filter").is_some() || options.value_of("invert_filter").is_some(),
-        ),
+        false => {
+            let agg_data = AggregateData {
+                min_size: config.get_min_size(&options, iso),
+                only_dir: config.get_only_dir(&options),
+                number_of_lines,
+                depth,
+                using_a_filter: options.values_of("filter").is_some()
+                    || options.value_of("invert_filter").is_some(),
+            };
+            get_biggest(top_level_nodes, agg_data)
+        }
     };
 
     if has_errors {
