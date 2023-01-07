@@ -34,6 +34,12 @@ pub fn build_cli() -> Command<'static> {
                 .multiple_occurrences(true)
                 .help("Exclude any file or directory with this name"),
         )
+         .arg(
+            Arg::new("dereference_links")
+                .short('L')
+                .long("dereference-links")
+                .help("dereference sym links - Treat sym links as directories and go into them"),
+        )
         .arg(
             Arg::new("limit_filesystem")
                 .short('x')
@@ -136,6 +142,6 @@ pub fn build_cli() -> Command<'static> {
             Arg::new("only_dir")
                 .short('D')
                 .long("only-dir")
-                .help("Only directories will be displayed."), 
+                .help("Only directories will be displayed."),
         )
 }

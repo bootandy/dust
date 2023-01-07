@@ -157,6 +157,7 @@ fn main() {
 
     let by_filecount = options.is_present("by_filecount");
     let limit_filesystem = options.is_present("limit_filesystem");
+    let follow_links = options.is_present("dereference_links");
 
     let simplified_dirs = simplify_dir_names(target_dirs);
     let allowed_filesystems = limit_filesystem
@@ -175,6 +176,7 @@ fn main() {
         use_apparent_size: config.get_apparent_size(&options),
         by_filecount,
         ignore_hidden: config.get_ignore_hidden(&options),
+        follow_links,
     };
 
     let _rayon = init_rayon();
