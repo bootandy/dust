@@ -19,4 +19,5 @@ complete -c dust -s f -l filecount -d 'Directory \'size\' is number of child fil
 complete -c dust -s i -l ignore_hidden -d 'Do not display hidden files'
 complete -c dust -s t -l file_types -d 'show only these file types'
 complete -c dust -s H -l si -d 'print sizes in powers of 1000 (e.g., 1.1G)'
+complete -c dust -s P -l no-progress -d 'Disable the progress indication.'
 complete -c dust -s D -l only-dir -d 'Only directories will be displayed.'

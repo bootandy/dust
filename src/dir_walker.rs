@@ -32,13 +32,13 @@ pub struct WalkData<'a> {
     pub by_filecount: bool,
     pub ignore_hidden: bool,
     pub follow_links: bool,
+    pub progress_config: Option<&'a Arc<PConfig>>,
+    pub progress_data: Option<&'a Arc<PAtomicInfo>>
 }
 
 pub fn walk_it(
     dirs: HashSet<PathBuf>,
     walk_data: WalkData,
-    info_data: Arc<PAtomicInfo>,
-    info_conf: Arc<PConfig>,
 ) -> (Vec<Node>, bool) {
     let permissions_flag = AtomicBool::new(false);
 
@@ -47,9 +47,9 @@ pub fn walk_it(
         .into_iter()
         .filter_map(|d| {
             clean_inodes(
-                walk(d, &permissions_flag, &walk_data, &info_data, &info_conf, 0)?,
+                walk(d, &permissions_flag, &walk_data, 0)?,
                 &mut inodes,
-                &info_data,
+                walk_data.progress_data,
                 walk_data.use_apparent_size,
             )
         })
@@ -61,10 +61,12 @@ pub fn walk_it(
 fn clean_inodes(
     x: Node,
     inodes: &mut HashSet<(u64, u64)>,
-    info_data: &Arc<PAtomicInfo>,
+    info_data: Option<&Arc<PAtomicInfo>>,
     use_apparent_size: bool,
 ) -> Option<Node> {
-    info_data.state.set(progress::Operation::PREPARING);
+    if let Some(ref data) = info_data {
+        data.state.set(progress::Operation::PREPARING);
+    }
 
     if !use_apparent_size {
         if let Some(id) = x.inode_device {
@@ -141,21 +143,24 @@ fn walk(
     dir: PathBuf,
     permissions_flag: &AtomicBool,
     walk_data: &WalkData,
-    info_data: &Arc<PAtomicInfo>,
-    info_conf: &Arc<PConfig>,
     depth: usize,
 ) -> Option<Node> {
-    info_data.state.set(progress::Operation::INDEXING);
-    if depth == 0 {
-        info_data
-            .current_path
-            .set(dir.to_string_lossy().to_string());
+    let info_data = &walk_data.progress_data;
+    let info_conf = &walk_data.progress_config;
 
-        // reset the value between each target dirs
-        info_data.files_skipped.set(0);
-        info_data.directories_skipped.set(0);
-        info_data.total_file_size.set(0);
-        info_data.file_number.set(0);
+    if let Some(ref data) = info_data {
+        data.state.set(progress::Operation::INDEXING);
+        if depth == 0 {
+            data
+                .current_path
+                .set(dir.to_string_lossy().to_string());
+    
+            // reset the value between each target dirs
+            data.files_skipped.set(0);
+            data.directories_skipped.set(0);
+            data.total_file_size.set(0);
+            data.file_number.set(0);
+        }
     }
 
     let mut children = vec![];
@@ -179,8 +184,6 @@ fn walk(
                                     entry.path(),
                                     permissions_flag,
                                     walk_data,
-                                    info_data,
-                                    info_conf,
                                     depth + 1,
                                 )
                             }
@@ -199,14 +202,23 @@ fn walk(
 
                             if !ignore_file(entry, walk_data) {
                                 if let Some(ref node) = n {
-                                    info_data.file_number.add(1);
+                                    if let Some(ref data) = info_data {
+                                        data.file_number.add(1);
+                                    }
 
-                                    if !info_conf.file_count_only {
-                                        info_data.total_file_size.add(node.size);
+                                    // Use `is_some_and` when stabilized
+                                    if let Some(ref conf) = info_conf {
+                                        if !conf.file_count_only {
+                                            if let Some(ref data) = info_data {
+                                                data.total_file_size.add(node.size);
+                                            }
+                                        }
                                     }
                                 }
                             } else {
-                                info_data.files_skipped.add(1);
+                                if let Some(ref data) = info_data {
+                                    data.files_skipped.add(1);
+                                }
                             }
 
                             return n;
@@ -214,14 +226,19 @@ fn walk(
                             None
                         }
                     } else {
-                        info_data.files_skipped.add(1);
+                        if let Some(ref data) = info_data {
+                            data.files_skipped.add(1);
+                        }
+
 
                         None
                     }
                 } else {
                     permissions_flag.store(true, atomic::Ordering::Relaxed);
 
-                    info_data.directories_skipped.add(1);
+                    if let Some(ref data) = info_data {
+                        data.directories_skipped.add(1);
+                    }
 
                     None
                 }
@@ -232,9 +249,13 @@ fn walk(
         if !dir.exists() {
             permissions_flag.store(true, atomic::Ordering::Relaxed);
 
-            info_data.files_skipped.add(1);
+            if let Some(ref data) = info_data {
+                data.files_skipped.add(1);
+            }
         } else {
-            info_data.directories_skipped.add(1);
+            if let Some(ref data) = info_data {
+                data.directories_skipped.add(1);
+            }
         }
     }
     build_node(
@@ -270,16 +291,15 @@ mod tests {
     fn test_should_ignore_file() {
         let mut inodes = HashSet::new();
         let n = create_node();
-        let info = Arc::new(PAtomicInfo::default());
 
         // First time we insert the node
         assert_eq!(
-            clean_inodes(n.clone(), &mut inodes, &info, false),
+            clean_inodes(n.clone(), &mut inodes, None, false),
             Some(n.clone())
         );
 
         // Second time is a duplicate - we ignore it
-        assert_eq!(clean_inodes(n.clone(), &mut inodes, &info, false), None);
+        assert_eq!(clean_inodes(n.clone(), &mut inodes, None, false), None);
     }
 
     #[test]
@@ -287,15 +307,14 @@ mod tests {
     fn test_should_not_ignore_files_if_using_apparent_size() {
         let mut inodes = HashSet::new();
         let n = create_node();
-        let info = Arc::new(PAtomicInfo::default());
 
         // If using apparent size we include Nodes, even if duplicate inodes
         assert_eq!(
-            clean_inodes(n.clone(), &mut inodes, &info, true),
+            clean_inodes(n.clone(), &mut inodes, None, true),
             Some(n.clone())
         );
         assert_eq!(
-            clean_inodes(n.clone(), &mut inodes, &info, true),
+            clean_inodes(n.clone(), &mut inodes, None, true),
             Some(n.clone())
         );
     }

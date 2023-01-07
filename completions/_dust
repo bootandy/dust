@@ -56,6 +56,8 @@ _dust() {
 '(-d --depth)--file_types[show only these file types]' \
 '-H[print sizes in powers of 1000 (e.g., 1.1G)]' \
 '--si[print sizes in powers of 1000 (e.g., 1.1G)]' \
+'-P[Disable the progress indication.]' \
+'--no-progress[Disable the progress indication.]' \
 '-D[Only directories will be displayed.]' \
 '--only-dir[Only directories will be displayed.]' \
 '*::inputs:' \

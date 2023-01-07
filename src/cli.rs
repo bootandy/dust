@@ -137,6 +137,12 @@ pub fn build_cli() -> Command<'static> {
                 .long("si")
                 .help("print sizes in powers of 1000 (e.g., 1.1G)")
         )
+        .arg(
+            Arg::new("disable_progress")
+                .short('P')
+                .long("no-progress")
+                .help("Disable the progress indication."),
+        )
         .arg(Arg::new("inputs").multiple_occurrences(true))
         .arg(
             Arg::new("only_dir")
