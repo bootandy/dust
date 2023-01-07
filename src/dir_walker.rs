@@ -26,6 +26,7 @@ pub struct WalkData<'a> {
     pub use_apparent_size: bool,
     pub by_filecount: bool,
     pub ignore_hidden: bool,
+    pub follow_links: bool,
 }
 
 pub fn walk_it(dirs: HashSet<PathBuf>, walk_data: WalkData) -> (Vec<Node>, bool) {
@@ -144,7 +145,7 @@ fn walk(
 
                     if !ignore_file(entry, walk_data) {
                         if let Ok(data) = entry.file_type() {
-                            return if data.is_dir() && !data.is_symlink() {
+                            return if data.is_dir() || (walk_data.follow_links && data.is_symlink()) {
                                 walk(entry.path(), permissions_flag, walk_data, depth + 1)
                             } else {
                                 build_node(
