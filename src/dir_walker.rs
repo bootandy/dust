@@ -174,8 +174,8 @@ fn walk(
 
                     if !ignore_file(entry, walk_data) {
                         if let Ok(data) = entry.file_type() {
-                            return if data.is_dir() || (walk_data.follow_links && data.is_symlink()) {
-                                walk(
+                            if data.is_dir() || (walk_data.follow_links && data.is_symlink()) {
+                                return walk(
                                     entry.path(),
                                     permissions_flag,
                                     walk_data,
@@ -183,29 +183,29 @@ fn walk(
                                     info_conf,
                                     depth + 1,
                                 )
-                            } else {
-                                let n = build_node(
-                                    entry.path(),
-                                    vec![],
-                                    walk_data.filter_regex,
-                                    walk_data.invert_filter_regex,
-                                    walk_data.use_apparent_size,
-                                    data.is_symlink(),
-                                    data.is_file(),
-                                    walk_data.by_filecount,
-                                    depth,
-                                );
+                            }
 
-                                if let Some(ref node) = n {
-                                    info_data.file_number.add(1);
+                            let n = build_node(
+                                entry.path(),
+                                vec![],
+                                walk_data.filter_regex,
+                                walk_data.invert_filter_regex,
+                                walk_data.use_apparent_size,
+                                data.is_symlink(),
+                                data.is_file(),
+                                walk_data.by_filecount,
+                                depth,
+                            );
 
-                                    if !info_conf.file_count_only {
-                                        info_data.total_file_size.add(node.size);
-                                    }
+                            if let Some(ref node) = n {
+                                info_data.file_number.add(1);
+
+                                if !info_conf.file_count_only {
+                                    info_data.total_file_size.add(node.size);
                                 }
+                            }
 
-                                n
-                            };
+                            return n;
                         }
                     } else {
                         info_data.files_skipped.add(1);
