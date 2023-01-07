@@ -1,5 +1,8 @@
 use clap::{Arg, Command};
 
+// For single thread mode set this variable on your command line:
+// export RAYON_NUM_THREADS=1
+
 pub fn build_cli() -> Command<'static> {
     Command::new("Dust")
         .about("Like du but more intuitive")
