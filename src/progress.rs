@@ -9,6 +9,8 @@ use std::{
     time::{Duration, Instant},
 };
 
+use crate::display;
+
 /* -------------------------------------------------------------------------- */
 
 pub const ATOMIC_ORDERING: Ordering = Ordering::Relaxed;
@@ -113,33 +115,11 @@ impl TotalSize {
             ..Default::default()
         }
     }
-
-    fn format_size(&self) -> String {
-        let inner = self.inner.get();
-        let number_len = (inner as f32).log10().floor() as u32;
-
-        let end = self.get_size_end(number_len);
-
-        let size_base: u64 = if self.use_iso { 1000 } else { 1024 };
-        let showed_number = inner / (size_base.pow((number_len / 3).min(4)));
-        format!("{} {}", showed_number, end)
-        // format!("{} bytes", inner)
-    }
-
-    fn get_size_end(&self, size: u32) -> &'static str {
-        match size / 3 {
-            0 => "bytes",
-            1 => "K",
-            2 => "M",
-            3 => "G",
-            _ => "T",
-        }
-    }
 }
 
 impl Display for TotalSize {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(self.format_size().as_str())
+        f.write_str(&display::human_readable_number(self.inner.get(), self.use_iso))
     }
 }
 

@@ -377,7 +377,7 @@ fn get_pretty_name(
     }
 }
 
-fn human_readable_number(size: u64, iso: bool) -> String {
+pub fn human_readable_number(size: u64, iso: bool) -> String {
     for (i, u) in UNITS.iter().enumerate() {
         let num: u64 = if iso { 1000 } else { 1024 };
         let marker = num.pow((UNITS.len() - i) as u32);
