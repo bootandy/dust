@@ -11,10 +11,10 @@ mod progress;
 mod utils;
 
 use crate::cli::build_cli;
-use progress::PConfig;
-use progress::PIndicator;
 use dir_walker::WalkData;
 use filter::AggregateData;
+use progress::PConfig;
+use progress::PIndicator;
 use std::collections::HashSet;
 use std::io::BufRead;
 use std::process;
@@ -203,15 +203,12 @@ fn main() {
         ignore_hidden,
         follow_links,
         progress_config: info_conf,
-        progress_data: info_data
+        progress_data: info_data,
     };
 
     let _rayon = init_rayon();
 
-    let (top_level_nodes, has_errors) = walk_it(
-        simplified_dirs,
-        walk_data
-    );
+    let (top_level_nodes, has_errors) = walk_it(simplified_dirs, walk_data);
 
     let tree = match summarize_file_types {
         true => get_all_file_types(&top_level_nodes, number_of_lines),

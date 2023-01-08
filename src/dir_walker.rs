@@ -33,13 +33,10 @@ pub struct WalkData<'a> {
     pub ignore_hidden: bool,
     pub follow_links: bool,
     pub progress_config: Option<&'a Arc<PConfig>>,
-    pub progress_data: Option<&'a Arc<PAtomicInfo>>
+    pub progress_data: Option<&'a Arc<PAtomicInfo>>,
 }
 
-pub fn walk_it(
-    dirs: HashSet<PathBuf>,
-    walk_data: WalkData,
-) -> (Vec<Node>, bool) {
+pub fn walk_it(dirs: HashSet<PathBuf>, walk_data: WalkData) -> (Vec<Node>, bool) {
     let permissions_flag = AtomicBool::new(false);
 
     let mut inodes = HashSet::new();
@@ -64,7 +61,7 @@ fn clean_inodes(
     info_data: Option<&Arc<PAtomicInfo>>,
     use_apparent_size: bool,
 ) -> Option<Node> {
-    if let Some(ref data) = info_data {
+    if let Some(data) = info_data {
         data.state.set(progress::Operation::PREPARING);
     }
 
@@ -148,13 +145,11 @@ fn walk(
     let info_data = &walk_data.progress_data;
     let info_conf = &walk_data.progress_config;
 
-    if let Some(ref data) = info_data {
+    if let Some(data) = info_data {
         data.state.set(progress::Operation::INDEXING);
         if depth == 0 {
-            data
-                .current_path
-                .set(dir.to_string_lossy().to_string());
-    
+            data.current_path.set(dir.to_string_lossy().to_string());
+
             // reset the value between each target dirs
             data.files_skipped.set(0);
             data.directories_skipped.set(0);
@@ -180,12 +175,7 @@ fn walk(
                     if !ignore_file(entry, walk_data) {
                         if let Ok(data) = entry.file_type() {
                             if data.is_dir() || (walk_data.follow_links && data.is_symlink()) {
-                                return walk(
-                                    entry.path(),
-                                    permissions_flag,
-                                    walk_data,
-                                    depth + 1,
-                                )
+                                return walk(entry.path(), permissions_flag, walk_data, depth + 1);
                             }
 
                             let n = build_node(
@@ -202,41 +192,38 @@ fn walk(
 
                             if !ignore_file(entry, walk_data) {
                                 if let Some(ref node) = n {
-                                    if let Some(ref data) = info_data {
+                                    if let Some(data) = info_data {
                                         data.file_number.add(1);
                                     }
 
                                     // Use `is_some_and` when stabilized
-                                    if let Some(ref conf) = info_conf {
+                                    if let Some(conf) = info_conf {
                                         if !conf.file_count_only {
-                                            if let Some(ref data) = info_data {
+                                            if let Some(data) = info_data {
                                                 data.total_file_size.add(node.size);
                                             }
                                         }
                                     }
                                 }
-                            } else {
-                                if let Some(ref data) = info_data {
-                                    data.files_skipped.add(1);
-                                }
+                            } else if let Some(data) = info_data {
+                                data.files_skipped.add(1);
                             }
 
-                            return n;
+                            n
                         } else {
                             None
                         }
                     } else {
-                        if let Some(ref data) = info_data {
+                        if let Some(data) = info_data {
                             data.files_skipped.add(1);
                         }
-
 
                         None
                     }
                 } else {
                     permissions_flag.store(true, atomic::Ordering::Relaxed);
 
-                    if let Some(ref data) = info_data {
+                    if let Some(data) = info_data {
                         data.directories_skipped.add(1);
                     }
 
@@ -249,13 +236,11 @@ fn walk(
         if !dir.exists() {
             permissions_flag.store(true, atomic::Ordering::Relaxed);
 
-            if let Some(ref data) = info_data {
+            if let Some(data) = info_data {
                 data.files_skipped.add(1);
             }
-        } else {
-            if let Some(ref data) = info_data {
-                data.directories_skipped.add(1);
-            }
+        } else if let Some(data) = info_data {
+            data.directories_skipped.add(1);
         }
     }
     build_node(

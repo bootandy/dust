@@ -28,7 +28,7 @@ impl Config {
         Some(true) == self.no_colors || options.is_present("no_colors")
     }
     pub fn get_disable_progress(&self, options: &ArgMatches) -> bool {
-        Some(true) == self.disable_progress ||options.is_present("disable_progress")
+        Some(true) == self.disable_progress || options.is_present("disable_progress")
     }
     pub fn get_apparent_size(&self, options: &ArgMatches) -> bool {
         Some(true) == self.display_apparent_size || options.is_present("display_apparent_size")

@@ -119,7 +119,10 @@ impl TotalSize {
 
 impl Display for TotalSize {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&display::human_readable_number(self.inner.get(), self.use_iso))
+        f.write_str(&display::human_readable_number(
+            self.inner.get(),
+            self.use_iso,
+        ))
     }
 }
 
@@ -145,7 +148,7 @@ impl ThreadSyncMathTrait<u64> for TotalSize {
 pub struct PConfig {
     pub file_count_only: bool,
     pub ignore_hidden: bool,
-    pub use_iso: bool
+    pub use_iso: bool,
 }
 
 pub struct PIndicator {
