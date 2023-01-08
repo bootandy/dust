@@ -138,6 +138,23 @@ pub fn test_output_skip_total() {
 }
 
 #[test]
+pub fn test_output_screen_reader() {
+    let output = build_command(vec!["--screen-reader", "-c", "tests/test_dir/"]);
+    println!("{}", output);
+    assert!(output.contains("test_dir   0"));
+    assert!(output.contains("many       1"));
+    assert!(output.contains("hello_file 2"));
+    assert!(output.contains("a_file     2"));
+
+    // Verify no 'symbols' reported by screen reader
+    assert!(!output.contains("│"));
+
+    for block in ['█', '▓', '▒', '░'] {
+        assert!(!output.contains(block));
+    }
+}
+
+#[test]
 pub fn test_show_files_by_regex_match_lots() {
     // Check we can see '.rs' files in the tests directory
     let output = build_command(vec!["-c", "-e", "\\.rs$", "tests"]);

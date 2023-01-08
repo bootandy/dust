@@ -225,6 +225,7 @@ fn main() {
             &root_node,
             iso,
             config.get_skip_total(&options),
+            config.get_screen_reader(&options),
         )
     }
 }

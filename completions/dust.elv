@@ -50,6 +50,8 @@ set edit:completion:arg-completer[dust] = {|@words|
             cand --no-colors 'No colors will be printed (Useful for commands like: watch)'
             cand -b 'No percent bars or percentages will be displayed'
             cand --no-percent-bars 'No percent bars or percentages will be displayed'
+            cand -R 'For screen readers. Removes bars. Adds new column: depth level (May want to use -p too for full path)'
+            cand --screen-reader 'For screen readers. Removes bars. Adds new column: depth level (May want to use -p too for full path)'
             cand --skip-total 'No total row will be displayed'
             cand -f 'Directory ''size'' is number of child files/dirs not disk size'
             cand --filecount 'Directory ''size'' is number of child files/dirs not disk size'
