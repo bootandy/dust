@@ -82,6 +82,12 @@ pub fn build_cli() -> Command<'static> {
                 .help("Minimum size file to include in output"),
         )
         .arg(
+            Arg::new("screen_reader")
+                .short('R')
+                .long("screen-reader")
+                .help("For screen readers. Removes bars. Adds new column: depth level (May want to use -p too for full path)"),
+        )
+        .arg(
             Arg::new("skip_total")
                 .long("skip-total")
                 .help("No total row will be displayed"),

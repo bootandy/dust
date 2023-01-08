@@ -53,6 +53,8 @@ Register-ArgumentCompleter -Native -CommandName 'dust' -ScriptBlock {
             [CompletionResult]::new('--no-colors', 'no-colors', [CompletionResultType]::ParameterName, 'No colors will be printed (Useful for commands like: watch)')
             [CompletionResult]::new('-b', 'b', [CompletionResultType]::ParameterName, 'No percent bars or percentages will be displayed')
             [CompletionResult]::new('--no-percent-bars', 'no-percent-bars', [CompletionResultType]::ParameterName, 'No percent bars or percentages will be displayed')
+            [CompletionResult]::new('-R', 'R', [CompletionResultType]::ParameterName, 'For screen readers. Removes bars. Adds new column: depth level (May want to use -p too for full path)')
+            [CompletionResult]::new('--screen-reader', 'screen-reader', [CompletionResultType]::ParameterName, 'For screen readers. Removes bars. Adds new column: depth level (May want to use -p too for full path)')
             [CompletionResult]::new('--skip-total', 'skip-total', [CompletionResultType]::ParameterName, 'No total row will be displayed')
             [CompletionResult]::new('-f', 'f', [CompletionResultType]::ParameterName, 'Directory ''size'' is number of child files/dirs not disk size')
             [CompletionResult]::new('--filecount', 'filecount', [CompletionResultType]::ParameterName, 'Directory ''size'' is number of child files/dirs not disk size')

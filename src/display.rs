@@ -22,6 +22,7 @@ pub struct DisplayData {
     pub is_reversed: bool,
     pub colors_on: bool,
     pub by_filecount: bool,
+    pub is_screen_reader: bool,
     pub num_chars_needed_on_left_most: usize,
     pub base_size: u64,
     pub longest_string_length: usize,
@@ -83,6 +84,9 @@ impl DrawData<'_> {
 
     // TODO: can we test this?
     fn generate_bar(&self, node: &DisplayNode, level: usize) -> String {
+        if self.display_data.is_screen_reader {
+            return level.to_string();
+        }
         let chars_in_bar = self.percent_bar.chars().count();
         let num_bars = chars_in_bar as f32 * self.display_data.percent_size(node);
         let mut num_not_my_bar = (chars_in_bar as i32) - num_bars as i32;
@@ -104,6 +108,7 @@ impl DrawData<'_> {
     }
 }
 
+// TODO: Push these into one object ?
 #[allow(clippy::too_many_arguments)]
 pub fn draw_it(
     use_full_path: bool,
@@ -115,6 +120,7 @@ pub fn draw_it(
     root_node: &DisplayNode,
     iso: bool,
     skip_total: bool,
+    is_screen_reader: bool,
 ) {
     let biggest = match skip_total {
         false => root_node,
@@ -138,8 +144,13 @@ pub fn draw_it(
 
     let allowed_width = terminal_width - num_chars_needed_on_left_most - 2;
     let num_indent_chars = 3;
-    let longest_string_length =
-        find_longest_dir_name(root_node, num_indent_chars, allowed_width, !use_full_path);
+    let longest_string_length = find_longest_dir_name(
+        root_node,
+        num_indent_chars,
+        allowed_width,
+        !use_full_path,
+        is_screen_reader,
+    );
 
     let max_bar_length = if no_percent_bars || longest_string_length + 7 >= allowed_width {
         0
@@ -154,6 +165,7 @@ pub fn draw_it(
         is_reversed,
         colors_on: !no_colors,
         by_filecount,
+        is_screen_reader,
         num_chars_needed_on_left_most,
         base_size: biggest.size,
         longest_string_length,
@@ -193,17 +205,23 @@ fn find_longest_dir_name(
     indent: usize,
     terminal: usize,
     long_paths: bool,
+    is_screen_reader: bool,
 ) -> usize {
     let printable_name = get_printable_name(&node.name, long_paths);
-    let longest = min(
-        UnicodeWidthStr::width(&*printable_name) + 1 + indent,
-        terminal,
-    );
+
+    let longest = if is_screen_reader {
+        UnicodeWidthStr::width(&*printable_name) + 1
+    } else {
+        min(
+            UnicodeWidthStr::width(&*printable_name) + 1 + indent,
+            terminal,
+        )
+    };
 
     // each none root tree drawing is 2 more chars, hence we increment indent by 2
     node.children
         .iter()
-        .map(|c| find_longest_dir_name(c, indent + 2, terminal, long_paths))
+        .map(|c| find_longest_dir_name(c, indent + 2, terminal, long_paths, is_screen_reader))
         .fold(longest, max)
 }
 
@@ -314,14 +332,20 @@ fn maybe_trim_filename(name_in: String, indent: &str, display_data: &DisplayData
 pub fn format_string(
     node: &DisplayNode,
     indent: &str,
-    percent_bar: &str,
+    bars: &str,
     is_biggest: bool,
     display_data: &DisplayData,
 ) -> String {
-    let (percents, name_and_padding) = get_name_percent(node, indent, percent_bar, display_data);
+    let (percent, name_and_padding) = get_name_percent(node, indent, bars, display_data);
     let pretty_size = get_pretty_size(node, is_biggest, display_data);
     let pretty_name = get_pretty_name(node, name_and_padding, display_data);
-    format!("{pretty_size} {indent} {pretty_name}{percents}")
+    // we can clean this and the method below somehow, not sure yet
+    if display_data.is_screen_reader {
+        // if screen_reader then bars is 'depth'
+        format!("{pretty_name} {bars} {pretty_size}{percent}")
+    } else {
+        format!("{pretty_size} {indent} {pretty_name}{percent}")
+    }
 }
 
 fn get_name_percent(
@@ -330,7 +354,14 @@ fn get_name_percent(
     bar_chart: &str,
     display_data: &DisplayData,
 ) -> (String, String) {
-    if !bar_chart.is_empty() {
+    if display_data.is_screen_reader {
+        let percent = display_data.percent_size(node) * 100.0;
+        let percent_size_str = format!("{percent:.0}%");
+        let percents = format!(" {percent_size_str:>4}",);
+        let name = pad_or_trim_filename(node, "", display_data);
+        (percents, name)
+    // Bar chart being empty may come from either config or the screen not being wide enough
+    } else if !bar_chart.is_empty() {
         let percent = display_data.percent_size(node) * 100.0;
         let percent_size_str = format!("{percent:.0}%");
         let percents = format!("│{bar_chart} │ {percent_size_str:>4}");
@@ -407,8 +438,9 @@ mod tests {
             is_reversed: false,
             colors_on: false,
             by_filecount: false,
+            is_screen_reader: false,
             num_chars_needed_on_left_most: 5,
-            base_size: 1,
+            base_size: 2_u64.pow(12), // 4.0K
             longest_string_length,
             ls_colors: LsColors::from_env().unwrap_or_default(),
             iso: false,
@@ -425,14 +457,9 @@ mod tests {
         let indent = "┌─┴";
         let percent_bar = "";
         let is_biggest = false;
+        let data = get_fake_display_data(20);
 
-        let s = format_string(
-            &n,
-            indent,
-            percent_bar,
-            is_biggest,
-            &get_fake_display_data(20),
-        );
+        let s = format_string(&n, indent, percent_bar, is_biggest, &data);
         assert_eq!(s, " 4.0K ┌─┴ short");
     }
 
@@ -448,12 +475,29 @@ mod tests {
         let percent_bar = "";
         let is_biggest = false;
 
-        let dd = get_fake_display_data(64);
-        let s = format_string(&n, indent, percent_bar, is_biggest, &dd);
+        let data = get_fake_display_data(64);
+        let s = format_string(&n, indent, percent_bar, is_biggest, &data);
         assert_eq!(
             s,
             " 4.0K ┌─┴ very_long_name_longer_than_the_eighty_character_limit_very_.."
         );
+    }
+
+    #[test]
+    fn test_format_str_screen_reader() {
+        let n = DisplayNode {
+            name: PathBuf::from("/short"),
+            size: 2_u64.pow(12), // This is 4.0K
+            children: vec![],
+        };
+        let indent = "";
+        let percent_bar = "3";
+        let is_biggest = false;
+        let mut data = get_fake_display_data(20);
+        data.is_screen_reader = true;
+
+        let s = format_string(&n, indent, percent_bar, is_biggest, &data);
+        assert_eq!(s, "short               3  4.0K 100%");
     }
 
     #[test]

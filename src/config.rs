@@ -16,6 +16,7 @@ pub struct Config {
     pub no_colors: Option<bool>,
     pub no_bars: Option<bool>,
     pub skip_total: Option<bool>,
+    pub screen_reader: Option<bool>,
     pub ignore_hidden: Option<bool>,
     pub iso: Option<bool>,
     pub min_size: Option<String>,
@@ -54,6 +55,9 @@ impl Config {
     }
     pub fn get_skip_total(&self, options: &ArgMatches) -> bool {
         Some(true) == self.skip_total || options.is_present("skip_total")
+    }
+    pub fn get_screen_reader(&self, options: &ArgMatches) -> bool {
+        Some(true) == self.screen_reader || options.is_present("screen_reader")
     }
     pub fn get_min_size(&self, options: &ArgMatches, iso: bool) -> Option<usize> {
         let size_from_param = options.value_of("min_size");
