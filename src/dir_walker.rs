@@ -43,12 +43,11 @@ pub fn walk_it(dirs: HashSet<PathBuf>, walk_data: WalkData) -> (Vec<Node>, bool)
     let top_level_nodes: Vec<_> = dirs
         .into_iter()
         .filter_map(|d| {
-            clean_inodes(
-                walk(d, &permissions_flag, &walk_data, 0)?,
-                &mut inodes,
-                walk_data.progress_data,
-                walk_data.use_apparent_size,
-            )
+            let node = walk(d, &permissions_flag, &walk_data, 0)?;
+            if let Some(data) = walk_data.progress_data {
+                data.state.set(progress::Operation::PREPARING);
+            }
+            clean_inodes(node, &mut inodes, walk_data.use_apparent_size)
         })
         .collect();
     (top_level_nodes, permissions_flag.into_inner())
@@ -58,13 +57,8 @@ pub fn walk_it(dirs: HashSet<PathBuf>, walk_data: WalkData) -> (Vec<Node>, bool)
 fn clean_inodes(
     x: Node,
     inodes: &mut HashSet<(u64, u64)>,
-    info_data: Option<&Arc<PAtomicInfo>>,
     use_apparent_size: bool,
 ) -> Option<Node> {
-    if let Some(data) = info_data {
-        data.state.set(progress::Operation::PREPARING);
-    }
-
     if !use_apparent_size {
         if let Some(id) = x.inode_device {
             if !inodes.insert(id) {
@@ -78,7 +72,7 @@ fn clean_inodes(
     tmp.sort_by(sort_by_inode);
     let new_children: Vec<_> = tmp
         .into_iter()
-        .filter_map(|c| clean_inodes(c, inodes, info_data, use_apparent_size))
+        .filter_map(|c| clean_inodes(c, inodes, use_apparent_size))
         .collect();
 
     Some(Node {
@@ -143,7 +137,6 @@ fn walk(
     depth: usize,
 ) -> Option<Node> {
     let info_data = &walk_data.progress_data;
-    let info_conf = &walk_data.progress_config;
 
     if let Some(data) = info_data {
         data.state.set(progress::Operation::INDEXING);
@@ -151,8 +144,6 @@ fn walk(
             data.current_path.set(dir.to_string_lossy().to_string());
 
             // reset the value between each target dirs
-            data.files_skipped.set(0);
-            data.directories_skipped.set(0);
             data.total_file_size.set(0);
             data.file_number.set(0);
         }
@@ -178,7 +169,7 @@ fn walk(
                                 return walk(entry.path(), permissions_flag, walk_data, depth + 1);
                             }
 
-                            let n = build_node(
+                            let node = build_node(
                                 entry.path(),
                                 vec![],
                                 walk_data.filter_regex,
@@ -190,57 +181,27 @@ fn walk(
                                 depth,
                             );
 
-                            if !ignore_file(entry, walk_data) {
-                                if let Some(ref node) = n {
-                                    if let Some(data) = info_data {
-                                        data.file_number.add(1);
-                                    }
-
-                                    // Use `is_some_and` when stabilized
-                                    if let Some(conf) = info_conf {
-                                        if !conf.file_count_only {
-                                            if let Some(data) = info_data {
-                                                data.total_file_size.add(node.size);
-                                            }
-                                        }
-                                    }
+                            if let Some(data) = info_data {
+                                data.file_number.add(1);
+                                if let Some(ref file) = node {
+                                    data.total_file_size.add(file.size);
                                 }
-                            } else if let Some(data) = info_data {
-                                data.files_skipped.add(1);
                             }
 
-                            n
-                        } else {
-                            None
+                            return node;
                         }
-                    } else {
-                        if let Some(data) = info_data {
-                            data.files_skipped.add(1);
-                        }
-
-                        None
                     }
                 } else {
                     permissions_flag.store(true, atomic::Ordering::Relaxed);
-
-                    if let Some(data) = info_data {
-                        data.directories_skipped.add(1);
-                    }
-
-                    None
                 }
+                None
             })
             .collect();
     } else {
         // Handle edge case where dust is called with a file instead of a directory
         if !dir.exists() {
+            // TODO: Migrate permissions_flag to the new progress_data object
             permissions_flag.store(true, atomic::Ordering::Relaxed);
-
-            if let Some(data) = info_data {
-                data.files_skipped.add(1);
-            }
-        } else if let Some(data) = info_data {
-            data.directories_skipped.add(1);
         }
     }
     build_node(
@@ -278,13 +239,10 @@ mod tests {
         let n = create_node();
 
         // First time we insert the node
-        assert_eq!(
-            clean_inodes(n.clone(), &mut inodes, None, false),
-            Some(n.clone())
-        );
+        assert_eq!(clean_inodes(n.clone(), &mut inodes, false), Some(n.clone()));
 
         // Second time is a duplicate - we ignore it
-        assert_eq!(clean_inodes(n.clone(), &mut inodes, None, false), None);
+        assert_eq!(clean_inodes(n.clone(), &mut inodes, false), None);
     }
 
     #[test]
@@ -294,13 +252,7 @@ mod tests {
         let n = create_node();
 
         // If using apparent size we include Nodes, even if duplicate inodes
-        assert_eq!(
-            clean_inodes(n.clone(), &mut inodes, None, true),
-            Some(n.clone())
-        );
-        assert_eq!(
-            clean_inodes(n.clone(), &mut inodes, None, true),
-            Some(n.clone())
-        );
+        assert_eq!(clean_inodes(n.clone(), &mut inodes, true), Some(n.clone()));
+        assert_eq!(clean_inodes(n.clone(), &mut inodes, true), Some(n.clone()));
     }
 }
