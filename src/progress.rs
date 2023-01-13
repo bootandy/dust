@@ -15,6 +15,11 @@ use crate::display;
 
 pub const ATOMIC_ORDERING: Ordering = Ordering::Relaxed;
 
+const SHOW_WALKING_AFTER: u64 = 0;
+const PROGRESS_CHARS_DELTA: u64 = 100;
+const PROGRESS_CHARS: [char; 4] = ['-', '\\', '|', '/'];
+const PROGRESS_CHARS_LEN: usize = PROGRESS_CHARS.len();
+
 // small wrappers for atomic number to reduce overhead
 pub trait ThreadSyncTrait<T> {
     fn set(&self, val: T);
@@ -141,6 +146,14 @@ impl ThreadSyncMathTrait<u64> for TotalSize {
 }
 
 /* -------------------------------------------------------------------------- */
+fn format(data: &PAtomicInfo, progress_char_i: usize, s: &str) -> String {
+    format!(
+        "\r{} \"{}\"... {}",
+        s,
+        data.current_path.get(),
+        PROGRESS_CHARS[progress_char_i],
+    )
+}
 
 #[derive(Default)]
 pub struct PConfig {
@@ -151,61 +164,44 @@ pub struct PConfig {
 
 pub struct PIndicator {
     thread_run: Arc<AtomicBool>,
-    thread: JoinHandle<()>,
+    pub thread: Option<JoinHandle<()>>,
     pub data: Arc<PAtomicInfo>,
     pub config: Arc<PConfig>,
 }
 
 impl PIndicator {
-    pub fn spawn(config: PConfig) -> Self {
-        macro_rules! init_shared_data {
-            (let $ident: ident, $ident2: ident = $value: expr) => {
-                let $ident = Arc::new($value);
-                let $ident2 = $ident.clone();
-            };
+    pub fn build_me(c: PConfig) -> Self {
+        Self {
+            thread_run: Arc::new(AtomicBool::new(true)),
+            thread: None,
+            data: Arc::new(PAtomicInfo::new(&c)),
+            config: Arc::new(c),
         }
+    }
 
-        init_shared_data!(let instant, instant2 = Instant::now());
-        init_shared_data!(let time_thread_run, time_thread_run2 = AtomicBool::new(true));
-        init_shared_data!(let config, config2 = config);
-        init_shared_data!(let data, data2 = PAtomicInfo::new(&config));
+    pub fn spawn(&mut self) {
+        let instant = Instant::now();
+        let data_thread = self.data.clone();
+        let is_building_data_const = self.thread_run.clone();
+        let c = self.config.clone();
 
         let time_info_thread = std::thread::spawn(move || {
-            const SHOW_WALKING_AFTER: u64 = 0;
-
-            const PROGRESS_CHARS_DELTA: u64 = 100;
-            const PROGRESS_CHARS: [char; 4] = ['-', '\\', '|', '/'];
-            const PROGRESS_CHARS_LEN: usize = PROGRESS_CHARS.len();
             let mut progress_char_i: usize = 0;
-
             let mut stdout = std::io::stdout();
-
             let mut last_msg_len = 0;
 
-            while time_thread_run2.load(ATOMIC_ORDERING) {
-                if instant2.elapsed() > Duration::from_secs(SHOW_WALKING_AFTER) {
-                    // print!("{:?}", *state2.read().unwrap());
-
+            while is_building_data_const.load(ATOMIC_ORDERING) {
+                if instant.elapsed() > Duration::from_secs(SHOW_WALKING_AFTER) {
                     // clear the line
                     print!("\r{:width$}", " ", width = last_msg_len);
 
-                    macro_rules! format_base {
-                        ($state: expr) => {
-                            format!(
-                                "\r{} \"{}\"... {}",
-                                $state,
-                                data2.current_path.get(),
-                                PROGRESS_CHARS[progress_char_i],
-                            )
-                        };
-                    }
-
-                    let msg = match data2.state.get() {
+                    let msg = match data_thread.state.get() {
                         Operation::INDEXING => {
                             const PROPS_SEPARATOR: &str = ", ";
 
-                            let base = format_base!("Indexing");
+                            let base = format(&data_thread, progress_char_i, "Indexing");
 
+                            // why all the macros ?
                             macro_rules! format_property {
                                 ($value: ident, $singular: expr, $plural: expr) => {
                                     format!(
@@ -218,11 +214,11 @@ impl PIndicator {
 
                             let mut main_props = Vec::new();
 
-                            let fn_ = data2.file_number.get();
-                            if config2.file_count_only {
+                            let fn_ = data_thread.file_number.get();
+                            if c.file_count_only {
                                 main_props.push(format_property!(fn_, "file", "files"));
                             } else {
-                                main_props.push(format!("{}", data2.total_file_size));
+                                main_props.push(format!("{}", data_thread.total_file_size));
                                 main_props.push(format_property!(fn_, "file", "files"));
                             };
 
@@ -230,7 +226,7 @@ impl PIndicator {
                             format!("{} - {}", base, main_props_str)
                         }
                         Operation::PREPARING => {
-                            format_base!("Preparing")
+                            format(&data_thread, progress_char_i, "Preparing")
                         }
                         _ => panic!("Unknown State"),
                     };
@@ -256,17 +252,13 @@ impl PIndicator {
             print!("\r");
             stdout.flush().unwrap();
         });
-
-        Self {
-            thread_run: time_thread_run,
-            thread: time_info_thread,
-            data,
-            config,
-        }
+        self.thread = Some(time_info_thread)
     }
 
     pub fn stop(self) {
         self.thread_run.store(false, ATOMIC_ORDERING);
-        self.thread.join().unwrap();
+        if let Some(t) = self.thread {
+            t.join().unwrap();
+        }
     }
 }
