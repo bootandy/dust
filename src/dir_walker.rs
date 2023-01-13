@@ -32,8 +32,8 @@ pub struct WalkData<'a> {
     pub by_filecount: bool,
     pub ignore_hidden: bool,
     pub follow_links: bool,
-    pub progress_config: Option<&'a Arc<PConfig>>,
-    pub progress_data: Option<&'a Arc<PAtomicInfo>>,
+    pub progress_config: Option<Arc<PConfig>>,
+    pub progress_data: Option<Arc<PAtomicInfo>>,
 }
 
 pub fn walk_it(dirs: HashSet<PathBuf>, walk_data: WalkData) -> (Vec<Node>, bool) {
@@ -44,7 +44,7 @@ pub fn walk_it(dirs: HashSet<PathBuf>, walk_data: WalkData) -> (Vec<Node>, bool)
         .into_iter()
         .filter_map(|d| {
             let node = walk(d, &permissions_flag, &walk_data, 0)?;
-            if let Some(data) = walk_data.progress_data {
+            if let Some(data) = &walk_data.progress_data {
                 data.state.set(progress::Operation::PREPARING);
             }
             clean_inodes(node, &mut inodes, walk_data.use_apparent_size)

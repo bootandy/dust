@@ -84,8 +84,6 @@ pub mod Operation {
 #[derive(Default)]
 pub struct PAtomicInfo {
     pub file_number: AtomicU64Wrapper,
-    pub files_skipped: AtomicU64Wrapper,
-    pub directories_skipped: AtomicU64Wrapper,
     pub total_file_size: TotalSize,
     pub state: AtomicU8Wrapper,
     pub current_path: ThreadStringWrapper,
@@ -229,25 +227,7 @@ impl PIndicator {
                             };
 
                             let main_props_str = main_props.join(PROPS_SEPARATOR);
-                            let base = format!("{} - {}", base, main_props_str);
-
-                            let ds = data2.directories_skipped.get();
-                            let fs = data2.files_skipped.get();
-
-                            if ds + fs != 0 {
-                                let mut strs = Vec::new();
-                                if fs != 0 {
-                                    strs.push(format_property!(fs, "file", "files"))
-                                }
-
-                                if ds != 0 {
-                                    strs.push(format_property!(ds, "directory", "directories"))
-                                }
-
-                                format!("{} ({} skipped)", base, strs.join(", "))
-                            } else {
-                                base
-                            }
+                            format!("{} - {}", base, main_props_str)
                         }
                         Operation::PREPARING => {
                             format_base!("Preparing")
