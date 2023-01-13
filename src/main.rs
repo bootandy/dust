@@ -183,7 +183,9 @@ fn main() {
             use_iso: iso,
             ignore_hidden, // can we rm this?
         };
-        Some(PIndicator::spawn(conf))
+        let mut indicator = PIndicator::build_me(conf);
+        indicator.spawn();
+        Some(indicator)
     };
 
     // Must be a cleaner way to do this
@@ -201,6 +203,7 @@ fn main() {
         by_filecount,
         ignore_hidden,
         follow_links,
+        // Maybe just arc::clone the whole PIndicator and send that down here:
         progress_config: tmp_config,
         progress_data: tmp_data,
     };
