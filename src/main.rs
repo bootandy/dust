@@ -18,6 +18,7 @@ use progress::PIndicator;
 use std::collections::HashSet;
 use std::io::BufRead;
 use std::process;
+use std::sync::Arc;
 use sysinfo::{System, SystemExt};
 
 use self::display::draw_it;
@@ -174,23 +175,21 @@ fn main() {
 
     let disable_progress = config.get_disable_progress(&options);
 
-    let info_opt = if disable_progress {
+    let info_indicator = if disable_progress {
         None
     } else {
         let conf = PConfig {
-            file_count_only: by_filecount,
-            use_iso: config.get_iso(&options),
-            ignore_hidden,
+            file_count_only: by_filecount, // recommend rm this
+            use_iso: iso,
+            ignore_hidden, // can we rm this?
         };
-        let info = PIndicator::spawn(conf);
-
-        Some(info)
+        Some(PIndicator::spawn(conf))
     };
 
-    let (info_conf, info_data) = if let Some(ref info) = info_opt {
-        (Some(&info.config), Some(&info.data))
-    } else {
-        (None, None)
+    // Must be a cleaner way to do this
+    let (tmp_config, tmp_data) = match &info_indicator {
+        Some(i) => (Some(Arc::clone(&i.config)), Some(Arc::clone(&i.data))),
+        None => (None, None),
     };
 
     let walk_data = WalkData {
@@ -202,8 +201,8 @@ fn main() {
         by_filecount,
         ignore_hidden,
         follow_links,
-        progress_config: info_conf,
-        progress_data: info_data,
+        progress_config: tmp_config,
+        progress_data: tmp_data,
     };
 
     let _rayon = init_rayon();
@@ -225,7 +224,7 @@ fn main() {
         }
     };
 
-    if let Some(info) = info_opt {
+    if let Some(info) = info_indicator {
         info.stop();
     }
 
