@@ -158,7 +158,7 @@ fn walk(dir: PathBuf, walk_data: &WalkData, depth: usize) -> Option<Node> {
                                 depth,
                             );
 
-                            prog_data.file_number.fetch_add(1, ORDERING);
+                            prog_data.num_files.fetch_add(1, ORDERING);
                             if let Some(ref file) = node {
                                 prog_data.total_file_size.fetch_add(file.size, ORDERING);
                             }
