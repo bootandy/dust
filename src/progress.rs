@@ -146,7 +146,7 @@ impl ThreadSyncMathTrait<u64> for TotalSize {
 }
 
 /* -------------------------------------------------------------------------- */
-fn format(data: &PAtomicInfo, progress_char_i: usize, s: &str) -> String {
+fn format_indicator_str(data: &PAtomicInfo, progress_char_i: usize, s: &str) -> String {
     format!(
         "\r{} \"{}\"... {}",
         s,
@@ -157,7 +157,6 @@ fn format(data: &PAtomicInfo, progress_char_i: usize, s: &str) -> String {
 
 #[derive(Default)]
 pub struct PConfig {
-    pub file_count_only: bool,
     pub ignore_hidden: bool,
     pub use_iso: bool,
 }
@@ -183,70 +182,42 @@ impl PIndicator {
         let instant = Instant::now();
         let data_thread = self.data.clone();
         let is_building_data_const = self.thread_run.clone();
-        let c = self.config.clone();
 
         let time_info_thread = std::thread::spawn(move || {
             let mut progress_char_i: usize = 0;
             let mut stdout = std::io::stdout();
-            let mut last_msg_len = 0;
+            let mut msg = "".to_string();
 
             while is_building_data_const.load(ATOMIC_ORDERING) {
                 if instant.elapsed() > Duration::from_secs(SHOW_WALKING_AFTER) {
-                    // clear the line
-                    print!("\r{:width$}", " ", width = last_msg_len);
-
-                    let msg = match data_thread.state.get() {
+                    msg = match data_thread.state.get() {
                         Operation::INDEXING => {
-                            const PROPS_SEPARATOR: &str = ", ";
+                            let base =
+                                format_indicator_str(&data_thread, progress_char_i, "Indexing");
 
-                            let base = format(&data_thread, progress_char_i, "Indexing");
+                            let file_count = data_thread.file_number.get();
+                            let file_str =
+                                format!("{} {} files", file_count, data_thread.total_file_size);
 
-                            // why all the macros ?
-                            macro_rules! format_property {
-                                ($value: ident, $singular: expr, $plural: expr) => {
-                                    format!(
-                                        "{} {}",
-                                        $value,
-                                        if $value > 1 { $plural } else { $singular }
-                                    )
-                                };
-                            }
-
-                            let mut main_props = Vec::new();
-
-                            let fn_ = data_thread.file_number.get();
-                            if c.file_count_only {
-                                main_props.push(format_property!(fn_, "file", "files"));
-                            } else {
-                                main_props.push(format!("{}", data_thread.total_file_size));
-                                main_props.push(format_property!(fn_, "file", "files"));
-                            };
-
-                            let main_props_str = main_props.join(PROPS_SEPARATOR);
-                            format!("{} - {}", base, main_props_str)
+                            format!("{} - {}", base, file_str)
                         }
                         Operation::PREPARING => {
-                            format(&data_thread, progress_char_i, "Preparing")
+                            format_indicator_str(&data_thread, progress_char_i, "Preparing")
                         }
                         _ => panic!("Unknown State"),
                     };
-                    last_msg_len = msg.len();
 
                     write!(stdout, "{}", msg).unwrap();
                     stdout.flush().unwrap();
 
                     progress_char_i += 1;
                     progress_char_i %= PROGRESS_CHARS_LEN;
-
-                    std::thread::sleep(Duration::from_millis(PROGRESS_CHARS_DELTA));
-                } else {
-                    // wait duration is in seconds so we need only to check each second
-                    std::thread::sleep(Duration::from_secs(1));
                 }
-            }
+                std::thread::sleep(Duration::from_millis(PROGRESS_CHARS_DELTA));
 
-            // clear the line for the last time
-            print!("\r{:width$}", " ", width = last_msg_len);
+                // Clear the text written by 'write!'
+                print!("\r{:width$}", " ", width = msg.len());
+            }
 
             // Return at the start of the line so the output can be printed correctly
             print!("\r");

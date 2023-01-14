@@ -179,7 +179,6 @@ fn main() {
         None
     } else {
         let conf = PConfig {
-            file_count_only: by_filecount, // recommend rm this
             use_iso: iso,
             ignore_hidden, // can we rm this?
         };
