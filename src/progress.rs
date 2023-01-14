@@ -53,6 +53,7 @@ pub struct PAtomicInfo {
     pub total_file_size: AtomicU64,
     pub state: AtomicU8,
     pub current_path: ThreadStringWrapper,
+    pub no_permissions: AtomicBool,
 }
 
 /* -------------------------------------------------------------------------- */
@@ -97,10 +98,8 @@ impl PIndicator {
                         let base = format_indicator_str(&data, progress_char_i, "Indexing");
 
                         let file_count = data.file_number.load(ORDERING);
-                        let size = human_readable_number(
-                            data.total_file_size.load(ORDERING),
-                            is_iso,
-                        );
+                        let size =
+                            human_readable_number(data.total_file_size.load(ORDERING), is_iso);
                         let file_str = format!("{} {} files", file_count, size);
                         format!("{} - {}", base, file_str)
                     }

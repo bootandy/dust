@@ -2,18 +2,16 @@ use std::fs;
 use std::sync::Arc;
 
 use crate::node::Node;
-use crate::progress::ORDERING;
 use crate::progress::Operation;
 use crate::progress::PAtomicInfo;
 use crate::progress::ThreadSyncTrait;
+use crate::progress::ORDERING;
 use crate::utils::is_filtered_out_due_to_invert_regex;
 use crate::utils::is_filtered_out_due_to_regex;
 use rayon::iter::ParallelBridge;
 use rayon::prelude::ParallelIterator;
 use regex::Regex;
 use std::path::PathBuf;
-
-use std::sync::atomic::AtomicBool;
 
 use std::collections::HashSet;
 
@@ -33,21 +31,19 @@ pub struct WalkData<'a> {
     pub progress_data: Option<Arc<PAtomicInfo>>,
 }
 
-pub fn walk_it(dirs: HashSet<PathBuf>, walk_data: WalkData) -> (Vec<Node>, bool) {
-    let permissions_flag = AtomicBool::new(false);
-
+pub fn walk_it(dirs: HashSet<PathBuf>, walk_data: WalkData) -> Vec<Node> {
     let mut inodes = HashSet::new();
     let top_level_nodes: Vec<_> = dirs
         .into_iter()
         .filter_map(|d| {
-            let node = walk(d, &permissions_flag, &walk_data, 0)?;
+            let node = walk(d, &walk_data, 0)?;
             if let Some(data) = &walk_data.progress_data {
                 data.state.store(Operation::PREPARING, ORDERING);
             }
             clean_inodes(node, &mut inodes, walk_data.use_apparent_size)
         })
         .collect();
-    (top_level_nodes, permissions_flag.into_inner())
+    top_level_nodes
 }
 
 // Remove files which have the same inode, we don't want to double count them.
@@ -127,12 +123,7 @@ fn ignore_file(entry: &DirEntry, walk_data: &WalkData) -> bool {
     (is_dot_file && walk_data.ignore_hidden) || is_ignored_path
 }
 
-fn walk(
-    dir: PathBuf,
-    permissions_flag: &AtomicBool,
-    walk_data: &WalkData,
-    depth: usize,
-) -> Option<Node> {
+fn walk(dir: PathBuf, walk_data: &WalkData, depth: usize) -> Option<Node> {
     let info_data = &walk_data.progress_data;
 
     if let Some(data) = info_data {
@@ -163,7 +154,7 @@ fn walk(
                     if !ignore_file(entry, walk_data) {
                         if let Ok(data) = entry.file_type() {
                             if data.is_dir() || (walk_data.follow_links && data.is_symlink()) {
-                                return walk(entry.path(), permissions_flag, walk_data, depth + 1);
+                                return walk(entry.path(), walk_data, depth + 1);
                             }
 
                             let node = build_node(
@@ -188,17 +179,15 @@ fn walk(
                             return node;
                         }
                     }
-                } else {
-                    permissions_flag.store(true, ORDERING);
+                } else if let Some(data) = &walk_data.progress_data {
+                    data.no_permissions.store(true, ORDERING)
                 }
                 None
             })
             .collect();
-    } else {
-        // Handle edge case where dust is called with a file instead of a directory
-        if !dir.exists() {
-            // TODO: Migrate permissions_flag to the new progress_data object
-            permissions_flag.store(true, ORDERING);
+    } else if !dir.is_file() {
+        if let Some(data) = &walk_data.progress_data {
+            data.no_permissions.store(true, ORDERING)
         }
     }
     build_node(

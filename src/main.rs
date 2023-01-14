@@ -14,6 +14,7 @@ use crate::cli::build_cli;
 use dir_walker::WalkData;
 use filter::AggregateData;
 use progress::PIndicator;
+use progress::ORDERING;
 use std::collections::HashSet;
 use std::io::BufRead;
 use std::process;
@@ -200,7 +201,7 @@ fn main() {
 
     let _rayon = init_rayon();
 
-    let (top_level_nodes, has_errors) = walk_it(simplified_dirs, walk_data);
+    let top_level_nodes = walk_it(simplified_dirs, walk_data);
 
     let tree = match summarize_file_types {
         true => get_all_file_types(&top_level_nodes, number_of_lines),
@@ -218,11 +219,10 @@ fn main() {
     };
 
     if let Some(info) = info_indicator {
+        if info.data.no_permissions.load(ORDERING) {
+            eprintln!("Did not have permissions for all directories");
+        }
         info.stop();
-    }
-
-    if has_errors {
-        eprintln!("Did not have permissions for all directories");
     }
 
     if let Some(root_node) = tree {
