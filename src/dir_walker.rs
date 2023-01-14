@@ -4,7 +4,6 @@ use std::sync::Arc;
 use crate::node::Node;
 use crate::progress::Operation;
 use crate::progress::PAtomicInfo;
-use crate::progress::ThreadSyncTrait;
 use crate::progress::ORDERING;
 use crate::utils::is_filtered_out_due_to_invert_regex;
 use crate::utils::is_filtered_out_due_to_regex;
@@ -28,7 +27,7 @@ pub struct WalkData<'a> {
     pub by_filecount: bool,
     pub ignore_hidden: bool,
     pub follow_links: bool,
-    pub progress_data: Option<Arc<PAtomicInfo>>,
+    pub progress_data: Arc<PAtomicInfo>,
 }
 
 pub fn walk_it(dirs: HashSet<PathBuf>, walk_data: WalkData) -> Vec<Node> {
@@ -36,10 +35,11 @@ pub fn walk_it(dirs: HashSet<PathBuf>, walk_data: WalkData) -> Vec<Node> {
     let top_level_nodes: Vec<_> = dirs
         .into_iter()
         .filter_map(|d| {
+            let prog_data = &walk_data.progress_data;
+            prog_data.clear_state(&d);
             let node = walk(d, &walk_data, 0)?;
-            if let Some(data) = &walk_data.progress_data {
-                data.state.store(Operation::PREPARING, ORDERING);
-            }
+
+            prog_data.state.store(Operation::PREPARING, ORDERING);
             clean_inodes(node, &mut inodes, walk_data.use_apparent_size)
         })
         .collect();
@@ -124,18 +124,7 @@ fn ignore_file(entry: &DirEntry, walk_data: &WalkData) -> bool {
 }
 
 fn walk(dir: PathBuf, walk_data: &WalkData, depth: usize) -> Option<Node> {
-    let info_data = &walk_data.progress_data;
-
-    if let Some(data) = info_data {
-        data.state.store(Operation::INDEXING, ORDERING);
-        if depth == 0 {
-            data.current_path.set(dir.to_string_lossy().to_string());
-
-            // reset the value between each target dirs
-            data.total_file_size.store(0, ORDERING);
-            data.file_number.store(0, ORDERING);
-        }
-    }
+    let prog_data = &walk_data.progress_data;
 
     let mut children = vec![];
 
@@ -169,26 +158,22 @@ fn walk(dir: PathBuf, walk_data: &WalkData, depth: usize) -> Option<Node> {
                                 depth,
                             );
 
-                            if let Some(data) = info_data {
-                                data.file_number.fetch_add(1, ORDERING);
-                                if let Some(ref file) = node {
-                                    data.total_file_size.fetch_add(file.size, ORDERING);
-                                }
+                            prog_data.file_number.fetch_add(1, ORDERING);
+                            if let Some(ref file) = node {
+                                prog_data.total_file_size.fetch_add(file.size, ORDERING);
                             }
 
                             return node;
                         }
                     }
-                } else if let Some(data) = &walk_data.progress_data {
-                    data.no_permissions.store(true, ORDERING)
+                } else {
+                    prog_data.no_permissions.store(true, ORDERING)
                 }
                 None
             })
             .collect();
     } else if !dir.is_file() {
-        if let Some(data) = &walk_data.progress_data {
-            data.no_permissions.store(true, ORDERING)
-        }
+        walk_data.progress_data.no_permissions.store(true, ORDERING)
     }
     build_node(
         dir,
