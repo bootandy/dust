@@ -13,7 +13,6 @@ mod utils;
 use crate::cli::build_cli;
 use dir_walker::WalkData;
 use filter::AggregateData;
-use progress::PConfig;
 use progress::PIndicator;
 use std::collections::HashSet;
 use std::io::BufRead;
@@ -178,19 +177,13 @@ fn main() {
     let info_indicator = if disable_progress {
         None
     } else {
-        let conf = PConfig {
-            use_iso: iso,
-        };
-        let mut indicator = PIndicator::build_me(conf);
-        indicator.spawn();
+        let mut indicator = PIndicator::build_me();
+        indicator.spawn(iso);
         Some(indicator)
     };
 
     // Must be a cleaner way to do this
-    let (tmp_config, tmp_data) = match &info_indicator {
-        Some(i) => (Some(Arc::clone(&i.config)), Some(Arc::clone(&i.data))),
-        None => (None, None),
-    };
+    let tmp_data = info_indicator.as_ref().map(|i| Arc::clone(&i.data));
 
     let walk_data = WalkData {
         ignore_directories: ignored_full_path,
@@ -202,7 +195,6 @@ fn main() {
         ignore_hidden,
         follow_links,
         // Maybe just arc::clone the whole PIndicator and send that down here:
-        progress_config: tmp_config,
         progress_data: tmp_data,
     };
 

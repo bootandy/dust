@@ -1,15 +1,14 @@
 use std::{
-    fmt::Display,
     io::Write,
     sync::{
         atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering},
         Arc, RwLock,
     },
     thread::JoinHandle,
-    time::{Duration},
+    time::Duration,
 };
 
-use crate::display;
+use crate::display::human_readable_number;
 
 /* -------------------------------------------------------------------------- */
 
@@ -87,62 +86,13 @@ pub mod Operation {
 
 #[derive(Default)]
 pub struct PAtomicInfo {
+    // pub file_number: AtomicUsize::new(0),
     pub file_number: AtomicU64Wrapper,
-    pub total_file_size: TotalSize,
+    pub total_file_size: AtomicU64Wrapper,
     pub state: AtomicU8Wrapper,
     pub current_path: ThreadStringWrapper,
 }
 
-impl PAtomicInfo {
-    fn new(c: &PConfig) -> Self {
-        Self {
-            total_file_size: TotalSize::new(c),
-            ..Default::default()
-        }
-    }
-}
-
-/* -------------------------------------------------------------------------- */
-
-#[derive(Default)]
-pub struct TotalSize {
-    use_iso: bool,
-    inner: AtomicU64Wrapper,
-}
-
-impl TotalSize {
-    fn new(c: &PConfig) -> Self {
-        Self {
-            use_iso: c.use_iso,
-            ..Default::default()
-        }
-    }
-}
-
-impl Display for TotalSize {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&display::human_readable_number(
-            self.inner.get(),
-            self.use_iso,
-        ))
-    }
-}
-
-impl ThreadSyncTrait<u64> for TotalSize {
-    fn set(&self, val: u64) {
-        self.inner.set(val)
-    }
-
-    fn get(&self) -> u64 {
-        self.inner.get()
-    }
-}
-
-impl ThreadSyncMathTrait<u64> for TotalSize {
-    fn add(&self, val: u64) {
-        self.inner.add(val)
-    }
-}
 
 /* -------------------------------------------------------------------------- */
 fn format_indicator_str(data: &PAtomicInfo, progress_char_i: usize, s: &str) -> String {
@@ -154,29 +104,22 @@ fn format_indicator_str(data: &PAtomicInfo, progress_char_i: usize, s: &str) -> 
     )
 }
 
-#[derive(Default)]
-pub struct PConfig {
-    pub use_iso: bool,
-}
-
 pub struct PIndicator {
     thread_run: Arc<AtomicBool>,
     pub thread: Option<JoinHandle<()>>,
     pub data: Arc<PAtomicInfo>,
-    pub config: Arc<PConfig>,
 }
 
 impl PIndicator {
-    pub fn build_me(c: PConfig) -> Self {
+    pub fn build_me() -> Self {
         Self {
             thread_run: Arc::new(AtomicBool::new(true)),
             thread: None,
-            data: Arc::new(PAtomicInfo::new(&c)),
-            config: Arc::new(c),
+            data: Arc::new(PAtomicInfo{..Default::default()}),
         }
     }
 
-    pub fn spawn(&mut self) {
+    pub fn spawn(&mut self, is_iso: bool) {
         let data = self.data.clone();
         let is_building_data_const = self.thread_run.clone();
 
@@ -191,8 +134,9 @@ impl PIndicator {
                         let base = format_indicator_str(&data, progress_char_i, "Indexing");
 
                         let file_count = data.file_number.get();
-                        let file_str =
-                            format!("{} {} files", file_count, data.total_file_size);
+                        let size = human_readable_number(data.total_file_size.get(), is_iso);
+                        let file_str = format!("{} {} files", file_count, size);
+                        // let file_str = format!("{} {} files", file_count, data.total_file_size);
 
                         format!("{} - {}", base, file_str)
                     }
