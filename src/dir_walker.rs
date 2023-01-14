@@ -2,9 +2,9 @@ use std::fs;
 use std::sync::Arc;
 
 use crate::node::Node;
-use crate::progress;
+use crate::progress::ORDERING;
+use crate::progress::Operation;
 use crate::progress::PAtomicInfo;
-use crate::progress::ThreadSyncMathTrait;
 use crate::progress::ThreadSyncTrait;
 use crate::utils::is_filtered_out_due_to_invert_regex;
 use crate::utils::is_filtered_out_due_to_regex;
@@ -13,7 +13,6 @@ use rayon::prelude::ParallelIterator;
 use regex::Regex;
 use std::path::PathBuf;
 
-use std::sync::atomic;
 use std::sync::atomic::AtomicBool;
 
 use std::collections::HashSet;
@@ -43,7 +42,7 @@ pub fn walk_it(dirs: HashSet<PathBuf>, walk_data: WalkData) -> (Vec<Node>, bool)
         .filter_map(|d| {
             let node = walk(d, &permissions_flag, &walk_data, 0)?;
             if let Some(data) = &walk_data.progress_data {
-                data.state.set(progress::Operation::PREPARING);
+                data.state.store(Operation::PREPARING, ORDERING);
             }
             clean_inodes(node, &mut inodes, walk_data.use_apparent_size)
         })
@@ -137,13 +136,13 @@ fn walk(
     let info_data = &walk_data.progress_data;
 
     if let Some(data) = info_data {
-        data.state.set(progress::Operation::INDEXING);
+        data.state.store(Operation::INDEXING, ORDERING);
         if depth == 0 {
             data.current_path.set(dir.to_string_lossy().to_string());
 
             // reset the value between each target dirs
-            data.total_file_size.set(0);
-            data.file_number.set(0);
+            data.total_file_size.store(0, ORDERING);
+            data.file_number.store(0, ORDERING);
         }
     }
 
@@ -180,9 +179,9 @@ fn walk(
                             );
 
                             if let Some(data) = info_data {
-                                data.file_number.add(1);
+                                data.file_number.fetch_add(1, ORDERING);
                                 if let Some(ref file) = node {
-                                    data.total_file_size.add(file.size);
+                                    data.total_file_size.fetch_add(file.size, ORDERING);
                                 }
                             }
 
@@ -190,7 +189,7 @@ fn walk(
                         }
                     }
                 } else {
-                    permissions_flag.store(true, atomic::Ordering::Relaxed);
+                    permissions_flag.store(true, ORDERING);
                 }
                 None
             })
@@ -199,7 +198,7 @@ fn walk(
         // Handle edge case where dust is called with a file instead of a directory
         if !dir.exists() {
             // TODO: Migrate permissions_flag to the new progress_data object
-            permissions_flag.store(true, atomic::Ordering::Relaxed);
+            permissions_flag.store(true, ORDERING);
         }
     }
     build_node(
