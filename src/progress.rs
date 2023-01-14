@@ -6,7 +6,7 @@ use std::{
         Arc, RwLock,
     },
     thread::JoinHandle,
-    time::{Duration, Instant},
+    time::{Duration},
 };
 
 use crate::display;
@@ -15,7 +15,6 @@ use crate::display;
 
 pub const ATOMIC_ORDERING: Ordering = Ordering::Relaxed;
 
-const SHOW_WALKING_AFTER: u64 = 0;
 const PROGRESS_CHARS_DELTA: u64 = 100;
 const PROGRESS_CHARS: [char; 4] = ['-', '\\', '|', '/'];
 const PROGRESS_CHARS_LEN: usize = PROGRESS_CHARS.len();
@@ -178,42 +177,38 @@ impl PIndicator {
     }
 
     pub fn spawn(&mut self) {
-        let instant = Instant::now();
-        let data_thread = self.data.clone();
+        let data = self.data.clone();
         let is_building_data_const = self.thread_run.clone();
 
         let time_info_thread = std::thread::spawn(move || {
             let mut progress_char_i: usize = 0;
             let mut stdout = std::io::stdout();
-            let mut msg = "".to_string();
+            std::thread::sleep(Duration::from_millis(PROGRESS_CHARS_DELTA));
 
             while is_building_data_const.load(ATOMIC_ORDERING) {
-                if instant.elapsed() > Duration::from_secs(SHOW_WALKING_AFTER) {
-                    msg = match data_thread.state.get() {
-                        Operation::INDEXING => {
-                            let base =
-                                format_indicator_str(&data_thread, progress_char_i, "Indexing");
+                let msg = match data.state.get() {
+                    Operation::INDEXING => {
+                        let base = format_indicator_str(&data, progress_char_i, "Indexing");
 
-                            let file_count = data_thread.file_number.get();
-                            let file_str =
-                                format!("{} {} files", file_count, data_thread.total_file_size);
+                        let file_count = data.file_number.get();
+                        let file_str =
+                            format!("{} {} files", file_count, data.total_file_size);
 
-                            format!("{} - {}", base, file_str)
-                        }
-                        Operation::PREPARING => {
-                            format_indicator_str(&data_thread, progress_char_i, "Preparing")
-                        }
-                        _ => panic!("Unknown State"),
-                    };
+                        format!("{} - {}", base, file_str)
+                    }
+                    Operation::PREPARING => {
+                        format_indicator_str(&data, progress_char_i, "Preparing")
+                    }
+                    _ => panic!("Unknown State"),
+                };
 
-                    write!(stdout, "{}", msg).unwrap();
-                    stdout.flush().unwrap();
+                write!(stdout, "{}", msg).unwrap();
+                stdout.flush().unwrap();
 
-                    progress_char_i += 1;
-                    progress_char_i %= PROGRESS_CHARS_LEN;
-                }
+                progress_char_i += 1;
+                progress_char_i %= PROGRESS_CHARS_LEN;
+
                 std::thread::sleep(Duration::from_millis(PROGRESS_CHARS_DELTA));
-
                 // Clear the text written by 'write!'
                 print!("\r{:width$}", " ", width = msg.len());
             }
