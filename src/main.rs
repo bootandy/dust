@@ -180,7 +180,6 @@ fn main() {
     } else {
         let conf = PConfig {
             use_iso: iso,
-            ignore_hidden, // can we rm this?
         };
         let mut indicator = PIndicator::build_me(conf);
         indicator.spawn();
