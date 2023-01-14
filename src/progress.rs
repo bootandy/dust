@@ -157,7 +157,6 @@ fn format_indicator_str(data: &PAtomicInfo, progress_char_i: usize, s: &str) -> 
 
 #[derive(Default)]
 pub struct PConfig {
-    pub ignore_hidden: bool,
     pub use_iso: bool,
 }
 
