@@ -4,7 +4,6 @@ use std::sync::Arc;
 use crate::node::Node;
 use crate::progress;
 use crate::progress::PAtomicInfo;
-use crate::progress::PConfig;
 use crate::progress::ThreadSyncMathTrait;
 use crate::progress::ThreadSyncTrait;
 use crate::utils::is_filtered_out_due_to_invert_regex;
@@ -32,7 +31,6 @@ pub struct WalkData<'a> {
     pub by_filecount: bool,
     pub ignore_hidden: bool,
     pub follow_links: bool,
-    pub progress_config: Option<Arc<PConfig>>,
     pub progress_data: Option<Arc<PAtomicInfo>>,
 }
 
