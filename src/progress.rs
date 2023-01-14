@@ -50,7 +50,7 @@ pub mod Operation {
 
 #[derive(Default)]
 pub struct PAtomicInfo {
-    pub file_number: AtomicUsize,
+    pub num_files: AtomicUsize,
     pub total_file_size: AtomicU64,
     pub state: AtomicU8,
     pub current_path: ThreadStringWrapper,
@@ -63,7 +63,7 @@ impl PAtomicInfo {
         let dir_name = dir.to_string_lossy().to_string();
         self.current_path.set(dir_name);
         self.total_file_size.store(0, ORDERING);
-        self.file_number.store(0, ORDERING);
+        self.num_files.store(0, ORDERING);
     }
 }
 
@@ -108,7 +108,7 @@ impl PIndicator {
                     Operation::INDEXING => {
                         let base = format_indicator_str(&data, progress_char_i, "Indexing");
 
-                        let file_count = data.file_number.load(ORDERING);
+                        let file_count = data.num_files.load(ORDERING);
                         let size =
                             human_readable_number(data.total_file_size.load(ORDERING), is_iso);
                         let file_str = format!("{} {} files", file_count, size);
