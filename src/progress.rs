@@ -14,7 +14,7 @@ use crate::display::human_readable_number;
 
 pub const ORDERING: Ordering = Ordering::Relaxed;
 
-const PROGRESS_CHARS_DELTA: u64 = 100;
+const SPINNER_SLEEP_TIME: u64 = 100;
 const PROGRESS_CHARS: [char; 4] = ['-', '\\', '|', '/'];
 const PROGRESS_CHARS_LEN: usize = PROGRESS_CHARS.len();
 
@@ -56,10 +56,10 @@ pub struct PAtomicInfo {
 }
 
 /* -------------------------------------------------------------------------- */
-fn format_indicator_str(data: &PAtomicInfo, progress_char_i: usize, s: &str) -> String {
+fn format_indicator_str(data: &PAtomicInfo, progress_char_i: usize, status: &str) -> String {
     format!(
         "\r{} \"{}\"... {}",
-        s,
+        status,
         data.current_path.get(),
         PROGRESS_CHARS[progress_char_i],
     )
@@ -89,7 +89,7 @@ impl PIndicator {
         let time_info_thread = std::thread::spawn(move || {
             let mut progress_char_i: usize = 0;
             let mut stdout = std::io::stdout();
-            std::thread::sleep(Duration::from_millis(PROGRESS_CHARS_DELTA));
+            std::thread::sleep(Duration::from_millis(SPINNER_SLEEP_TIME));
 
             while is_building_data_const.load(ORDERING) {
                 let msg = match data.state.load(ORDERING) {
@@ -116,7 +116,7 @@ impl PIndicator {
                 progress_char_i += 1;
                 progress_char_i %= PROGRESS_CHARS_LEN;
 
-                std::thread::sleep(Duration::from_millis(PROGRESS_CHARS_DELTA));
+                std::thread::sleep(Duration::from_millis(SPINNER_SLEEP_TIME));
                 // Clear the text written by 'write!'
                 print!("\r{:width$}", " ", width = msg.len());
             }
