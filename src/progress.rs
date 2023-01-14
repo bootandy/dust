@@ -1,5 +1,6 @@
 use std::{
     io::Write,
+    path::Path,
     sync::{
         atomic::{AtomicBool, AtomicU64, AtomicU8, AtomicUsize, Ordering},
         Arc, RwLock,
@@ -54,6 +55,16 @@ pub struct PAtomicInfo {
     pub state: AtomicU8,
     pub current_path: ThreadStringWrapper,
     pub no_permissions: AtomicBool,
+}
+
+impl PAtomicInfo {
+    pub fn clear_state(&self, dir: &Path) {
+        self.state.store(Operation::INDEXING, ORDERING);
+        let dir_name = dir.to_string_lossy().to_string();
+        self.current_path.set(dir_name);
+        self.total_file_size.store(0, ORDERING);
+        self.file_number.store(0, ORDERING);
+    }
 }
 
 /* -------------------------------------------------------------------------- */

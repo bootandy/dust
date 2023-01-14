@@ -18,7 +18,6 @@ use progress::ORDERING;
 use std::collections::HashSet;
 use std::io::BufRead;
 use std::process;
-use std::sync::Arc;
 use sysinfo::{System, SystemExt};
 
 use self::display::draw_it;
@@ -173,18 +172,10 @@ fn main() {
 
     let ignore_hidden = config.get_ignore_hidden(&options);
 
-    let disable_progress = config.get_disable_progress(&options);
-
-    let info_indicator = if disable_progress {
-        None
-    } else {
-        let mut indicator = PIndicator::build_me();
+    let mut indicator = PIndicator::build_me();
+    if !config.get_disable_progress(&options) {
         indicator.spawn(iso);
-        Some(indicator)
-    };
-
-    // Must be a cleaner way to do this
-    let tmp_data = info_indicator.as_ref().map(|i| Arc::clone(&i.data));
+    }
 
     let walk_data = WalkData {
         ignore_directories: ignored_full_path,
@@ -195,8 +186,7 @@ fn main() {
         by_filecount,
         ignore_hidden,
         follow_links,
-        // Maybe just arc::clone the whole PIndicator and send that down here:
-        progress_data: tmp_data,
+        progress_data: indicator.data.clone(),
     };
 
     let _rayon = init_rayon();
@@ -218,12 +208,10 @@ fn main() {
         }
     };
 
-    if let Some(info) = info_indicator {
-        if info.data.no_permissions.load(ORDERING) {
-            eprintln!("Did not have permissions for all directories");
-        }
-        info.stop();
+    if indicator.data.no_permissions.load(ORDERING) {
+        eprintln!("Did not have permissions for all directories");
     }
+    indicator.stop();
 
     if let Some(root_node) = tree {
         draw_it(
