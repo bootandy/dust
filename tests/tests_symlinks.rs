@@ -26,7 +26,7 @@ fn link_it(link_path: PathBuf, file_path_s: &str, is_soft: bool) -> String {
     c.arg(file_path_s);
     c.arg(link_name_s);
     assert!(c.output().is_ok());
-    return link_name_s.into();
+    link_name_s.into()
 }
 
 #[cfg_attr(target_os = "windows", ignore)]

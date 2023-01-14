@@ -59,6 +59,8 @@ set edit:completion:arg-completer[dust] = {|@words|
             cand --file_types 'show only these file types'
             cand -H 'print sizes in powers of 1000 (e.g., 1.1G)'
             cand --si 'print sizes in powers of 1000 (e.g., 1.1G)'
+            cand -P 'Disable the progress indication.'
+            cand --no-progress 'Disable the progress indication.'
             cand -D 'Only directories will be displayed.'
             cand --only-dir 'Only directories will be displayed.'
         }

@@ -1,6 +1,12 @@
 use std::fs;
+use std::sync::Arc;
 
 use crate::node::Node;
+use crate::progress;
+use crate::progress::PAtomicInfo;
+use crate::progress::PConfig;
+use crate::progress::ThreadSyncMathTrait;
+use crate::progress::ThreadSyncTrait;
 use crate::utils::is_filtered_out_due_to_invert_regex;
 use crate::utils::is_filtered_out_due_to_regex;
 use rayon::iter::ParallelBridge;
@@ -17,7 +23,6 @@ use crate::node::build_node;
 use std::fs::DirEntry;
 
 use crate::platform::get_metadata;
-
 pub struct WalkData<'a> {
     pub ignore_directories: HashSet<PathBuf>,
     pub filter_regex: &'a [Regex],
@@ -27,6 +32,8 @@ pub struct WalkData<'a> {
     pub by_filecount: bool,
     pub ignore_hidden: bool,
     pub follow_links: bool,
+    pub progress_config: Option<&'a Arc<PConfig>>,
+    pub progress_data: Option<&'a Arc<PAtomicInfo>>,
 }
 
 pub fn walk_it(dirs: HashSet<PathBuf>, walk_data: WalkData) -> (Vec<Node>, bool) {
@@ -39,6 +46,7 @@ pub fn walk_it(dirs: HashSet<PathBuf>, walk_data: WalkData) -> (Vec<Node>, bool)
             clean_inodes(
                 walk(d, &permissions_flag, &walk_data, 0)?,
                 &mut inodes,
+                walk_data.progress_data,
                 walk_data.use_apparent_size,
             )
         })
@@ -50,8 +58,13 @@ pub fn walk_it(dirs: HashSet<PathBuf>, walk_data: WalkData) -> (Vec<Node>, bool)
 fn clean_inodes(
     x: Node,
     inodes: &mut HashSet<(u64, u64)>,
+    info_data: Option<&Arc<PAtomicInfo>>,
     use_apparent_size: bool,
 ) -> Option<Node> {
+    if let Some(data) = info_data {
+        data.state.set(progress::Operation::PREPARING);
+    }
+
     if !use_apparent_size {
         if let Some(id) = x.inode_device {
             if !inodes.insert(id) {
@@ -65,7 +78,7 @@ fn clean_inodes(
     tmp.sort_by(sort_by_inode);
     let new_children: Vec<_> = tmp
         .into_iter()
-        .filter_map(|c| clean_inodes(c, inodes, use_apparent_size))
+        .filter_map(|c| clean_inodes(c, inodes, info_data, use_apparent_size))
         .collect();
 
     Some(Node {
@@ -129,6 +142,22 @@ fn walk(
     walk_data: &WalkData,
     depth: usize,
 ) -> Option<Node> {
+    let info_data = &walk_data.progress_data;
+    let info_conf = &walk_data.progress_config;
+
+    if let Some(data) = info_data {
+        data.state.set(progress::Operation::INDEXING);
+        if depth == 0 {
+            data.current_path.set(dir.to_string_lossy().to_string());
+
+            // reset the value between each target dirs
+            data.files_skipped.set(0);
+            data.directories_skipped.set(0);
+            data.total_file_size.set(0);
+            data.file_number.set(0);
+        }
+    }
+
     let mut children = vec![];
 
     if let Ok(entries) = fs::read_dir(&dir) {
@@ -148,7 +177,8 @@ fn walk(
                             if data.is_dir() || (walk_data.follow_links && data.is_symlink()) {
                                 return walk(entry.path(), permissions_flag, walk_data, depth + 1);
                             }
-                            return build_node(
+
+                            let n = build_node(
                                 entry.path(),
                                 vec![],
                                 walk_data.filter_regex,
@@ -159,18 +189,58 @@ fn walk(
                                 walk_data.by_filecount,
                                 depth,
                             );
+
+                            if !ignore_file(entry, walk_data) {
+                                if let Some(ref node) = n {
+                                    if let Some(data) = info_data {
+                                        data.file_number.add(1);
+                                    }
+
+                                    // Use `is_some_and` when stabilized
+                                    if let Some(conf) = info_conf {
+                                        if !conf.file_count_only {
+                                            if let Some(data) = info_data {
+                                                data.total_file_size.add(node.size);
+                                            }
+                                        }
+                                    }
+                                }
+                            } else if let Some(data) = info_data {
+                                data.files_skipped.add(1);
+                            }
+
+                            n
+                        } else {
+                            None
                         }
+                    } else {
+                        if let Some(data) = info_data {
+                            data.files_skipped.add(1);
+                        }
+
+                        None
                     }
                 } else {
                     permissions_flag.store(true, atomic::Ordering::Relaxed);
+
+                    if let Some(data) = info_data {
+                        data.directories_skipped.add(1);
+                    }
+
+                    None
                 }
-                None
             })
             .collect();
     } else {
         // Handle edge case where dust is called with a file instead of a directory
         if !dir.exists() {
             permissions_flag.store(true, atomic::Ordering::Relaxed);
+
+            if let Some(data) = info_data {
+                data.files_skipped.add(1);
+            }
+        } else if let Some(data) = info_data {
+            data.directories_skipped.add(1);
         }
     }
     build_node(
@@ -208,10 +278,13 @@ mod tests {
         let n = create_node();
 
         // First time we insert the node
-        assert_eq!(clean_inodes(n.clone(), &mut inodes, false), Some(n.clone()));
+        assert_eq!(
+            clean_inodes(n.clone(), &mut inodes, None, false),
+            Some(n.clone())
+        );
 
         // Second time is a duplicate - we ignore it
-        assert_eq!(clean_inodes(n.clone(), &mut inodes, false), None);
+        assert_eq!(clean_inodes(n.clone(), &mut inodes, None, false), None);
     }
 
     #[test]
@@ -221,7 +294,13 @@ mod tests {
         let n = create_node();
 
         // If using apparent size we include Nodes, even if duplicate inodes
-        assert_eq!(clean_inodes(n.clone(), &mut inodes, true), Some(n.clone()));
-        assert_eq!(clean_inodes(n.clone(), &mut inodes, true), Some(n.clone()));
+        assert_eq!(
+            clean_inodes(n.clone(), &mut inodes, None, true),
+            Some(n.clone())
+        );
+        assert_eq!(
+            clean_inodes(n.clone(), &mut inodes, None, true),
+            Some(n.clone())
+        );
     }
 }

@@ -7,11 +7,14 @@ mod filter;
 mod filter_type;
 mod node;
 mod platform;
+mod progress;
 mod utils;
 
 use crate::cli::build_cli;
 use dir_walker::WalkData;
 use filter::AggregateData;
+use progress::PConfig;
+use progress::PIndicator;
 use std::collections::HashSet;
 use std::io::BufRead;
 use std::process;
@@ -165,6 +168,31 @@ fn main() {
         .flat_map(|x| simplified_dirs.iter().map(move |d| d.join(&x)))
         .collect();
 
+    let iso = config.get_iso(&options);
+
+    let ignore_hidden = config.get_ignore_hidden(&options);
+
+    let disable_progress = config.get_disable_progress(&options);
+
+    let info_opt = if disable_progress {
+        None
+    } else {
+        let conf = PConfig {
+            file_count_only: by_filecount,
+            use_iso: config.get_iso(&options),
+            ignore_hidden,
+        };
+        let info = PIndicator::spawn(conf);
+
+        Some(info)
+    };
+
+    let (info_conf, info_data) = if let Some(ref info) = info_opt {
+        (Some(&info.config), Some(&info.data))
+    } else {
+        (None, None)
+    };
+
     let walk_data = WalkData {
         ignore_directories: ignored_full_path,
         filter_regex: &filter_regexs,
@@ -172,13 +200,16 @@ fn main() {
         allowed_filesystems,
         use_apparent_size: config.get_apparent_size(&options),
         by_filecount,
-        ignore_hidden: config.get_ignore_hidden(&options),
+        ignore_hidden,
         follow_links,
+        progress_config: info_conf,
+        progress_data: info_data,
     };
+
     let _rayon = init_rayon();
 
-    let iso = config.get_iso(&options);
     let (top_level_nodes, has_errors) = walk_it(simplified_dirs, walk_data);
+
     let tree = match summarize_file_types {
         true => get_all_file_types(&top_level_nodes, number_of_lines),
         false => {
@@ -194,9 +225,14 @@ fn main() {
         }
     };
 
+    if let Some(info) = info_opt {
+        info.stop();
+    }
+
     if has_errors {
         eprintln!("Did not have permissions for all directories");
     }
+
     if let Some(root_node) = tree {
         draw_it(
             config.get_full_paths(&options),
