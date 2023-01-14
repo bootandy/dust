@@ -1,7 +1,7 @@
 use std::{
     io::Write,
     sync::{
-        atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering},
+        atomic::{AtomicBool, AtomicU64, AtomicU8, AtomicUsize, Ordering},
         Arc, RwLock,
     },
     thread::JoinHandle,
@@ -12,53 +12,16 @@ use crate::display::human_readable_number;
 
 /* -------------------------------------------------------------------------- */
 
-pub const ATOMIC_ORDERING: Ordering = Ordering::Relaxed;
+pub const ORDERING: Ordering = Ordering::Relaxed;
 
 const PROGRESS_CHARS_DELTA: u64 = 100;
 const PROGRESS_CHARS: [char; 4] = ['-', '\\', '|', '/'];
 const PROGRESS_CHARS_LEN: usize = PROGRESS_CHARS.len();
 
-// small wrappers for atomic number to reduce overhead
 pub trait ThreadSyncTrait<T> {
     fn set(&self, val: T);
     fn get(&self) -> T;
 }
-
-pub trait ThreadSyncMathTrait<T> {
-    fn add(&self, val: T);
-}
-
-macro_rules! create_atomic_wrapper {
-    ($ident: ident, $atomic_type: ty, $type: ty, $ordering: ident) => {
-        #[derive(Default)]
-        pub struct $ident {
-            inner: $atomic_type,
-        }
-
-        impl ThreadSyncTrait<$type> for $ident {
-            fn set(&self, val: $type) {
-                self.inner.store(val, $ordering)
-            }
-
-            fn get(&self) -> $type {
-                self.inner.load($ordering)
-            }
-        }
-    };
-
-    ($ident: ident, $atomic_type: ty, $type: ty, $ordering: ident + add) => {
-        create_atomic_wrapper!($ident, $atomic_type, $type, $ordering);
-
-        impl ThreadSyncMathTrait<$type> for $ident {
-            fn add(&self, val: $type) {
-                self.inner.fetch_add(val, $ordering);
-            }
-        }
-    };
-}
-
-create_atomic_wrapper!(AtomicU64Wrapper, AtomicU64, u64, ATOMIC_ORDERING + add);
-create_atomic_wrapper!(AtomicU8Wrapper, AtomicU8, u8, ATOMIC_ORDERING + add);
 
 #[derive(Default)]
 pub struct ThreadStringWrapper {
@@ -86,13 +49,11 @@ pub mod Operation {
 
 #[derive(Default)]
 pub struct PAtomicInfo {
-    // pub file_number: AtomicUsize::new(0),
-    pub file_number: AtomicU64Wrapper,
-    pub total_file_size: AtomicU64Wrapper,
-    pub state: AtomicU8Wrapper,
+    pub file_number: AtomicUsize,
+    pub total_file_size: AtomicU64,
+    pub state: AtomicU8,
     pub current_path: ThreadStringWrapper,
 }
-
 
 /* -------------------------------------------------------------------------- */
 fn format_indicator_str(data: &PAtomicInfo, progress_char_i: usize, s: &str) -> String {
@@ -115,7 +76,9 @@ impl PIndicator {
         Self {
             thread_run: Arc::new(AtomicBool::new(true)),
             thread: None,
-            data: Arc::new(PAtomicInfo{..Default::default()}),
+            data: Arc::new(PAtomicInfo {
+                ..Default::default()
+            }),
         }
     }
 
@@ -128,16 +91,17 @@ impl PIndicator {
             let mut stdout = std::io::stdout();
             std::thread::sleep(Duration::from_millis(PROGRESS_CHARS_DELTA));
 
-            while is_building_data_const.load(ATOMIC_ORDERING) {
-                let msg = match data.state.get() {
+            while is_building_data_const.load(ORDERING) {
+                let msg = match data.state.load(ORDERING) {
                     Operation::INDEXING => {
                         let base = format_indicator_str(&data, progress_char_i, "Indexing");
 
-                        let file_count = data.file_number.get();
-                        let size = human_readable_number(data.total_file_size.get(), is_iso);
+                        let file_count = data.file_number.load(ORDERING);
+                        let size = human_readable_number(
+                            data.total_file_size.load(ORDERING),
+                            is_iso,
+                        );
                         let file_str = format!("{} {} files", file_count, size);
-                        // let file_str = format!("{} {} files", file_count, data.total_file_size);
-
                         format!("{} - {}", base, file_str)
                     }
                     Operation::PREPARING => {
@@ -165,7 +129,7 @@ impl PIndicator {
     }
 
     pub fn stop(self) {
-        self.thread_run.store(false, ATOMIC_ORDERING);
+        self.thread_run.store(false, ORDERING);
         if let Some(t) = self.thread {
             t.join().unwrap();
         }
