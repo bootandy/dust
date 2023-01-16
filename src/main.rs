@@ -209,7 +209,7 @@ fn main() {
 
     let _rayon = init_rayon();
 
-    let (top_level_nodes, has_errors) = walk_it(simplified_dirs, walk_data);
+    let (top_level_nodes, has_errors) = walk_it(simplified_dirs, walk_data, _rayon.is_ok());
 
     let tree = match summarize_file_types {
         true => get_all_file_types(&top_level_nodes, number_of_lines),

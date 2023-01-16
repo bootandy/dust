@@ -36,14 +36,14 @@ pub struct WalkData<'a> {
     pub progress_data: Option<Arc<PAtomicInfo>>,
 }
 
-pub fn walk_it(dirs: HashSet<PathBuf>, walk_data: WalkData) -> (Vec<Node>, bool) {
+pub fn walk_it(dirs: HashSet<PathBuf>, walk_data: WalkData, parallelism: bool) -> (Vec<Node>, bool) {
     let permissions_flag = AtomicBool::new(false);
 
     let mut inodes = HashSet::new();
     let top_level_nodes: Vec<_> = dirs
         .into_iter()
         .filter_map(|d| {
-            let node = walk(d, &permissions_flag, &walk_data, 0)?;
+            let node = walk(d, &permissions_flag, &walk_data, 0, parallelism)?;
             if let Some(data) = &walk_data.progress_data {
                 data.state.set(progress::Operation::PREPARING);
             }
@@ -135,6 +135,7 @@ fn walk(
     permissions_flag: &AtomicBool,
     walk_data: &WalkData,
     depth: usize,
+    parallelism: bool,
 ) -> Option<Node> {
     let info_data = &walk_data.progress_data;
 
@@ -152,7 +153,7 @@ fn walk(
     let mut children = vec![];
 
     if let Ok(entries) = fs::read_dir(&dir) {
-        children = entries
+        children = if parallelism { entries
             .into_iter()
             .par_bridge()
             .filter_map(|entry| {
@@ -166,7 +167,13 @@ fn walk(
                     if !ignore_file(entry, walk_data) {
                         if let Ok(data) = entry.file_type() {
                             if data.is_dir() || (walk_data.follow_links && data.is_symlink()) {
-                                return walk(entry.path(), permissions_flag, walk_data, depth + 1);
+                                return walk(
+                                    entry.path(),
+                                    permissions_flag,
+                                    walk_data,
+                                    depth + 1,
+                                    parallelism,
+                                );
                             }
 
                             let node = build_node(
@@ -196,7 +203,25 @@ fn walk(
                 }
                 None
             })
-            .collect();
+            .collect()
+        } else { entries
+            .into_iter()
+            .filter_map(|entry| {
+                if let Ok(ref entry) = entry {
+                    return walk(
+                        entry.path(),
+                        permissions_flag,
+                        walk_data,
+                        depth + 1,
+                        parallelism,
+                    );
+                } else {
+                    permissions_flag.store(true, atomic::Ordering::Relaxed);
+                }
+                None
+            })
+            .collect()
+        };
     } else {
         // Handle edge case where dust is called with a file instead of a directory
         if !dir.exists() {
