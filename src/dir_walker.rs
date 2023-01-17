@@ -138,7 +138,7 @@ fn walk(dir: PathBuf, walk_data: &WalkData, depth: usize) -> Option<Node> {
                     // rayon doesn't parallelize as well giving a 3X performance drop
                     // hence we unravel the recursion a bit
 
-                    // return walk(entry.path(), permissions_flag, ignore_directories, allowed_filesystems, use_apparent_size, by_filecount, ignore_hidden);
+                    // return walk(entry.path(), walk_data, depth)
 
                     if !ignore_file(entry, walk_data) {
                         if let Ok(data) = entry.file_type() {
