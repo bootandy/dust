@@ -4,7 +4,7 @@ use std::path::PathBuf;
 pub struct DisplayNode {
     // Note: the order of fields in important here, for PartialEq and PartialOrd
     pub size: u64,
-    pub name: PathBuf, //todo: consider moving to a string?
+    pub name: PathBuf,
     pub children: Vec<DisplayNode>,
 }
 
