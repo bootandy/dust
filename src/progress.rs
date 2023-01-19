@@ -3,6 +3,7 @@ use std::{
     path::Path,
     sync::{
         atomic::{AtomicBool, AtomicU64, AtomicU8, AtomicUsize, Ordering},
+        mpsc::{self, RecvTimeoutError, Sender},
         Arc, RwLock,
     },
     thread::JoinHandle,
@@ -78,15 +79,13 @@ fn format_indicator_str(data: &PAtomicInfo, progress_char_i: usize, status: &str
 }
 
 pub struct PIndicator {
-    thread_run: Arc<AtomicBool>,
-    pub thread: Option<JoinHandle<()>>,
+    pub thread: Option<(Sender<()>, JoinHandle<()>)>,
     pub data: Arc<PAtomicInfo>,
 }
 
 impl PIndicator {
     pub fn build_me() -> Self {
         Self {
-            thread_run: Arc::new(AtomicBool::new(true)),
             thread: None,
             data: Arc::new(PAtomicInfo {
                 ..Default::default()
@@ -96,14 +95,17 @@ impl PIndicator {
 
     pub fn spawn(&mut self, is_iso: bool) {
         let data = self.data.clone();
-        let is_building_data_const = self.thread_run.clone();
+        let (stop_handler, receiver) = mpsc::channel::<()>();
 
         let time_info_thread = std::thread::spawn(move || {
             let mut progress_char_i: usize = 0;
             let mut stdout = std::io::stdout();
-            std::thread::sleep(Duration::from_millis(SPINNER_SLEEP_TIME));
 
-            while is_building_data_const.load(ORDERING) {
+            // While the timeout triggers we go round the loop
+            // If we disconnect or the sender sends its message we exit the while loop
+            while let Err(RecvTimeoutError::Timeout) =
+                receiver.recv_timeout(Duration::from_millis(SPINNER_SLEEP_TIME))
+            {
                 let msg = match data.state.load(ORDERING) {
                     Operation::INDEXING => {
                         let base = format_indicator_str(&data, progress_char_i, "Indexing");
@@ -126,7 +128,6 @@ impl PIndicator {
                 progress_char_i += 1;
                 progress_char_i %= PROGRESS_CHARS_LEN;
 
-                std::thread::sleep(Duration::from_millis(SPINNER_SLEEP_TIME));
                 // Clear the text written by 'write!'
                 print!("\r{:width$}", " ", width = msg.len());
             }
@@ -135,13 +136,13 @@ impl PIndicator {
             print!("\r");
             stdout.flush().unwrap();
         });
-        self.thread = Some(time_info_thread)
+        self.thread = Some((stop_handler, time_info_thread))
     }
 
     pub fn stop(self) {
-        self.thread_run.store(false, ORDERING);
-        if let Some(t) = self.thread {
-            t.join().unwrap();
+        if let Some((stop_handler, thread)) = self.thread {
+            stop_handler.send(()).unwrap();
+            thread.join().unwrap();
         }
     }
 }
