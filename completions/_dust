@@ -52,14 +52,14 @@ _dust() {
 '--filecount[Directory '\''size'\'' is number of child files/dirs not disk size]' \
 '-i[Do not display hidden files]' \
 '--ignore_hidden[Do not display hidden files]' \
-'(-d --depth)-t[show only these file types]' \
-'(-d --depth)--file_types[show only these file types]' \
+'(-d --depth -D --only-dir)-t[show only these file types]' \
+'(-d --depth -D --only-dir)--file_types[show only these file types]' \
 '-H[print sizes in powers of 1000 (e.g., 1.1G)]' \
 '--si[print sizes in powers of 1000 (e.g., 1.1G)]' \
 '-P[Disable the progress indication.]' \
 '--no-progress[Disable the progress indication.]' \
-'(-F --only-file)-D[Only directories will be displayed.]' \
-'(-F --only-file)--only-dir[Only directories will be displayed.]' \
+'(-F --only-file -t --file_types)-D[Only directories will be displayed.]' \
+'(-F --only-file -t --file_types)--only-dir[Only directories will be displayed.]' \
 '(-D --only-dir)-F[Only files will be displayed. (Finds your largest files)]' \
 '(-D --only-dir)--only-file[Only files will be displayed. (Finds your largest files)]' \
 '*::inputs:' \

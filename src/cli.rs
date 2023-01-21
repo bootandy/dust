@@ -124,6 +124,7 @@ pub fn build_cli() -> Command<'static> {
                 .short('t')
                 .long("file_types")
                 .conflicts_with("depth")
+                .conflicts_with("only_dir")
                 .help("show only these file types"),
         )
         .arg(
@@ -151,6 +152,7 @@ pub fn build_cli() -> Command<'static> {
                 .short('D')
                 .long("only-dir")
                 .conflicts_with("only_file")
+                .conflicts_with("types")
                 .help("Only directories will be displayed."),
         )
         .arg(
