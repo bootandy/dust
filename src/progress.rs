@@ -100,13 +100,17 @@ impl PIndicator {
         let time_info_thread = std::thread::spawn(move || {
             let mut progress_char_i: usize = 0;
             let mut stdout = std::io::stdout();
+            let mut msg = "".to_string();
 
             // While the timeout triggers we go round the loop
             // If we disconnect or the sender sends its message we exit the while loop
             while let Err(RecvTimeoutError::Timeout) =
                 receiver.recv_timeout(Duration::from_millis(SPINNER_SLEEP_TIME))
             {
-                let msg = match data.state.load(ORDERING) {
+                // Clear the text written by 'write!'& Return at the start of line
+                print!("\r{:width$}", " ", width = msg.len());
+
+                msg = match data.state.load(ORDERING) {
                     Operation::INDEXING => {
                         let base = format_indicator_str(&data, progress_char_i, "Indexing");
 
@@ -127,12 +131,7 @@ impl PIndicator {
 
                 progress_char_i += 1;
                 progress_char_i %= PROGRESS_CHARS_LEN;
-
-                // Clear the text written by 'write!'
-                print!("\r{:width$}", " ", width = msg.len());
             }
-
-            // Return at the start of the line so the output can be printed correctly
             print!("\r");
             stdout.flush().unwrap();
         });
