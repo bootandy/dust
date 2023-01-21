@@ -40,6 +40,7 @@ pub fn walk_it(dirs: HashSet<PathBuf>, walk_data: WalkData) -> Vec<Node> {
             let node = walk(d, &walk_data, 0)?;
 
             prog_data.state.store(Operation::PREPARING, ORDERING);
+
             clean_inodes(node, &mut inodes, walk_data.use_apparent_size)
         })
         .collect();
@@ -125,7 +126,6 @@ fn ignore_file(entry: &DirEntry, walk_data: &WalkData) -> bool {
 
 fn walk(dir: PathBuf, walk_data: &WalkData, depth: usize) -> Option<Node> {
     let prog_data = &walk_data.progress_data;
-
     let mut children = vec![];
 
     if let Ok(entries) = fs::read_dir(&dir) {

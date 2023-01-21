@@ -69,13 +69,19 @@ impl PAtomicInfo {
 }
 
 /* -------------------------------------------------------------------------- */
-fn format_indicator_str(data: &PAtomicInfo, progress_char_i: usize, status: &str) -> String {
-    format!(
-        "\r{} \"{}\"... {}",
-        status,
-        data.current_path.get(),
-        PROGRESS_CHARS[progress_char_i],
-    )
+
+fn format_preparing_str(prog_char: char, data: &PAtomicInfo, is_iso: bool) -> String {
+    let path_in = data.current_path.get();
+    let size = human_readable_number(data.total_file_size.load(ORDERING), is_iso);
+    format!("Preparing: {} {} ... {}", path_in, size, prog_char)
+}
+
+fn format_indexing_str(prog_char: char, data: &PAtomicInfo, is_iso: bool) -> String {
+    let path_in = data.current_path.get();
+    let file_count = data.num_files.load(ORDERING);
+    let size = human_readable_number(data.total_file_size.load(ORDERING), is_iso);
+    let file_str = format!("{} files, {}", file_count, size);
+    format!("Indexing: {} {} ... {}", path_in, file_str, prog_char)
 }
 
 pub struct PIndicator {
@@ -109,24 +115,15 @@ impl PIndicator {
             {
                 // Clear the text written by 'write!'& Return at the start of line
                 print!("\r{:width$}", " ", width = msg.len());
+                let prog_char = PROGRESS_CHARS[progress_char_i];
 
                 msg = match data.state.load(ORDERING) {
-                    Operation::INDEXING => {
-                        let base = format_indicator_str(&data, progress_char_i, "Indexing");
-
-                        let file_count = data.num_files.load(ORDERING);
-                        let size =
-                            human_readable_number(data.total_file_size.load(ORDERING), is_iso);
-                        let file_str = format!("{} {} files", file_count, size);
-                        format!("{} - {}", base, file_str)
-                    }
-                    Operation::PREPARING => {
-                        format_indicator_str(&data, progress_char_i, "Preparing")
-                    }
+                    Operation::INDEXING => format_indexing_str(prog_char, &data, is_iso),
+                    Operation::PREPARING => format_preparing_str(prog_char, &data, is_iso),
                     _ => panic!("Unknown State"),
                 };
 
-                write!(stdout, "{}", msg).unwrap();
+                write!(stdout, "\r{}", msg).unwrap();
                 stdout.flush().unwrap();
 
                 progress_char_i += 1;
