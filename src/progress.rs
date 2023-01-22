@@ -129,6 +129,7 @@ impl PIndicator {
                 progress_char_i += 1;
                 progress_char_i %= PROGRESS_CHARS_LEN;
             }
+            print!("\r{:width$}", " ", width = msg.len());
             print!("\r");
             stdout.flush().unwrap();
         });
