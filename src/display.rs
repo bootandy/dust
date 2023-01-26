@@ -216,7 +216,7 @@ fn display_node(node: &DisplayNode, draw_data: &DrawData, is_biggest: bool, is_l
     let to_print = format_string(node, &indent, &bar_text, is_biggest, draw_data.display_data);
 
     if !draw_data.display_data.is_reversed {
-        println!("{}", to_print)
+        println!("{to_print}")
     }
 
     let dd = DrawData {
@@ -237,7 +237,7 @@ fn display_node(node: &DisplayNode, draw_data: &DrawData, is_biggest: bool, is_l
     }
 
     if draw_data.display_data.is_reversed {
-        println!("{}", to_print)
+        println!("{to_print}")
     }
 }
 
@@ -278,7 +278,7 @@ fn get_printable_name<P: AsRef<Path>>(dir_name: &P, short_paths: bool) -> String
 
 fn pad_or_trim_filename(node: &DisplayNode, indent: &str, display_data: &DisplayData) -> String {
     let name = get_printable_name(&node.name, display_data.short_paths);
-    let indent_and_name = format!("{} {}", indent, name);
+    let indent_and_name = format!("{indent} {name}");
     let width = UnicodeWidthStr::width(&*indent_and_name);
 
     assert!(
@@ -321,7 +321,7 @@ pub fn format_string(
     let (percents, name_and_padding) = get_name_percent(node, indent, percent_bar, display_data);
     let pretty_size = get_pretty_size(node, is_biggest, display_data);
     let pretty_name = get_pretty_name(node, name_and_padding, display_data);
-    format!("{} {} {}{}", pretty_size, indent, pretty_name, percents)
+    format!("{pretty_size} {indent} {pretty_name}{percents}")
 }
 
 fn get_name_percent(
@@ -331,8 +331,9 @@ fn get_name_percent(
     display_data: &DisplayData,
 ) -> (String, String) {
     if !bar_chart.is_empty() {
-        let percent_size_str = format!("{:.0}%", display_data.percent_size(node) * 100.0);
-        let percents = format!("│{} │ {:>4}", bar_chart, percent_size_str);
+        let percent = display_data.percent_size(node) * 100.0;
+        let percent_size_str = format!("{percent:.0}%");
+        let percents = format!("│{bar_chart} │ {percent_size_str:>4}");
         let name_and_padding = pad_or_trim_filename(node, indent, display_data);
         (percents, name_and_padding)
     } else {
@@ -371,7 +372,8 @@ fn get_pretty_name(
         let ansi_style = directory_color
             .map(Style::to_ansi_term_style)
             .unwrap_or_default();
-        format!("{}", ansi_style.paint(name_and_padding))
+        let out = ansi_style.paint(name_and_padding);
+        format!("{out}")
     } else {
         name_and_padding
     }
@@ -389,7 +391,7 @@ pub fn human_readable_number(size: u64, iso: bool) -> String {
             }
         }
     }
-    format!("{}B", size)
+    format!("{size}B")
 }
 
 mod tests {

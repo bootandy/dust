@@ -73,15 +73,15 @@ impl PAtomicInfo {
 fn format_preparing_str(prog_char: char, data: &PAtomicInfo, is_iso: bool) -> String {
     let path_in = data.current_path.get();
     let size = human_readable_number(data.total_file_size.load(ORDERING), is_iso);
-    format!("Preparing: {} {} ... {}", path_in, size, prog_char)
+    format!("Preparing: {path_in} {size} ... {prog_char}")
 }
 
 fn format_indexing_str(prog_char: char, data: &PAtomicInfo, is_iso: bool) -> String {
     let path_in = data.current_path.get();
     let file_count = data.num_files.load(ORDERING);
     let size = human_readable_number(data.total_file_size.load(ORDERING), is_iso);
-    let file_str = format!("{} files, {}", file_count, size);
-    format!("Indexing: {} {} ... {}", path_in, file_str, prog_char)
+    let file_str = format!("{file_count} files, {size}");
+    format!("Indexing: {path_in} {file_str} ... {prog_char}")
 }
 
 pub struct PIndicator {
@@ -123,7 +123,7 @@ impl PIndicator {
                     _ => panic!("Unknown State"),
                 };
 
-                write!(stdout, "\r{}", msg).unwrap();
+                write!(stdout, "\r{msg}").unwrap();
                 stdout.flush().unwrap();
 
                 progress_char_i += 1;

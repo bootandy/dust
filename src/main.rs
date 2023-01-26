@@ -90,7 +90,7 @@ fn get_regex_value(maybe_value: Option<Values>) -> Vec<Regex> {
         .unwrap_or_default()
         .map(|reg| {
             Regex::new(reg).unwrap_or_else(|err| {
-                eprintln!("Ignoring bad value for regex {:?}", err);
+                eprintln!("Ignoring bad value for regex {err:?}");
                 process::exit(1)
             })
         })
