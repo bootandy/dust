@@ -30,8 +30,8 @@ strip = true
 ansi_term = "0.12"
 atty = "0.2.14"
 clap = "3.2.17"
-lscolors = "0.7"
-terminal_size = "0.1"
+lscolors = "0.13"
+terminal_size = "0.2"
 unicode-width = "0.1"
 rayon = "1"
 thousands = "0.2"
@@ -40,13 +40,13 @@ regex = "1"
 config-file = "0.2"
 serde = { version = "1.0", features = ["derive"] }
 directories = "4"
-sysinfo = "0.26"
+sysinfo = "0.27"
 
 [target.'cfg(windows)'.dependencies]
 winapi-util = "0.1"
 
 [dev-dependencies]
-assert_cmd = "1"
+assert_cmd = "2"
 tempfile = "=3"
 
 [build-dependencies]
