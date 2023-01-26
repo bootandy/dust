@@ -86,7 +86,7 @@ fn convert_min_size(input: &str, iso: bool) -> Option<usize> {
                             Some(marker)
                         }
                         Err(_) => {
-                            eprintln!("Ignoring invalid min-size: {}", input);
+                            eprintln!("Ignoring invalid min-size: {input}");
                             None
                         }
                     };
@@ -96,7 +96,7 @@ fn convert_min_size(input: &str, iso: bool) -> Option<usize> {
             starts
                 .parse()
                 .map_err(|_| {
-                    eprintln!("Ignoring invalid min-size: {}", input);
+                    eprintln!("Ignoring invalid min-size: {input}");
                 })
                 .ok()
         }
