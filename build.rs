@@ -1,5 +1,8 @@
 use clap_complete::{generate_to, shells::*};
 use std::io::Error;
+use std::path::Path;
+use std::fs::File;
+use clap_mangen::Man;
 
 include!("src/cli.rs");
 
@@ -13,6 +16,12 @@ fn main() -> Result<(), Error> {
     generate_to(Fish, &mut cmd, app_name, outdir)?;
     generate_to(PowerShell, &mut cmd, app_name, outdir)?;
     generate_to(Elvish, &mut cmd, app_name, outdir)?;
+
+    let file = Path::new("man-page").join("dust.1");
+    std::fs::create_dir("man-page");
+    let mut file = File::create(&file)?;
+
+    Man::new(cmd).render(&mut file)?;
 
     Ok(())
 }
