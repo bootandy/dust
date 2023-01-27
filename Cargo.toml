@@ -52,6 +52,7 @@ tempfile = "=3"
 [build-dependencies]
 clap = "3.2.17"
 clap_complete = "3.2.4"
+clap_mangen = "0.1"
 
 [[test]]
 name = "integration"

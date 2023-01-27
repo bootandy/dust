@@ -1,0 +1,84 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH Dust 1  "Dust 0.8.3" 
+.SH NAME
+Dust \- Like du but more intuitive
+.SH SYNOPSIS
+\fBDust\fR [\fB\-h\fR|\fB\-\-help\fR] [\fB\-V\fR|\fB\-\-version\fR] [\fB\-d\fR|\fB\-\-depth\fR] [\fB\-n\fR|\fB\-\-number\-of\-lines\fR] [\fB\-p\fR|\fB\-\-full\-paths\fR] [\fB\-X\fR|\fB\-\-ignore\-directory\fR] [\fB\-L\fR|\fB\-\-dereference\-links\fR] [\fB\-x\fR|\fB\-\-limit\-filesystem\fR] [\fB\-s\fR|\fB\-\-apparent\-size\fR] [\fB\-r\fR|\fB\-\-reverse\fR] [\fB\-c\fR|\fB\-\-no\-colors\fR] [\fB\-b\fR|\fB\-\-no\-percent\-bars\fR] [\fB\-z\fR|\fB\-\-min\-size\fR] [\fB\-\-skip\-total\fR] [\fB\-f\fR|\fB\-\-filecount\fR] [\fB\-i\fR|\fB\-\-ignore_hidden\fR] [\fB\-v\fR|\fB\-\-invert\-filter\fR] [\fB\-e\fR|\fB\-\-filter\fR] [\fB\-t\fR|\fB\-\-file_types\fR] [\fB\-w\fR|\fB\-\-terminal_width\fR] [\fB\-H\fR|\fB\-\-si\fR] [\fB\-P\fR|\fB\-\-no\-progress\fR] [\fB\-D\fR|\fB\-\-only\-dir\fR] [\fIinputs\fR] 
+.SH DESCRIPTION
+Like du but more intuitive
+.SH OPTIONS
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help information
+.TP
+\fB\-V\fR, \fB\-\-version\fR
+Print version information
+.TP
+\fB\-d\fR, \fB\-\-depth\fR
+Depth to show
+.TP
+\fB\-n\fR, \fB\-\-number\-of\-lines\fR
+Number of lines of output to show. (Default is terminal_height \- 10)
+.TP
+\fB\-p\fR, \fB\-\-full\-paths\fR
+Subdirectories will not have their path shortened
+.TP
+\fB\-X\fR, \fB\-\-ignore\-directory\fR
+Exclude any file or directory with this name
+.TP
+\fB\-L\fR, \fB\-\-dereference\-links\fR
+dereference sym links \- Treat sym links as directories and go into them
+.TP
+\fB\-x\fR, \fB\-\-limit\-filesystem\fR
+Only count the files and directories on the same filesystem as the supplied directory
+.TP
+\fB\-s\fR, \fB\-\-apparent\-size\fR
+Use file length instead of blocks
+.TP
+\fB\-r\fR, \fB\-\-reverse\fR
+Print tree upside down (biggest highest)
+.TP
+\fB\-c\fR, \fB\-\-no\-colors\fR
+No colors will be printed (Useful for commands like: watch)
+.TP
+\fB\-b\fR, \fB\-\-no\-percent\-bars\fR
+No percent bars or percentages will be displayed
+.TP
+\fB\-z\fR, \fB\-\-min\-size\fR
+Minimum size file to include in output
+.TP
+\fB\-\-skip\-total\fR
+No total row will be displayed
+.TP
+\fB\-f\fR, \fB\-\-filecount\fR
+Directory \*(Aqsize\*(Aq is number of child files/dirs not disk size
+.TP
+\fB\-i\fR, \fB\-\-ignore_hidden\fR
+Do not display hidden files
+.TP
+\fB\-v\fR, \fB\-\-invert\-filter\fR
+Exclude filepaths matching this regex. To ignore png files type: \-v "\\.png$" 
+.TP
+\fB\-e\fR, \fB\-\-filter\fR
+Only include filepaths matching this regex. For png files type: \-e "\\.png$" 
+.TP
+\fB\-t\fR, \fB\-\-file_types\fR
+show only these file types
+.TP
+\fB\-w\fR, \fB\-\-terminal_width\fR
+Specify width of output overriding the auto detection of terminal width
+.TP
+\fB\-H\fR, \fB\-\-si\fR
+print sizes in powers of 1000 (e.g., 1.1G)
+.TP
+\fB\-P\fR, \fB\-\-no\-progress\fR
+Disable the progress indication.
+.TP
+\fB\-D\fR, \fB\-\-only\-dir\fR
+Only directories will be displayed.
+.TP
+[\fIinputs\fR]
+
+.SH VERSION
+v0.8.3
