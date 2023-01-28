@@ -199,6 +199,7 @@ fn main() {
             let agg_data = AggregateData {
                 min_size: config.get_min_size(&options, iso),
                 only_dir: config.get_only_dir(&options),
+                only_file: config.get_only_file(&options),
                 number_of_lines,
                 depth,
                 using_a_filter: options.values_of("filter").is_some()

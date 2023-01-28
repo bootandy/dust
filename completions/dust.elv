@@ -63,6 +63,8 @@ set edit:completion:arg-completer[dust] = {|@words|
             cand --no-progress 'Disable the progress indication.'
             cand -D 'Only directories will be displayed.'
             cand --only-dir 'Only directories will be displayed.'
+            cand -F 'Only files will be displayed. (Finds your largest files)'
+            cand --only-file 'Only files will be displayed. (Finds your largest files)'
         }
     ]
     $completions[$command]

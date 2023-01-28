@@ -20,6 +20,7 @@ pub struct Config {
     pub iso: Option<bool>,
     pub min_size: Option<String>,
     pub only_dir: Option<bool>,
+    pub only_file: Option<bool>,
     pub disable_progress: Option<bool>,
 }
 
@@ -37,7 +38,10 @@ impl Config {
         Some(true) == self.ignore_hidden || options.is_present("ignore_hidden")
     }
     pub fn get_full_paths(&self, options: &ArgMatches) -> bool {
-        Some(true) == self.display_full_paths || options.is_present("display_full_paths")
+        // If we are only showing files, always show full paths
+        Some(true) == self.display_full_paths
+            || options.is_present("display_full_paths")
+            || self.get_only_file(options)
     }
     pub fn get_reverse(&self, options: &ArgMatches) -> bool {
         Some(true) == self.reverse || options.is_present("reverse")
@@ -68,6 +72,9 @@ impl Config {
     }
     pub fn get_only_dir(&self, options: &ArgMatches) -> bool {
         Some(true) == self.only_dir || options.is_present("only_dir")
+    }
+    pub fn get_only_file(&self, options: &ArgMatches) -> bool {
+        Some(true) == self.only_file || options.is_present("only_file")
     }
 }
 
