@@ -146,11 +146,19 @@ pub fn build_cli() -> Command<'static> {
                 .long("no-progress")
                 .help("Disable the progress indication."),
         )
-        .arg(Arg::new("inputs").multiple_occurrences(true))
         .arg(
             Arg::new("only_dir")
                 .short('D')
                 .long("only-dir")
+                .conflicts_with("only_file")
                 .help("Only directories will be displayed."),
         )
+        .arg(
+            Arg::new("only_file")
+                .short('F')
+                .long("only-file")
+                .conflicts_with("only_dir")
+                .help("Only files will be displayed. (Finds your largest files)"),
+        )
+        .arg(Arg::new("inputs").multiple_occurrences(true))
 }

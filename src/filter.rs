@@ -1,13 +1,14 @@
 use crate::display_node::DisplayNode;
 use crate::node::Node;
 use std::collections::BinaryHeap;
-use std::collections::HashSet;
+use std::collections::HashMap;
 use std::path::Path;
 use std::path::PathBuf;
 
 pub struct AggregateData {
     pub min_size: Option<usize>,
     pub only_dir: bool,
+    pub only_file: bool,
     pub number_of_lines: usize,
     pub depth: usize,
     pub using_a_filter: bool,
@@ -38,31 +39,34 @@ pub fn get_biggest(top_level_nodes: Vec<Node>, display_data: AggregateData) -> O
         heap = add_children(&display_data, &root, heap);
     }
 
-    let nol = display_data.number_of_lines;
-    let remaining = nol.saturating_sub(number_top_level_nodes);
-    fill_remaining_lines(heap, &root, remaining, display_data)
+    fill_remaining_lines(heap, &root, display_data)
 }
 
 pub fn fill_remaining_lines<'a>(
     mut heap: BinaryHeap<&'a Node>,
     root: &'a Node,
-    remaining_lines: usize,
     display_data: AggregateData,
 ) -> Option<DisplayNode> {
-    let mut allowed_nodes = HashSet::new();
-    allowed_nodes.insert(root.name.as_path());
+    let mut allowed_nodes = HashMap::new();
 
-    for _ in 0..remaining_lines {
+    while allowed_nodes.len() < display_data.number_of_lines {
         let line = heap.pop();
         match line {
             Some(line) => {
-                allowed_nodes.insert(line.name.as_path());
+                if !display_data.only_file || line.children.is_empty() {
+                    allowed_nodes.insert(line.name.as_path(), line);
+                }
                 heap = add_children(&display_data, line, heap);
             }
             None => break,
         }
     }
-    recursive_rebuilder(&allowed_nodes, root)
+
+    if display_data.only_file {
+        flat_rebuilder(allowed_nodes, root)
+    } else {
+        recursive_rebuilder(&allowed_nodes, root)
+    }
 }
 
 fn add_children<'a>(
@@ -101,19 +105,39 @@ fn always_add_children<'a>(
     heap
 }
 
-fn recursive_rebuilder(allowed_nodes: &HashSet<&Path>, current: &Node) -> Option<DisplayNode> {
-    let mut new_children: Vec<_> = current
+// Finds children of current, if in allowed_nodes adds them as children to new DisplayNode
+fn recursive_rebuilder(
+    allowed_nodes: &HashMap<&Path, &Node>,
+    current: &Node,
+) -> Option<DisplayNode> {
+    let new_children: Vec<_> = current
         .children
         .iter()
-        .filter(|c| allowed_nodes.contains(c.name.as_path()))
+        .filter(|c| allowed_nodes.contains_key(c.name.as_path()))
         .filter_map(|c| recursive_rebuilder(allowed_nodes, c))
         .collect();
 
-    new_children.sort_by(|lhs, rhs| lhs.cmp(rhs).reverse());
+    Some(build_node(new_children, current))
+}
 
-    Some(DisplayNode {
+// Applies all allowed nodes as children to current node
+fn flat_rebuilder(allowed_nodes: HashMap<&Path, &Node>, current: &Node) -> Option<DisplayNode> {
+    let new_children: Vec<DisplayNode> = allowed_nodes
+        .into_values()
+        .map(|v| DisplayNode {
+            name: v.name.clone(),
+            size: v.size,
+            children: vec![],
+        })
+        .collect::<Vec<DisplayNode>>();
+    Some(build_node(new_children, current))
+}
+
+fn build_node(mut new_children: Vec<DisplayNode>, current: &Node) -> DisplayNode {
+    new_children.sort_by(|lhs, rhs| lhs.cmp(rhs).reverse());
+    DisplayNode {
         name: current.name.clone(),
         size: current.size,
         children: new_children,
-    })
+    }
 }

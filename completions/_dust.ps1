@@ -66,6 +66,8 @@ Register-ArgumentCompleter -Native -CommandName 'dust' -ScriptBlock {
             [CompletionResult]::new('--no-progress', 'no-progress', [CompletionResultType]::ParameterName, 'Disable the progress indication.')
             [CompletionResult]::new('-D', 'D', [CompletionResultType]::ParameterName, 'Only directories will be displayed.')
             [CompletionResult]::new('--only-dir', 'only-dir', [CompletionResultType]::ParameterName, 'Only directories will be displayed.')
+            [CompletionResult]::new('-F', 'F', [CompletionResultType]::ParameterName, 'Only files will be displayed. (Finds your largest files)')
+            [CompletionResult]::new('--only-file', 'only-file', [CompletionResultType]::ParameterName, 'Only files will be displayed. (Finds your largest files)')
             break
         }
     })
