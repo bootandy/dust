@@ -209,10 +209,12 @@ fn main() {
         }
     };
 
-    if indicator.data.no_permissions.load(ORDERING) {
+    let failed_permissions = indicator.data.no_permissions.load(ORDERING);
+    indicator.stop();
+    // Must have stopped indicator before we print to stderr
+    if failed_permissions {
         eprintln!("Did not have permissions for all directories");
     }
-    indicator.stop();
 
     if let Some(root_node) = tree {
         draw_it(
