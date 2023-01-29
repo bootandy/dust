@@ -39,14 +39,14 @@ pub fn get_biggest(top_level_nodes: Vec<Node>, display_data: AggregateData) -> O
         heap = add_children(&display_data, &root, heap);
     }
 
-    fill_remaining_lines(heap, &root, display_data)
+    Some(fill_remaining_lines(heap, &root, display_data))
 }
 
 pub fn fill_remaining_lines<'a>(
     mut heap: BinaryHeap<&'a Node>,
     root: &'a Node,
     display_data: AggregateData,
-) -> Option<DisplayNode> {
+) -> DisplayNode {
     let mut allowed_nodes = HashMap::new();
 
     while allowed_nodes.len() < display_data.number_of_lines {
@@ -109,19 +109,19 @@ fn always_add_children<'a>(
 fn recursive_rebuilder(
     allowed_nodes: &HashMap<&Path, &Node>,
     current: &Node,
-) -> Option<DisplayNode> {
+) -> DisplayNode {
     let new_children: Vec<_> = current
         .children
         .iter()
         .filter(|c| allowed_nodes.contains_key(c.name.as_path()))
-        .filter_map(|c| recursive_rebuilder(allowed_nodes, c))
+        .map(|c| recursive_rebuilder(allowed_nodes, c))
         .collect();
 
-    Some(build_node(new_children, current))
+    build_node(new_children, current)
 }
 
 // Applies all allowed nodes as children to current node
-fn flat_rebuilder(allowed_nodes: HashMap<&Path, &Node>, current: &Node) -> Option<DisplayNode> {
+fn flat_rebuilder(allowed_nodes: HashMap<&Path, &Node>, current: &Node) -> DisplayNode {
     let new_children: Vec<DisplayNode> = allowed_nodes
         .into_values()
         .map(|v| DisplayNode {
@@ -130,7 +130,7 @@ fn flat_rebuilder(allowed_nodes: HashMap<&Path, &Node>, current: &Node) -> Optio
             children: vec![],
         })
         .collect::<Vec<DisplayNode>>();
-    Some(build_node(new_children, current))
+    build_node(new_children, current)
 }
 
 fn build_node(mut new_children: Vec<DisplayNode>, current: &Node) -> DisplayNode {
