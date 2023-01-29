@@ -106,10 +106,7 @@ fn always_add_children<'a>(
 }
 
 // Finds children of current, if in allowed_nodes adds them as children to new DisplayNode
-fn recursive_rebuilder(
-    allowed_nodes: &HashMap<&Path, &Node>,
-    current: &Node,
-) -> DisplayNode {
+fn recursive_rebuilder(allowed_nodes: &HashMap<&Path, &Node>, current: &Node) -> DisplayNode {
     let new_children: Vec<_> = current
         .children
         .iter()

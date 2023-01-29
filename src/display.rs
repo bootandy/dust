@@ -17,22 +17,26 @@ use thousands::Separable;
 pub static UNITS: [char; 4] = ['T', 'G', 'M', 'K'];
 static BLOCKS: [char; 5] = ['█', '▓', '▒', '░', ' '];
 
-pub struct DisplayData {
+pub struct InitialDisplayData {
     pub short_paths: bool,
     pub is_reversed: bool,
     pub colors_on: bool,
     pub by_filecount: bool,
     pub is_screen_reader: bool,
+    pub iso: bool,
+}
+
+pub struct DisplayData {
+    pub initial: InitialDisplayData,
     pub num_chars_needed_on_left_most: usize,
     pub base_size: u64,
     pub longest_string_length: usize,
     pub ls_colors: LsColors,
-    pub iso: bool,
 }
 
 impl DisplayData {
     fn get_tree_chars(&self, was_i_last: bool, has_children: bool) -> &'static str {
-        match (self.is_reversed, was_i_last, has_children) {
+        match (self.initial.is_reversed, was_i_last, has_children) {
             (true, true, true) => "┌─┴",
             (true, true, false) => "┌──",
             (true, false, true) => "├─┴",
@@ -45,7 +49,7 @@ impl DisplayData {
     }
 
     fn is_biggest(&self, num_siblings: usize, max_siblings: u64) -> bool {
-        if self.is_reversed {
+        if self.initial.is_reversed {
             num_siblings == (max_siblings - 1) as usize
         } else {
             num_siblings == 0
@@ -53,7 +57,7 @@ impl DisplayData {
     }
 
     fn is_last(&self, num_siblings: usize, max_siblings: u64) -> bool {
-        if self.is_reversed {
+        if self.initial.is_reversed {
             num_siblings == 0
         } else {
             num_siblings == (max_siblings - 1) as usize
@@ -84,7 +88,7 @@ impl DrawData<'_> {
 
     // TODO: can we test this?
     fn generate_bar(&self, node: &DisplayNode, level: usize) -> String {
-        if self.display_data.is_screen_reader {
+        if self.display_data.initial.is_screen_reader {
             return level.to_string();
         }
         let chars_in_bar = self.percent_bar.chars().count();
@@ -108,19 +112,12 @@ impl DrawData<'_> {
     }
 }
 
-// TODO: Push these into one object ?
-#[allow(clippy::too_many_arguments)]
 pub fn draw_it(
-    use_full_path: bool,
-    is_reversed: bool,
-    no_colors: bool,
+    idd: InitialDisplayData,
     no_percent_bars: bool,
     terminal_width: usize,
-    by_filecount: bool,
     root_node: &DisplayNode,
-    iso: bool,
     skip_total: bool,
-    is_screen_reader: bool,
 ) {
     let biggest = match skip_total {
         false => root_node,
@@ -130,11 +127,11 @@ pub fn draw_it(
             .unwrap_or(root_node),
     };
 
-    let num_chars_needed_on_left_most = if by_filecount {
+    let num_chars_needed_on_left_most = if idd.by_filecount {
         let max_size = biggest.size;
         max_size.separate_with_commas().chars().count()
     } else {
-        find_biggest_size_str(root_node, iso)
+        find_biggest_size_str(root_node, idd.iso)
     };
 
     assert!(
@@ -144,13 +141,8 @@ pub fn draw_it(
 
     let allowed_width = terminal_width - num_chars_needed_on_left_most - 2;
     let num_indent_chars = 3;
-    let longest_string_length = find_longest_dir_name(
-        root_node,
-        num_indent_chars,
-        allowed_width,
-        !use_full_path,
-        is_screen_reader,
-    );
+    let longest_string_length =
+        find_longest_dir_name(root_node, num_indent_chars, allowed_width, &idd);
 
     let max_bar_length = if no_percent_bars || longest_string_length + 7 >= allowed_width {
         0
@@ -161,16 +153,11 @@ pub fn draw_it(
     let first_size_bar = repeat(BLOCKS[0]).take(max_bar_length).collect();
 
     let display_data = DisplayData {
-        short_paths: !use_full_path,
-        is_reversed,
-        colors_on: !no_colors,
-        by_filecount,
-        is_screen_reader,
+        initial: idd,
         num_chars_needed_on_left_most,
         base_size: biggest.size,
         longest_string_length,
         ls_colors: LsColors::from_env().unwrap_or_default(),
-        iso,
     };
     let draw_data = DrawData {
         indent: "".to_string(),
@@ -182,7 +169,7 @@ pub fn draw_it(
         display_node(root_node, &draw_data, true, true);
     } else {
         for (count, c) in root_node
-            .get_children_from_node(draw_data.display_data.is_reversed)
+            .get_children_from_node(draw_data.display_data.initial.is_reversed)
             .enumerate()
         {
             let is_biggest = display_data.is_biggest(count, root_node.num_siblings());
@@ -204,12 +191,11 @@ fn find_longest_dir_name(
     node: &DisplayNode,
     indent: usize,
     terminal: usize,
-    long_paths: bool,
-    is_screen_reader: bool,
+    idd: &InitialDisplayData,
 ) -> usize {
-    let printable_name = get_printable_name(&node.name, long_paths);
+    let printable_name = get_printable_name(&node.name, idd.short_paths);
 
-    let longest = if is_screen_reader {
+    let longest = if idd.is_screen_reader {
         UnicodeWidthStr::width(&*printable_name) + 1
     } else {
         min(
@@ -221,7 +207,7 @@ fn find_longest_dir_name(
     // each none root tree drawing is 2 more chars, hence we increment indent by 2
     node.children
         .iter()
-        .map(|c| find_longest_dir_name(c, indent + 2, terminal, long_paths, is_screen_reader))
+        .map(|c| find_longest_dir_name(c, indent + 2, terminal, idd))
         .fold(longest, max)
 }
 
@@ -233,7 +219,7 @@ fn display_node(node: &DisplayNode, draw_data: &DrawData, is_biggest: bool, is_l
 
     let to_print = format_string(node, &indent, &bar_text, is_biggest, draw_data.display_data);
 
-    if !draw_data.display_data.is_reversed {
+    if !draw_data.display_data.initial.is_reversed {
         println!("{to_print}")
     }
 
@@ -246,7 +232,7 @@ fn display_node(node: &DisplayNode, draw_data: &DrawData, is_biggest: bool, is_l
     let num_siblings = node.num_siblings();
 
     for (count, c) in node
-        .get_children_from_node(draw_data.display_data.is_reversed)
+        .get_children_from_node(draw_data.display_data.initial.is_reversed)
         .enumerate()
     {
         let is_biggest = dd.display_data.is_biggest(count, num_siblings);
@@ -254,7 +240,7 @@ fn display_node(node: &DisplayNode, draw_data: &DrawData, is_biggest: bool, is_l
         display_node(c, &dd, is_biggest, was_i_last);
     }
 
-    if draw_data.display_data.is_reversed {
+    if draw_data.display_data.initial.is_reversed {
         println!("{to_print}")
     }
 }
@@ -295,7 +281,7 @@ fn get_printable_name<P: AsRef<Path>>(dir_name: &P, short_paths: bool) -> String
 }
 
 fn pad_or_trim_filename(node: &DisplayNode, indent: &str, display_data: &DisplayData) -> String {
-    let name = get_printable_name(&node.name, display_data.short_paths);
+    let name = get_printable_name(&node.name, display_data.initial.short_paths);
     let indent_and_name = format!("{indent} {name}");
     let width = UnicodeWidthStr::width(&*indent_and_name);
 
@@ -340,7 +326,7 @@ pub fn format_string(
     let pretty_size = get_pretty_size(node, is_biggest, display_data);
     let pretty_name = get_pretty_name(node, name_and_padding, display_data);
     // we can clean this and the method below somehow, not sure yet
-    if display_data.is_screen_reader {
+    if display_data.initial.is_screen_reader {
         // if screen_reader then bars is 'depth'
         format!("{pretty_name} {bars} {pretty_size}{percent}")
     } else {
@@ -354,7 +340,7 @@ fn get_name_percent(
     bar_chart: &str,
     display_data: &DisplayData,
 ) -> (String, String) {
-    if display_data.is_screen_reader {
+    if display_data.initial.is_screen_reader {
         let percent = display_data.percent_size(node) * 100.0;
         let percent_size_str = format!("{percent:.0}%");
         let percents = format!(" {percent_size_str:>4}",);
@@ -368,22 +354,22 @@ fn get_name_percent(
         let name_and_padding = pad_or_trim_filename(node, indent, display_data);
         (percents, name_and_padding)
     } else {
-        let n = get_printable_name(&node.name, display_data.short_paths);
+        let n = get_printable_name(&node.name, display_data.initial.short_paths);
         let name = maybe_trim_filename(n, indent, display_data);
         ("".into(), name)
     }
 }
 
 fn get_pretty_size(node: &DisplayNode, is_biggest: bool, display_data: &DisplayData) -> String {
-    let output = if display_data.by_filecount {
+    let output = if display_data.initial.by_filecount {
         node.size.separate_with_commas()
     } else {
-        human_readable_number(node.size, display_data.iso)
+        human_readable_number(node.size, display_data.initial.iso)
     };
     let spaces_to_add = display_data.num_chars_needed_on_left_most - output.chars().count();
     let output = " ".repeat(spaces_to_add) + output.as_str();
 
-    if is_biggest && display_data.colors_on {
+    if is_biggest && display_data.initial.colors_on {
         format!("{}", Red.paint(output))
     } else {
         output
@@ -395,7 +381,7 @@ fn get_pretty_name(
     name_and_padding: String,
     display_data: &DisplayData,
 ) -> String {
-    if display_data.colors_on {
+    if display_data.initial.colors_on {
         let meta_result = fs::metadata(&node.name);
         let directory_color = display_data
             .ls_colors
@@ -433,17 +419,20 @@ mod tests {
 
     #[cfg(test)]
     fn get_fake_display_data(longest_string_length: usize) -> DisplayData {
-        DisplayData {
+        let initial = InitialDisplayData {
             short_paths: true,
             is_reversed: false,
             colors_on: false,
             by_filecount: false,
             is_screen_reader: false,
+            iso: false,
+        };
+        DisplayData {
+            initial: initial,
             num_chars_needed_on_left_most: 5,
             base_size: 2_u64.pow(12), // 4.0K
             longest_string_length,
             ls_colors: LsColors::from_env().unwrap_or_default(),
-            iso: false,
         }
     }
 
@@ -494,7 +483,7 @@ mod tests {
         let percent_bar = "3";
         let is_biggest = false;
         let mut data = get_fake_display_data(20);
-        data.is_screen_reader = true;
+        data.initial.is_screen_reader = true;
 
         let s = format_string(&n, indent, percent_bar, is_biggest, &data);
         assert_eq!(s, "short               3  4.0K 100%");
