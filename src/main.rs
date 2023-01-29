@@ -12,6 +12,7 @@ mod utils;
 
 use crate::cli::build_cli;
 use dir_walker::WalkData;
+use display::InitialDisplayData;
 use filter::AggregateData;
 use progress::PIndicator;
 use progress::ORDERING;
@@ -217,17 +218,20 @@ fn main() {
     }
 
     if let Some(root_node) = tree {
+        let idd = InitialDisplayData {
+            short_paths: !config.get_full_paths(&options),
+            is_reversed: !config.get_reverse(&options),
+            colors_on: !no_colors,
+            by_filecount,
+            iso,
+            is_screen_reader: config.get_screen_reader(&options),
+        };
         draw_it(
-            config.get_full_paths(&options),
-            !config.get_reverse(&options),
-            no_colors,
+            idd,
             config.get_no_bars(&options),
             terminal_width,
-            by_filecount,
             &root_node,
-            iso,
             config.get_skip_total(&options),
-            config.get_screen_reader(&options),
         )
     }
 }
