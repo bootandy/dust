@@ -1,4 +1,8 @@
 # ----------- To do a release ---------
+# Compare times of runs to check no drastic slow down:
+#  time target/release/dust   ~/dev
+#  time dust ~dev
+
 # edit version in cargo.toml
 # tag a commit and push (increment version in Cargo.toml first):
 #   git tag v0.4.5
