@@ -18,6 +18,7 @@ use progress::PIndicator;
 use progress::ORDERING;
 use std::collections::HashSet;
 use std::io::BufRead;
+use std::panic;
 use std::process;
 use sysinfo::{System, SystemExt};
 
@@ -190,7 +191,10 @@ fn main() {
         progress_data: indicator.data.clone(),
     };
 
-    let _rayon = init_rayon();
+    let result = panic::catch_unwind(|| init_rayon);
+    if result.is_err() {
+        eprintln!("Problem initializing rayon, try: export RAYON_NUM_THREADS=1")
+    }
 
     let top_level_nodes = walk_it(simplified_dirs, walk_data);
 
@@ -248,6 +252,6 @@ fn init_rayon() -> Result<(), ThreadPoolBuildError> {
             .stack_size(large_stack)
             .build_global()
     } else {
-        Ok(())
+        rayon::ThreadPoolBuilder::new().build_global()
     }
 }
