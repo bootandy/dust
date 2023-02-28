@@ -147,7 +147,7 @@ pub fn test_output_screen_reader() {
     assert!(output.contains("a_file     2"));
 
     // Verify no 'symbols' reported by screen reader
-    assert!(!output.contains("│"));
+    assert!(!output.contains('│'));
 
     for block in ['█', '▓', '▒', '░'] {
         assert!(!output.contains(block));

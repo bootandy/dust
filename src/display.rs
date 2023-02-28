@@ -428,7 +428,7 @@ mod tests {
             iso: false,
         };
         DisplayData {
-            initial: initial,
+            initial,
             num_chars_needed_on_left_most: 5,
             base_size: 2_u64.pow(12), // 4.0K
             longest_string_length,

@@ -23,6 +23,7 @@ pub struct Config {
     pub only_dir: Option<bool>,
     pub only_file: Option<bool>,
     pub disable_progress: Option<bool>,
+    pub depth: Option<usize>,
 }
 
 impl Config {
@@ -58,6 +59,15 @@ impl Config {
     }
     pub fn get_screen_reader(&self, options: &ArgMatches) -> bool {
         Some(true) == self.screen_reader || options.is_present("screen_reader")
+    }
+    pub fn get_depth(&self, options: &ArgMatches) -> usize {
+        if let Some(v) = options.value_of("depth") {
+            if let Ok(v) = v.parse::<usize>() {
+                return v
+            }
+        }
+
+        self.depth.unwrap_or(usize::MAX)
     }
     pub fn get_min_size(&self, options: &ArgMatches, iso: bool) -> Option<usize> {
         let size_from_param = options.value_of("min_size");
@@ -137,9 +147,11 @@ pub fn get_config() -> Config {
     }
 }
 
+#[cfg(test)]
 mod tests {
     #[allow(unused_imports)]
     use super::*;
+    use clap::{Command, Arg, ArgMatches};
 
     #[test]
     fn test_conversion() {
@@ -163,5 +175,41 @@ mod tests {
 
         assert_eq!(c._get_min_size(None, true), Some(1000));
         assert_eq!(c._get_min_size(Some("2K"), true), Some(2000));
+    }
+
+    #[test]
+    fn test_get_depth() {
+        // No config and no flag.
+        let c = Config::default();
+        let args = get_args(vec![]);
+        assert_eq!(c.get_depth(&args), usize::MAX);
+
+        // Config is not defined and flag is defined.
+        let c = Config::default();
+        let args = get_args(vec!["dust", "--depth", "5"]);
+        assert_eq!(c.get_depth(&args), 5);
+
+        // Config is defined and flag is not defined.
+        let c = Config{
+            depth: Some(3),
+            ..Default::default()
+        };
+        let args = get_args(vec![]);
+        assert_eq!(c.get_depth(&args), 3);
+
+        // Both config and flag are defined.
+        let c = Config{
+            depth: Some(3),
+            ..Default::default()
+        };
+        let args = get_args(vec!["dust", "--depth", "5"]);
+        assert_eq!(c.get_depth(&args), 5);
+    }
+
+    fn get_args(args: Vec<&str>) -> ArgMatches {
+        Command::new("Dust")
+            .trailing_var_arg(true)
+            .arg(Arg::new("depth").long("depth").takes_value(true))
+            .get_matches_from(args)
     }
 }

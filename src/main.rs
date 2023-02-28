@@ -130,7 +130,7 @@ fn main() {
         .value_of_t("width")
         .unwrap_or_else(|_| get_width_of_terminal());
 
-    let depth = options.value_of_t("depth").unwrap_or(usize::MAX);
+    let depth = config.get_depth(&options);
 
     // If depth is set, then we set the default number_of_lines to be max
     // instead of screen height
