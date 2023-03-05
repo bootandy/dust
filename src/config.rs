@@ -63,7 +63,7 @@ impl Config {
     pub fn get_depth(&self, options: &ArgMatches) -> usize {
         if let Some(v) = options.value_of("depth") {
             if let Ok(v) = v.parse::<usize>() {
-                return v
+                return v;
             }
         }
 
@@ -151,7 +151,7 @@ pub fn get_config() -> Config {
 mod tests {
     #[allow(unused_imports)]
     use super::*;
-    use clap::{Command, Arg, ArgMatches};
+    use clap::{Arg, ArgMatches, Command};
 
     #[test]
     fn test_conversion() {
@@ -190,7 +190,7 @@ mod tests {
         assert_eq!(c.get_depth(&args), 5);
 
         // Config is defined and flag is not defined.
-        let c = Config{
+        let c = Config {
             depth: Some(3),
             ..Default::default()
         };
@@ -198,7 +198,7 @@ mod tests {
         assert_eq!(c.get_depth(&args), 3);
 
         // Both config and flag are defined.
-        let c = Config{
+        let c = Config {
             depth: Some(3),
             ..Default::default()
         };
