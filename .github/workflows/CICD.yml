@@ -98,6 +98,11 @@ jobs:
             }
           - {
               os: ubuntu-latest,
+              target: arm-unknown-linux-musleabi,
+              use-cross: use-cross,
+            }
+          - {
+              os: ubuntu-latest,
               target: i686-unknown-linux-gnu,
               use-cross: use-cross,
             }
