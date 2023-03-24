@@ -58,6 +58,10 @@ clap_mangen = "0.1"
 name = "integration"
 path = "tests/tests.rs"
 
+[package.metadata.binstall]
+pkg-url = "{ repo }/releases/download/v{ version }/dust-v{ version }-{ target }{ archive-suffix }"
+bin-dir = "dust-v{ version }-{ target }/{ bin }{ binary-ext }"
+
 [package.metadata.deb]
 section = "utils"
 assets = [
