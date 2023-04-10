@@ -24,6 +24,7 @@ pub struct InitialDisplayData {
     pub by_filecount: bool,
     pub is_screen_reader: bool,
     pub iso: bool,
+    pub display_kb: bool,
 }
 
 pub struct DisplayData {
@@ -118,6 +119,7 @@ pub fn draw_it(
     terminal_width: usize,
     root_node: &DisplayNode,
     skip_total: bool,
+    display_kb: bool,
 ) {
     let biggest = match skip_total {
         false => root_node,
@@ -131,7 +133,7 @@ pub fn draw_it(
         let max_size = biggest.size;
         max_size.separate_with_commas().chars().count()
     } else {
-        find_biggest_size_str(root_node, idd.iso)
+        find_biggest_size_str(root_node, idd.iso, display_kb)
     };
 
     assert!(
@@ -179,10 +181,10 @@ pub fn draw_it(
     }
 }
 
-fn find_biggest_size_str(node: &DisplayNode, iso: bool) -> usize {
-    let mut mx = human_readable_number(node.size, iso).chars().count();
+fn find_biggest_size_str(node: &DisplayNode, iso: bool,display_kb: bool) -> usize {
+    let mut mx = human_readable_number(node.size, iso, display_kb).chars().count();
     for n in node.children.iter() {
-        mx = max(mx, find_biggest_size_str(n, iso));
+        mx = max(mx, find_biggest_size_str(n, iso, display_kb));
     }
     mx
 }
@@ -364,7 +366,7 @@ fn get_pretty_size(node: &DisplayNode, is_biggest: bool, display_data: &DisplayD
     let output = if display_data.initial.by_filecount {
         node.size.separate_with_commas()
     } else {
-        human_readable_number(node.size, display_data.initial.iso)
+        human_readable_number(node.size, display_data.initial.iso, display_data.initial.display_kb)
     };
     let spaces_to_add = display_data.num_chars_needed_on_left_most - output.chars().count();
     let output = " ".repeat(spaces_to_add) + output.as_str();
@@ -396,9 +398,12 @@ fn get_pretty_name(
     }
 }
 
-pub fn human_readable_number(size: u64, iso: bool) -> String {
+pub fn human_readable_number(size: u64, iso: bool, display_kb: bool) -> String {
+    let num: u64 = if iso { 1000 } else { 1024 };
+    if display_kb {
+        return format!("{:.1}{}", (size as f32 / num as f32), 'K');
+    }
     for (i, u) in UNITS.iter().enumerate() {
-        let num: u64 = if iso { 1000 } else { 1024 };
         let marker = num.pow((UNITS.len() - i) as u32);
         if size >= marker {
             if size / marker < 10 {
@@ -426,6 +431,7 @@ mod tests {
             by_filecount: false,
             is_screen_reader: false,
             iso: false,
+            display_kb: false,
         };
         DisplayData {
             initial,
@@ -491,21 +497,32 @@ mod tests {
 
     #[test]
     fn test_human_readable_number() {
-        assert_eq!(human_readable_number(1, false), "1B");
-        assert_eq!(human_readable_number(956, false), "956B");
-        assert_eq!(human_readable_number(1004, false), "1004B");
-        assert_eq!(human_readable_number(1024, false), "1.0K");
-        assert_eq!(human_readable_number(1536, false), "1.5K");
-        assert_eq!(human_readable_number(1024 * 512, false), "512K");
-        assert_eq!(human_readable_number(1024 * 1024, false), "1.0M");
+        assert_eq!(human_readable_number(1, false, false), "1B");
+        assert_eq!(human_readable_number(956, false, false), "956B");
+        assert_eq!(human_readable_number(1004, false, false), "1004B");
+        assert_eq!(human_readable_number(1024, false, false), "1.0K");
+        assert_eq!(human_readable_number(1536, false, false), "1.5K");
+        assert_eq!(human_readable_number(1024 * 512, false, false), "512K");
+        assert_eq!(human_readable_number(1024 * 1024, false, false), "1.0M");
         assert_eq!(
-            human_readable_number(1024 * 1024 * 1024 - 1, false),
+            human_readable_number(1024 * 1024 * 1024 - 1, false, false),
             "1023M"
         );
-        assert_eq!(human_readable_number(1024 * 1024 * 1024 * 20, false), "20G");
+        assert_eq!(human_readable_number(1024 * 1024 * 1024 * 20, false, false), "20G");
         assert_eq!(
-            human_readable_number(1024 * 1024 * 1024 * 1024, false),
+            human_readable_number(1024 * 1024 * 1024 * 1024, false, false),
             "1.0T"
         );
     }
+
+    #[test]
+    fn test_human_readable_number_kb() {
+        assert_eq!(human_readable_number(1, false, true), "0.0K");
+        assert_eq!(human_readable_number(1024, false, true), "1.0K");
+        assert_eq!(human_readable_number(1536, false, true), "1.5K");
+        assert_eq!(human_readable_number(1024 * 512, false, true), "512.0K");
+        assert_eq!(human_readable_number(1024 * 1024, false, true), "1024.0K");
+        assert_eq!(human_readable_number(1024 * 1000 * 1000 * 20, false, true), "20000000.0K");
+    }
+
 }

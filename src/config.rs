@@ -90,6 +90,9 @@ impl Config {
     pub fn get_only_file(&self, options: &ArgMatches) -> bool {
         Some(true) == self.only_file || options.is_present("only_file")
     }
+    pub fn get_display_kb(&self, options: &ArgMatches) -> bool {
+        Some(true) == self.only_file || options.is_present("display_kb")
+    }
 }
 
 fn convert_min_size(input: &str, iso: bool) -> Option<usize> {

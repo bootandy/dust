@@ -67,6 +67,8 @@ set edit:completion:arg-completer[dust] = {|@words|
             cand --only-dir 'Only directories will be displayed.'
             cand -F 'Only files will be displayed. (Finds your largest files)'
             cand --only-file 'Only files will be displayed. (Finds your largest files)'
+            cand -k 'display unit is KB'
+            cand --display_kb 'display unit is KB'
         }
     ]
     $completions[$command]

@@ -169,4 +169,10 @@ pub fn build_cli() -> Command<'static> {
                 .help("Only files will be displayed. (Finds your largest files)"),
         )
         .arg(Arg::new("inputs").multiple_occurrences(true))
+        .arg(
+            Arg::new("display_kb")
+                .short('k')
+                .long("display-kb")
+                .help("display the size of a file or directory in kilobytes"),
+        )
 }
