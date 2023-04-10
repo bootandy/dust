@@ -69,6 +69,8 @@ set edit:completion:arg-completer[dust] = {|@words|
             cand --only-dir 'Only directories will be displayed.'
             cand -F 'Only files will be displayed. (Finds your largest files)'
             cand --only-file 'Only files will be displayed. (Finds your largest files)'
+            cand -k 'display the size of a file or directory in kilobytes'
+            cand --display-kb 'display the size of a file or directory in kilobytes'
             cand -h 'Print help'
             cand --help 'Print help'
             cand -V 'Print version'
