@@ -70,8 +70,8 @@ Register-ArgumentCompleter -Native -CommandName 'dust' -ScriptBlock {
             [CompletionResult]::new('--only-dir', 'only-dir', [CompletionResultType]::ParameterName, 'Only directories will be displayed.')
             [CompletionResult]::new('-F', 'F', [CompletionResultType]::ParameterName, 'Only files will be displayed. (Finds your largest files)')
             [CompletionResult]::new('--only-file', 'only-file', [CompletionResultType]::ParameterName, 'Only files will be displayed. (Finds your largest files)')
-            [CompletionResult]::new('-k', 'k', [CompletionResultType]::ParameterName, 'display unit is KB')
-            [CompletionResult]::new('--display_kb', 'display_kb', [CompletionResultType]::ParameterName, 'display unit is KB')
+            [CompletionResult]::new('-k', 'k', [CompletionResultType]::ParameterName, 'display the size of a file or directory in kilobytes')
+            [CompletionResult]::new('--display-kb', 'display-kb', [CompletionResultType]::ParameterName, 'display the size of a file or directory in kilobytes')
             break
         }
     })

@@ -64,8 +64,8 @@ _dust() {
 '(-F --only-file -t --file_types)--only-dir[Only directories will be displayed.]' \
 '(-D --only-dir)-F[Only files will be displayed. (Finds your largest files)]' \
 '(-D --only-dir)--only-file[Only files will be displayed. (Finds your largest files)]' \
-'-k[display unit is KB]' \
-'--display_kb[display unit is KB]' \
+'-k[display the size of a file or directory in kilobytes]' \
+'--display-kb[display the size of a file or directory in kilobytes]' \
 '*::inputs:' \
 && ret=0
 }
