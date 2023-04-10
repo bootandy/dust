@@ -26,6 +26,7 @@ pub struct Config {
     pub disable_progress: Option<bool>,
     pub depth: Option<usize>,
     pub bars_on_right: Option<bool>,
+    pub display_kb: Option<bool>,
     pub stack_size: Option<usize>,
 }
 
@@ -103,6 +104,9 @@ impl Config {
         } else {
             from_cmd_line.copied()
         }
+    }
+    pub fn get_display_kb(&self, options: &ArgMatches) -> bool {
+        Some(true) == self.display_kb || options.get_flag("display_kb")
     }
 }
 

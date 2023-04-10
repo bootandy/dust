@@ -194,6 +194,13 @@ pub fn build_cli() -> Command {
                 .help("Only files will be displayed. (Finds your largest files)"),
         )
         .arg(
+            Arg::new("display_kb")
+                .short('k')
+                .long("display-kb")
+                .action(clap::ArgAction::SetTrue)
+                .help("display the size of a file or directory in kilobytes"),
+        )
+        .arg(
             Arg::new("stack_size")
                 .short('S')
                 .long("stack-size")

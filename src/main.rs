@@ -180,11 +180,13 @@ fn main() {
 
     let iso = config.get_iso(&options);
 
+    let display_kb = config.get_display_kb(&options);
+
     let ignore_hidden = config.get_ignore_hidden(&options);
 
     let mut indicator = PIndicator::build_me();
     if !config.get_disable_progress(&options) {
-        indicator.spawn(iso);
+        indicator.spawn(iso, display_kb);
     }
 
     let walk_data = WalkData {
@@ -255,6 +257,7 @@ fn main() {
             iso,
             is_screen_reader: config.get_screen_reader(&options),
             bars_on_right: config.get_bars_on_right(&options),
+            display_kb,
         };
         draw_it(
             idd,
@@ -262,6 +265,7 @@ fn main() {
             terminal_width,
             &root_node,
             config.get_skip_total(&options),
+            display_kb,
         )
     }
 }
