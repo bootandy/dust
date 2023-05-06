@@ -181,8 +181,10 @@ pub fn draw_it(
     }
 }
 
-fn find_biggest_size_str(node: &DisplayNode, iso: bool,display_kb: bool) -> usize {
-    let mut mx = human_readable_number(node.size, iso, display_kb).chars().count();
+fn find_biggest_size_str(node: &DisplayNode, iso: bool, display_kb: bool) -> usize {
+    let mut mx = human_readable_number(node.size, iso, display_kb)
+        .chars()
+        .count();
     for n in node.children.iter() {
         mx = max(mx, find_biggest_size_str(n, iso, display_kb));
     }
@@ -366,7 +368,11 @@ fn get_pretty_size(node: &DisplayNode, is_biggest: bool, display_data: &DisplayD
     let output = if display_data.initial.by_filecount {
         node.size.separate_with_commas()
     } else {
-        human_readable_number(node.size, display_data.initial.iso, display_data.initial.display_kb)
+        human_readable_number(
+            node.size,
+            display_data.initial.iso,
+            display_data.initial.display_kb,
+        )
     };
     let spaces_to_add = display_data.num_chars_needed_on_left_most - output.chars().count();
     let output = " ".repeat(spaces_to_add) + output.as_str();
@@ -508,7 +514,10 @@ mod tests {
             human_readable_number(1024 * 1024 * 1024 - 1, false, false),
             "1023M"
         );
-        assert_eq!(human_readable_number(1024 * 1024 * 1024 * 20, false, false), "20G");
+        assert_eq!(
+            human_readable_number(1024 * 1024 * 1024 * 20, false, false),
+            "20G"
+        );
         assert_eq!(
             human_readable_number(1024 * 1024 * 1024 * 1024, false, false),
             "1.0T"
@@ -522,7 +531,9 @@ mod tests {
         assert_eq!(human_readable_number(1536, false, true), "1.5K");
         assert_eq!(human_readable_number(1024 * 512, false, true), "512.0K");
         assert_eq!(human_readable_number(1024 * 1024, false, true), "1024.0K");
-        assert_eq!(human_readable_number(1024 * 1000 * 1000 * 20, false, true), "20000000.0K");
+        assert_eq!(
+            human_readable_number(1024 * 1000 * 1000 * 20, false, true),
+            "20000000.0K"
+        );
     }
-
 }
