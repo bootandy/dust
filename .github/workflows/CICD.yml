@@ -101,11 +101,6 @@ jobs:
               target: arm-unknown-linux-musleabi,
               use-cross: use-cross,
             }
-          # - {
-          #     os: ubuntu-latest,
-          #     target: armv7-unknown-linux-musleabi,
-          #     use-cross: use-cross,
-          #   }
           - {
               os: ubuntu-latest,
               target: i686-unknown-linux-gnu,

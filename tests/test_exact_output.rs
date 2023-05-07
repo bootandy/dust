@@ -51,8 +51,6 @@ fn exact_output_test<T: AsRef<OsStr>>(valid_outputs: Vec<String>, command_args: 
     }
 
     let output = str::from_utf8(&a.unwrap().stdout).unwrap().to_owned();
-    println!("test:");
-    println!("{}", output);
 
     assert!(valid_outputs.iter().any(|i| output.contains(i)));
 }
