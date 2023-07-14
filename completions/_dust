@@ -71,6 +71,7 @@ _dust() {
 '-V[Print version]' \
 '--version[Print version]' \
 '*::params:' \
+'*:inputs:_files' \
 && ret=0
 }
 
