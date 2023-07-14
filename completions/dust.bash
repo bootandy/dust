@@ -20,8 +20,11 @@ _dust() {
     case "${cmd}" in
         dust)
             opts="-h -V -d -n -p -X -L -x -s -r -c -b -z -R -f -i -v -e -t -w -H -P -D -F --help --version --depth --number-of-lines --full-paths --ignore-directory --dereference-links --limit-filesystem --apparent-size --reverse --no-colors --no-percent-bars --min-size --screen-reader --skip-total --filecount --ignore_hidden --invert-filter --filter --file_types --terminal_width --si --no-progress --only-dir --only-file <inputs>..."
-            if [[ ${cur} == -* || ${COMP_CWORD} -eq 1 ]] ; then
+            if [[ ${cur} == -* ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+                return 0
+            elif [[ ${cur} == * ]] ; then
+                _filedir
                 return 0
             fi
             case "${prev}" in

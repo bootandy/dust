@@ -64,7 +64,7 @@ _dust() {
 '(-F --only-file -t --file_types)--only-dir[Only directories will be displayed.]' \
 '(-D --only-dir)-F[Only files will be displayed. (Finds your largest files)]' \
 '(-D --only-dir)--only-file[Only files will be displayed. (Finds your largest files)]' \
-'*::inputs:' \
+'*:inputs:_files' \
 && ret=0
 }
 
