@@ -218,7 +218,6 @@ version = "0.8.6"
 dependencies = [
  "ansi_term",
  "assert_cmd",
- "atty",
  "clap",
  "clap_complete",
  "clap_mangen",

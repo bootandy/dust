@@ -28,7 +28,6 @@ strip = true
 
 [dependencies]
 ansi_term = "0.12"
-atty = "0.2.14"
 clap = "3.2.17"
 lscolors = "0.13"
 terminal_size = "0.2"
