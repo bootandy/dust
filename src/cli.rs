@@ -74,6 +74,12 @@ pub fn build_cli() -> Command<'static> {
                 .help("No percent bars or percentages will be displayed"),
         )
         .arg(
+            Arg::new("bars_on_right")
+                .short('B')
+                .long("bars-on-right")
+                .help("percent bars moved to right side of screen"),
+        )
+        .arg(
             Arg::new("min_size")
                 .short('z')
                 .long("min-size")

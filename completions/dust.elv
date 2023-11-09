@@ -50,6 +50,8 @@ set edit:completion:arg-completer[dust] = {|@words|
             cand --no-colors 'No colors will be printed (Useful for commands like: watch)'
             cand -b 'No percent bars or percentages will be displayed'
             cand --no-percent-bars 'No percent bars or percentages will be displayed'
+            cand -B 'percent bars moved to right side of screen'
+            cand --bars-on-right 'percent bars moved to right side of screen'
             cand -R 'For screen readers. Removes bars. Adds new column: depth level (May want to use -p too for full path)'
             cand --screen-reader 'For screen readers. Removes bars. Adds new column: depth level (May want to use -p too for full path)'
             cand --skip-total 'No total row will be displayed'

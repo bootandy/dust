@@ -60,7 +60,7 @@ fn exact_output_test<T: AsRef<OsStr>>(valid_outputs: Vec<String>, command_args: 
 #[test]
 pub fn test_main_basic() {
     // -c is no color mode - This makes testing much simpler
-    exact_output_test(main_output(), vec!["-c", "/tmp/test_dir/"])
+    exact_output_test(main_output(), vec!["-c", "-B", "/tmp/test_dir/"])
 }
 
 #[cfg_attr(target_os = "windows", ignore)]
@@ -68,6 +68,7 @@ pub fn test_main_basic() {
 pub fn test_main_multi_arg() {
     let command_args = vec![
         "-c",
+        "-B",
         "/tmp/test_dir/many/",
         "/tmp/test_dir",
         "/tmp/test_dir",
@@ -102,7 +103,7 @@ fn main_output() -> Vec<String> {
 #[cfg_attr(target_os = "windows", ignore)]
 #[test]
 pub fn test_main_long_paths() {
-    let command_args = vec!["-c", "-p", "/tmp/test_dir/"];
+    let command_args = vec!["-c", "-p", "-B", "/tmp/test_dir/"];
     exact_output_test(main_output_long_paths(), command_args);
 }
 
@@ -130,7 +131,7 @@ fn main_output_long_paths() -> Vec<String> {
 #[cfg_attr(target_os = "windows", ignore)]
 #[test]
 pub fn test_substring_of_names_and_long_names() {
-    let command_args = vec!["-c", "/tmp/test_dir2"];
+    let command_args = vec!["-c", "-B", "/tmp/test_dir2"];
     exact_output_test(no_substring_of_names_output(), command_args);
 }
 
@@ -164,7 +165,7 @@ fn no_substring_of_names_output() -> Vec<String> {
 #[cfg_attr(target_os = "windows", ignore)]
 #[test]
 pub fn test_unicode_directories() {
-    let command_args = vec!["-c", "/tmp/test_dir_unicode"];
+    let command_args = vec!["-c", "-B", "/tmp/test_dir_unicode"];
     exact_output_test(unicode_dir(), command_args);
 }
 

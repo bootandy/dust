@@ -24,6 +24,7 @@ pub struct InitialDisplayData {
     pub by_filecount: bool,
     pub is_screen_reader: bool,
     pub iso: bool,
+    pub bars_on_right: bool,
 }
 
 pub struct DisplayData {
@@ -98,7 +99,13 @@ impl DrawData<'_> {
         let mut new_bar = "".to_string();
         let idx = 5 - level.clamp(1, 4);
 
-        for c in self.percent_bar.chars() {
+        let itr: Box<dyn Iterator<Item = char>> = if self.display_data.initial.bars_on_right {
+            Box::new(self.percent_bar.chars())
+        } else {
+            Box::new(self.percent_bar.chars().rev())
+        };
+
+        for c in itr {
             num_not_my_bar -= 1;
             if num_not_my_bar <= 0 {
                 new_bar.push(BLOCKS[0]);
@@ -108,7 +115,11 @@ impl DrawData<'_> {
                 new_bar.push(c);
             }
         }
-        new_bar
+        if self.display_data.initial.bars_on_right {
+            new_bar
+        } else {
+            new_bar.chars().rev().collect()
+        }
     }
 }
 
@@ -426,6 +437,7 @@ mod tests {
             by_filecount: false,
             is_screen_reader: false,
             iso: false,
+            bars_on_right: false,
         };
         DisplayData {
             initial,
@@ -507,5 +519,59 @@ mod tests {
             human_readable_number(1024 * 1024 * 1024 * 1024, false),
             "1.0T"
         );
+    }
+
+    #[cfg(test)]
+    fn build_draw_data<'a>(disp: &'a DisplayData, size: u32) -> (DrawData<'a>, DisplayNode) {
+        let n = DisplayNode {
+            name: PathBuf::from("/short"),
+            size: 2_u64.pow(size),
+            children: vec![],
+        };
+        let first_size_bar = repeat(BLOCKS[0]).take(13).collect();
+        let dd = DrawData {
+            indent: "".into(),
+            percent_bar: first_size_bar,
+            display_data: disp,
+        };
+        (dd, n)
+    }
+
+    #[test]
+    fn test_draw_data() {
+        let disp = &get_fake_display_data(20);
+        let (dd, n) = build_draw_data(disp, 12);
+        let bar = dd.generate_bar(&n, 1);
+        assert_eq!(bar, "█████████████");
+    }
+
+    #[test]
+    fn test_draw_data2() {
+        let disp = &get_fake_display_data(20);
+        let (dd, n) = build_draw_data(disp, 11);
+        let bar = dd.generate_bar(&n, 2);
+        assert_eq!(bar, "███████░░░░░░");
+    }
+    #[test]
+    fn test_draw_data3() {
+        let mut disp = get_fake_display_data(20);
+        let (dd, n) = build_draw_data(&disp, 11);
+        let bar = dd.generate_bar(&n, 3);
+        assert_eq!(bar, "███████▒▒▒▒▒▒");
+
+        disp.initial.bars_on_right = true;
+        let (dd, n) = build_draw_data(&disp, 11);
+        let bar = dd.generate_bar(&n, 3);
+        assert_eq!(bar, "▒▒▒▒▒▒███████")
+    }
+    #[test]
+    fn test_draw_data4() {
+        let disp = &get_fake_display_data(20);
+        let (dd, n) = build_draw_data(disp, 10);
+        // After 4 we have no more levels of shading so 4+ is the same
+        let bar = dd.generate_bar(&n, 4);
+        assert_eq!(bar, "████▓▓▓▓▓▓▓▓▓");
+        let bar = dd.generate_bar(&n, 5);
+        assert_eq!(bar, "████▓▓▓▓▓▓▓▓▓");
     }
 }

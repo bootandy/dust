@@ -47,6 +47,8 @@ _dust() {
 '--no-colors[No colors will be printed (Useful for commands like: watch)]' \
 '-b[No percent bars or percentages will be displayed]' \
 '--no-percent-bars[No percent bars or percentages will be displayed]' \
+'-B[percent bars moved to right side of screen]' \
+'--bars-on-right[percent bars moved to right side of screen]' \
 '-R[For screen readers. Removes bars. Adds new column: depth level (May want to use -p too for full path)]' \
 '--screen-reader[For screen readers. Removes bars. Adds new column: depth level (May want to use -p too for full path)]' \
 '--skip-total[No total row will be displayed]' \
