@@ -1,6 +1,7 @@
 use clap::ArgMatches;
 use config_file::FromConfigFile;
 use serde::Deserialize;
+use std::io::IsTerminal;
 use std::path::Path;
 use std::path::PathBuf;
 
@@ -31,7 +32,9 @@ impl Config {
         Some(true) == self.no_colors || options.is_present("no_colors")
     }
     pub fn get_disable_progress(&self, options: &ArgMatches) -> bool {
-        Some(true) == self.disable_progress || options.is_present("disable_progress")
+        Some(true) == self.disable_progress
+            || options.is_present("disable_progress")
+            || !std::io::stdout().is_terminal()
     }
     pub fn get_apparent_size(&self, options: &ArgMatches) -> bool {
         Some(true) == self.display_apparent_size || options.is_present("display_apparent_size")
