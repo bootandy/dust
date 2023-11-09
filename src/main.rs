@@ -214,6 +214,7 @@ fn main() {
             by_filecount,
             iso,
             is_screen_reader: config.get_screen_reader(&options),
+            bars_on_right: config.get_bars_on_right(&options),
         };
         draw_it(
             idd,

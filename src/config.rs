@@ -25,6 +25,7 @@ pub struct Config {
     pub only_file: Option<bool>,
     pub disable_progress: Option<bool>,
     pub depth: Option<usize>,
+    pub bars_on_right: Option<bool>,
 }
 
 impl Config {
@@ -92,6 +93,9 @@ impl Config {
     }
     pub fn get_only_file(&self, options: &ArgMatches) -> bool {
         Some(true) == self.only_file || options.is_present("only_file")
+    }
+    pub fn get_bars_on_right(&self, options: &ArgMatches) -> bool {
+        Some(true) == self.bars_on_right || options.is_present("bars_on_right")
     }
 }
 
