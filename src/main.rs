@@ -17,7 +17,6 @@ use filter::AggregateData;
 use progress::PIndicator;
 use progress::ORDERING;
 use std::collections::HashSet;
-use std::io::BufRead;
 use std::panic;
 use std::process;
 use sysinfo::{System, SystemExt};
@@ -99,27 +98,13 @@ fn get_regex_value(maybe_value: Option<Values>) -> Vec<Regex> {
         .collect()
 }
 
-// Returns a list of lines from stdin or `None` if there's nothing to read
-fn get_lines_from_stdin() -> Option<Vec<String>> {
-    atty::isnt(atty::Stream::Stdin).then(|| {
-        std::io::stdin()
-            .lock()
-            .lines()
-            .collect::<Result<_, _>>()
-            .expect("Error reading from stdin")
-    })
-}
-
 fn main() {
     let options = build_cli().get_matches();
     let config = get_config();
-    let stdin_lines = get_lines_from_stdin();
 
     let target_dirs = match options.values_of("inputs") {
         Some(values) => values.collect(),
-        None => stdin_lines.as_ref().map_or(vec!["."], |lines| {
-            lines.iter().map(String::as_str).collect()
-        }),
+        None => vec!["."],
     };
 
     let summarize_file_types = options.is_present("types");
