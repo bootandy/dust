@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/bootandy/dust.svg?branch=master)](https://travis-ci.org/bootandy/dust)
+[![Build Status](https://github.com/bootandy/dust/actions/workflows/CICD.yml/badge.svg)
 
 # Dust
 
