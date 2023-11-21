@@ -23,16 +23,12 @@ _dust() {
 '*--ignore-directory=[Exclude any file or directory with this name]: : ' \
 '-z+[Minimum size file to include in output]: : ' \
 '--min-size=[Minimum size file to include in output]: : ' \
-'(-e --filter -t --file_types)*-v+[Exclude filepaths matching this regex. To ignore png files type: -v "\\.png$" ]: : ' \
-'(-e --filter -t --file_types)*--invert-filter=[Exclude filepaths matching this regex. To ignore png files type: -v "\\.png$" ]: : ' \
-'(-t --file_types)*-e+[Only include filepaths matching this regex. For png files type: -e "\\.png$" ]: : ' \
-'(-t --file_types)*--filter=[Only include filepaths matching this regex. For png files type: -e "\\.png$" ]: : ' \
+'(-e --filter -t --file_types)*-v+[Exclude filepaths matching this regex. To ignore png files type\: -v "\\.png\$" ]: : ' \
+'(-e --filter -t --file_types)*--invert-filter=[Exclude filepaths matching this regex. To ignore png files type\: -v "\\.png\$" ]: : ' \
+'(-t --file_types)*-e+[Only include filepaths matching this regex. For png files type\: -e "\\.png\$" ]: : ' \
+'(-t --file_types)*--filter=[Only include filepaths matching this regex. For png files type\: -e "\\.png\$" ]: : ' \
 '-w+[Specify width of output overriding the auto detection of terminal width]: : ' \
 '--terminal_width=[Specify width of output overriding the auto detection of terminal width]: : ' \
-'-h[Print help information]' \
-'--help[Print help information]' \
-'-V[Print version information]' \
-'--version[Print version information]' \
 '-p[Subdirectories will not have their path shortened]' \
 '--full-paths[Subdirectories will not have their path shortened]' \
 '-L[dereference sym links - Treat sym links as directories and go into them]' \
@@ -43,14 +39,14 @@ _dust() {
 '--apparent-size[Use file length instead of blocks]' \
 '-r[Print tree upside down (biggest highest)]' \
 '--reverse[Print tree upside down (biggest highest)]' \
-'-c[No colors will be printed (Useful for commands like: watch)]' \
-'--no-colors[No colors will be printed (Useful for commands like: watch)]' \
+'-c[No colors will be printed (Useful for commands like\: watch)]' \
+'--no-colors[No colors will be printed (Useful for commands like\: watch)]' \
 '-b[No percent bars or percentages will be displayed]' \
 '--no-percent-bars[No percent bars or percentages will be displayed]' \
 '-B[percent bars moved to right side of screen]' \
 '--bars-on-right[percent bars moved to right side of screen]' \
-'-R[For screen readers. Removes bars. Adds new column: depth level (May want to use -p too for full path)]' \
-'--screen-reader[For screen readers. Removes bars. Adds new column: depth level (May want to use -p too for full path)]' \
+'-R[For screen readers. Removes bars. Adds new column\: depth level (May want to use -p too for full path)]' \
+'--screen-reader[For screen readers. Removes bars. Adds new column\: depth level (May want to use -p too for full path)]' \
 '--skip-total[No total row will be displayed]' \
 '-f[Directory '\''size'\'' is number of child files instead of disk size]' \
 '--filecount[Directory '\''size'\'' is number of child files instead of disk size]' \
@@ -66,7 +62,11 @@ _dust() {
 '(-F --only-file -t --file_types)--only-dir[Only directories will be displayed.]' \
 '(-D --only-dir)-F[Only files will be displayed. (Finds your largest files)]' \
 '(-D --only-dir)--only-file[Only files will be displayed. (Finds your largest files)]' \
-'*::inputs:' \
+'-h[Print help]' \
+'--help[Print help]' \
+'-V[Print version]' \
+'--version[Print version]' \
+'*::params:' \
 && ret=0
 }
 
@@ -76,4 +76,8 @@ _dust_commands() {
     _describe -t commands 'dust commands' commands "$@"
 }
 
-_dust "$@"
+if [ "$funcstack[1]" = "_dust" ]; then
+    _dust "$@"
+else
+    compdef _dust dust
+fi
