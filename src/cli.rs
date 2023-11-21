@@ -96,7 +96,7 @@ pub fn build_cli() -> Command<'static> {
             Arg::new("by_filecount")
                 .short('f')
                 .long("filecount")
-                .help("Directory 'size' is number of child files/dirs not disk size"),
+                .help("Directory 'size' is number of child files instead of disk size"),
         )
         .arg(
             Arg::new("ignore_hidden")
