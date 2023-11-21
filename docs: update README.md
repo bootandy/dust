@@ -72,6 +72,7 @@ Usage: dust -H (si print sizes in powers of 1000 instead of 1024)
 Usage: dust -X ignore  (ignore all files and directories with the name 'ignore')
 Usage: dust -x (Only show directories on the same filesystem)
 Usage: dust -b (Do not show percentages or draw ASCII bars)
+Usage: dust -B (--bars-on-right - Percent bars moved to right side of screen])
 Usage: dust -i (Do not show hidden files)
 Usage: dust -c (No colors [monochrome])
 Usage: dust -f (Count files instead of diskspace)
@@ -84,7 +85,15 @@ Usage: dust -P (Disable the progress indicator)
 Usage: dust -R (For screen readers. Removes bars/symbols. Adds new column: depth level. (May want to use -p for full path too))
 Usage: dust --skip-total (No total row will be displayed)
 Usage: dust -z 4000000 (Exclude files below size 4MB)
+```
 
+## Config file
+
+Dust has a config file where the above options can be set.
+Either: `~/.config/dust/config.toml` or `~/.dust.toml`
+```
+$ cat ~/.config/dust/config.toml
+reverse=true
 ```
 
 ## Alternatives
