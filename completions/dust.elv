@@ -32,10 +32,6 @@ set edit:completion:arg-completer[dust] = {|@words|
             cand --filter 'Only include filepaths matching this regex. For png files type: -e "\.png$" '
             cand -w 'Specify width of output overriding the auto detection of terminal width'
             cand --terminal_width 'Specify width of output overriding the auto detection of terminal width'
-            cand -h 'Print help information'
-            cand --help 'Print help information'
-            cand -V 'Print version information'
-            cand --version 'Print version information'
             cand -p 'Subdirectories will not have their path shortened'
             cand --full-paths 'Subdirectories will not have their path shortened'
             cand -L 'dereference sym links - Treat sym links as directories and go into them'
@@ -69,6 +65,10 @@ set edit:completion:arg-completer[dust] = {|@words|
             cand --only-dir 'Only directories will be displayed.'
             cand -F 'Only files will be displayed. (Finds your largest files)'
             cand --only-file 'Only files will be displayed. (Finds your largest files)'
+            cand -h 'Print help'
+            cand --help 'Print help'
+            cand -V 'Print version'
+            cand --version 'Print version'
         }
     ]
     $completions[$command]

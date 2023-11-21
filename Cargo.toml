@@ -28,7 +28,7 @@ strip = true
 
 [dependencies]
 ansi_term = "0.12"
-clap = "3.2.17"
+clap = "4.4"
 lscolors = "0.13"
 terminal_size = "0.2"
 unicode-width = "0.1"
@@ -49,9 +49,9 @@ assert_cmd = "2"
 tempfile = "=3"
 
 [build-dependencies]
-clap = "3.2.17"
-clap_complete = "3.2.4"
-clap_mangen = "0.1"
+clap = "4.4"
+clap_complete = "4.4"
+clap_mangen = "0.2"
 
 [[test]]
 name = "integration"
