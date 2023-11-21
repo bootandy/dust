@@ -16,7 +16,7 @@ complete -c dust -s c -l no-colors -d 'No colors will be printed (Useful for com
 complete -c dust -s b -l no-percent-bars -d 'No percent bars or percentages will be displayed'
 complete -c dust -s R -l screen-reader -d 'For screen readers. Removes bars. Adds new column: depth level (May want to use -p too for full path)'
 complete -c dust -l skip-total -d 'No total row will be displayed'
-complete -c dust -s f -l filecount -d 'Directory \'size\' is number of child files/dirs not disk size'
+complete -c dust -s f -l filecount -d 'Directory \'size\' is number of child files instead of disk size'
 complete -c dust -s i -l ignore_hidden -d 'Do not display hidden files'
 complete -c dust -s t -l file_types -d 'show only these file types'
 complete -c dust -s H -l si -d 'print sizes in powers of 1000 (e.g., 1.1G)'

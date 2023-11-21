@@ -50,8 +50,8 @@ _dust() {
 '-R[For screen readers. Removes bars. Adds new column: depth level (May want to use -p too for full path)]' \
 '--screen-reader[For screen readers. Removes bars. Adds new column: depth level (May want to use -p too for full path)]' \
 '--skip-total[No total row will be displayed]' \
-'-f[Directory '\''size'\'' is number of child files/dirs not disk size]' \
-'--filecount[Directory '\''size'\'' is number of child files/dirs not disk size]' \
+'-f[Directory '\''size'\'' is number of child files instead of disk size]' \
+'--filecount[Directory '\''size'\'' is number of child files instead of disk size]' \
 '-i[Do not display hidden files]' \
 '--ignore_hidden[Do not display hidden files]' \
 '(-d --depth -D --only-dir)-t[show only these file types]' \
