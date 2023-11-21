@@ -247,13 +247,13 @@ jobs:
         with:
           command: install
           args: cargo-deb
-        if: matrix.job.target == 'i686-unknown-linux-musl' || matrix.job.target == 'x86_64-unknown-linux-musl'
+        if: matrix.job.target == 'i686-unknown-linux-musl' || matrix.job.target == 'x86_64-unknown-linux-musl' || matrix.job.target == 'aarch64-unknown-linux-musl'
       - name: Build deb
         uses: actions-rs/cargo@v1
         with:
           command: deb
           args: --no-build --target=${{ matrix.job.target }}
-        if: matrix.job.target == 'i686-unknown-linux-musl' || matrix.job.target == 'x86_64-unknown-linux-musl'
+        if: matrix.job.target == 'i686-unknown-linux-musl' || matrix.job.target == 'x86_64-unknown-linux-musl' || matrix.job.target == 'aarch64-unknown-linux-musl'
       - name: Test
         uses: actions-rs/cargo@v1
         with:
@@ -270,7 +270,7 @@ jobs:
         with:
           name: ${{ env.PROJECT_NAME }}-${{ matrix.job.target }}.deb
           path: target/${{ matrix.job.target }}/debian
-        if: matrix.job.target == 'i686-unknown-linux-musl' || matrix.job.target == 'x86_64-unknown-linux-musl'
+        if: matrix.job.target == 'i686-unknown-linux-musl' || matrix.job.target == 'x86_64-unknown-linux-musl' || matrix.job.target == 'aarch64-unknown-linux-musl'
       - name: Package
         shell: bash
         run: |
