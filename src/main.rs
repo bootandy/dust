@@ -27,7 +27,6 @@ use config::get_config;
 use dir_walker::walk_it;
 use filter::get_biggest;
 use filter_type::get_all_file_types;
-use rayon::ThreadPoolBuildError;
 use regex::Regex;
 use std::cmp::max;
 use std::path::PathBuf;
@@ -177,11 +176,8 @@ fn main() {
         follow_links,
         progress_data: indicator.data.clone(),
     };
-
-    let result = panic::catch_unwind(|| init_rayon);
-    if result.is_err() {
-        eprintln!("Problem initializing rayon, try: export RAYON_NUM_THREADS=1")
-    }
+    let stack_size = config.get_custom_stack_size(&options);
+    init_rayon(&stack_size);
 
     let top_level_nodes = walk_it(simplified_dirs, walk_data);
 
@@ -227,18 +223,34 @@ fn main() {
     }
 }
 
-fn init_rayon() -> Result<(), ThreadPoolBuildError> {
-    let large_stack = usize::pow(1024, 3);
-    let mut s = System::new();
-    s.refresh_memory();
-    let available = s.available_memory();
+fn init_rayon(stack_size: &Option<usize>) {
+    // Rayon seems to raise this error on 32-bit builds
+    // The global thread pool has not been initialized.: ThreadPoolBuildError { kind: GlobalPoolAlreadyInitialized }
+    if cfg!(target_pointer_width = "64") {
+        let result = panic::catch_unwind(|| {
+            match stack_size {
+                Some(n) => rayon::ThreadPoolBuilder::new()
+                    .stack_size(*n)
+                    .build_global(),
+                None => {
+                    let large_stack = usize::pow(1024, 3);
+                    let mut s = System::new();
+                    s.refresh_memory();
+                    let available = s.available_memory();
 
-    if available > large_stack.try_into().unwrap() {
-        // Larger stack size to handle cases with lots of nested directories
-        rayon::ThreadPoolBuilder::new()
-            .stack_size(large_stack)
-            .build_global()
-    } else {
-        rayon::ThreadPoolBuilder::new().build_global()
+                    if available > large_stack.try_into().unwrap() {
+                        // Larger stack size to handle cases with lots of nested directories
+                        rayon::ThreadPoolBuilder::new()
+                            .stack_size(large_stack)
+                            .build_global()
+                    } else {
+                        rayon::ThreadPoolBuilder::new().build_global()
+                    }
+                }
+            }
+        });
+        if result.is_err() {
+            eprintln!("Problem initializing rayon, try: export RAYON_NUM_THREADS=1")
+        }
     }
 }

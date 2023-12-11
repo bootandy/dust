@@ -83,8 +83,9 @@ Usage: dust -v regex (Exclude files matching this regex (eg dust -v "\.png$" wou
 Usage: dust -L (dereference-links - Treat sym links as directories and go into them)
 Usage: dust -P (Disable the progress indicator)
 Usage: dust -R (For screen readers. Removes bars/symbols. Adds new column: depth level. (May want to use -p for full path too))
+Usage: dust -S (Custom Stack size - Use if you see: 'fatal runtime error: stack overflow' (default allocation: low memory=1048576, high memory=1073741824)"),
 Usage: dust --skip-total (No total row will be displayed)
-Usage: dust -z 4000000 (Exclude files below size 4MB)
+Usage: dust -z 4000000 (Exclude output files/directories below size 4MB)
 ```
 
 ## Config file

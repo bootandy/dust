@@ -186,6 +186,14 @@ pub fn build_cli() -> Command {
                 .action(clap::ArgAction::SetTrue)
                 .help("Only files will be displayed. (Finds your largest files)"),
         )
+        .arg(
+            Arg::new("stack_size")
+                .short('S')
+                .long("stack-size")
+                .num_args(1)
+                .value_parser(value_parser!(usize))
+                .help("Specify memory to use as stack size - use if you see: 'fatal runtime error: stack overflow' (default low memory=1048576, high memory=1073741824)"),
+        )
         .arg(Arg::new("params").num_args(1..)
             .value_parser(value_parser!(String)))
 }

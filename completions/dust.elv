@@ -32,6 +32,8 @@ set edit:completion:arg-completer[dust] = {|@words|
             cand --filter 'Only include filepaths matching this regex. For png files type: -e "\.png$" '
             cand -w 'Specify width of output overriding the auto detection of terminal width'
             cand --terminal_width 'Specify width of output overriding the auto detection of terminal width'
+            cand -S 'Specify memory to use as stack size - use if you see: ''fatal runtime error: stack overflow'' (default low memory=1048576, high memory=1073741824)'
+            cand --stack-size 'Specify memory to use as stack size - use if you see: ''fatal runtime error: stack overflow'' (default low memory=1048576, high memory=1073741824)'
             cand -p 'Subdirectories will not have their path shortened'
             cand --full-paths 'Subdirectories will not have their path shortened'
             cand -L 'dereference sym links - Treat sym links as directories and go into them'
