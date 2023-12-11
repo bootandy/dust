@@ -19,7 +19,7 @@ _dust() {
 
     case "${cmd}" in
         dust)
-            opts="-d -n -p -X -L -x -s -r -c -b -B -z -R -f -i -v -e -t -w -H -P -D -F -h -V --depth --number-of-lines --full-paths --ignore-directory --dereference-links --limit-filesystem --apparent-size --reverse --no-colors --no-percent-bars --bars-on-right --min-size --screen-reader --skip-total --filecount --ignore_hidden --invert-filter --filter --file_types --terminal_width --si --no-progress --only-dir --only-file --help --version [params]..."
+            opts="-d -n -p -X -L -x -s -r -c -b -B -z -R -f -i -v -e -t -w -H -P -D -F -S -h -V --depth --number-of-lines --full-paths --ignore-directory --dereference-links --limit-filesystem --apparent-size --reverse --no-colors --no-percent-bars --bars-on-right --min-size --screen-reader --skip-total --filecount --ignore_hidden --invert-filter --filter --file_types --terminal_width --si --no-progress --only-dir --only-file --stack-size --help --version [params]..."
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 1 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -78,6 +78,14 @@ _dust() {
                     return 0
                     ;;
                 -w)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --stack-size)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                -S)
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;
