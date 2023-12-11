@@ -178,7 +178,8 @@ fn main() {
         progress_data: indicator.data.clone(),
     };
 
-    let result = panic::catch_unwind(|| init_rayon);
+    let custom_stack_size = config.get_custom_stack_size(&options);
+    let result = panic::catch_unwind(|| init_rayon(custom_stack_size));
     if result.is_err() {
         eprintln!("Problem initializing rayon, try: export RAYON_NUM_THREADS=1")
     }
@@ -227,18 +228,23 @@ fn main() {
     }
 }
 
-fn init_rayon() -> Result<(), ThreadPoolBuildError> {
-    let large_stack = usize::pow(1024, 3);
-    let mut s = System::new();
-    s.refresh_memory();
-    let available = s.available_memory();
+fn init_rayon(custom_stack_size: Option<usize>) -> Result<(), ThreadPoolBuildError> {
+    match custom_stack_size {
+        Some(n) => rayon::ThreadPoolBuilder::new().stack_size(n).build_global(),
+        None => {
+            let large_stack = usize::pow(1024, 3);
+            let mut s = System::new();
+            s.refresh_memory();
+            let available = s.available_memory();
 
-    if available > large_stack.try_into().unwrap() {
-        // Larger stack size to handle cases with lots of nested directories
-        rayon::ThreadPoolBuilder::new()
-            .stack_size(large_stack)
-            .build_global()
-    } else {
-        rayon::ThreadPoolBuilder::new().build_global()
+            if available > large_stack.try_into().unwrap() {
+                // Larger stack size to handle cases with lots of nested directories
+                rayon::ThreadPoolBuilder::new()
+                    .stack_size(large_stack)
+                    .build_global()
+            } else {
+                rayon::ThreadPoolBuilder::new().build_global()
+            }
+        }
     }
 }

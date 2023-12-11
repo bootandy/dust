@@ -35,6 +35,8 @@ Register-ArgumentCompleter -Native -CommandName 'dust' -ScriptBlock {
             [CompletionResult]::new('--filter', 'filter', [CompletionResultType]::ParameterName, 'Only include filepaths matching this regex. For png files type: -e "\.png$" ')
             [CompletionResult]::new('-w', 'w', [CompletionResultType]::ParameterName, 'Specify width of output overriding the auto detection of terminal width')
             [CompletionResult]::new('--terminal_width', 'terminal_width', [CompletionResultType]::ParameterName, 'Specify width of output overriding the auto detection of terminal width')
+            [CompletionResult]::new('-S', 'S ', [CompletionResultType]::ParameterName, 'Specify memory to use as stack size - use if you see: ''fatal runtime error: stack overflow'' (default low memory=1048576, high memory=1073741824)')
+            [CompletionResult]::new('--stack-size', 'stack-size', [CompletionResultType]::ParameterName, 'Specify memory to use as stack size - use if you see: ''fatal runtime error: stack overflow'' (default low memory=1048576, high memory=1073741824)')
             [CompletionResult]::new('-p', 'p', [CompletionResultType]::ParameterName, 'Subdirectories will not have their path shortened')
             [CompletionResult]::new('--full-paths', 'full-paths', [CompletionResultType]::ParameterName, 'Subdirectories will not have their path shortened')
             [CompletionResult]::new('-L', 'L ', [CompletionResultType]::ParameterName, 'dereference sym links - Treat sym links as directories and go into them')
