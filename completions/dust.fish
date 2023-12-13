@@ -1,6 +1,7 @@
 complete -c dust -s d -l depth -d 'Depth to show' -r
 complete -c dust -s n -l number-of-lines -d 'Number of lines of output to show. (Default is terminal_height - 10)' -r
 complete -c dust -s X -l ignore-directory -d 'Exclude any file or directory with this name' -r
+complete -c dust -s I -l ignore-all-in-file -d 'Exclude any file or directory with a regex matching that listed in this file, the file entries will be added to the ignore regexs provided by --invert_filter' -r
 complete -c dust -s z -l min-size -d 'Minimum size file to include in output' -r
 complete -c dust -s v -l invert-filter -d 'Exclude filepaths matching this regex. To ignore png files type: -v "\\.png$" ' -r
 complete -c dust -s e -l filter -d 'Only include filepaths matching this regex. For png files type: -e "\\.png$" ' -r
