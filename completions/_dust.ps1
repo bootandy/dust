@@ -27,6 +27,8 @@ Register-ArgumentCompleter -Native -CommandName 'dust' -ScriptBlock {
             [CompletionResult]::new('--number-of-lines', 'number-of-lines', [CompletionResultType]::ParameterName, 'Number of lines of output to show. (Default is terminal_height - 10)')
             [CompletionResult]::new('-X', 'X ', [CompletionResultType]::ParameterName, 'Exclude any file or directory with this name')
             [CompletionResult]::new('--ignore-directory', 'ignore-directory', [CompletionResultType]::ParameterName, 'Exclude any file or directory with this name')
+            [CompletionResult]::new('-I', 'I ', [CompletionResultType]::ParameterName, 'Exclude any file or directory with a regex matching that listed in this file, the file entries will be added to the ignore regexs provided by --invert_filter')
+            [CompletionResult]::new('--ignore-all-in-file', 'ignore-all-in-file', [CompletionResultType]::ParameterName, 'Exclude any file or directory with a regex matching that listed in this file, the file entries will be added to the ignore regexs provided by --invert_filter')
             [CompletionResult]::new('-z', 'z', [CompletionResultType]::ParameterName, 'Minimum size file to include in output')
             [CompletionResult]::new('--min-size', 'min-size', [CompletionResultType]::ParameterName, 'Minimum size file to include in output')
             [CompletionResult]::new('-v', 'v', [CompletionResultType]::ParameterName, 'Exclude filepaths matching this regex. To ignore png files type: -v "\.png$" ')

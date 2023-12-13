@@ -38,6 +38,13 @@ pub fn build_cli() -> Command {
                 .action(clap::ArgAction::Append)
                 .help("Exclude any file or directory with this name"),
         )
+        .arg(
+            Arg::new("ignore_all_in_file")
+                .short('I')
+                .long("ignore-all-in-file")
+                .value_parser(value_parser!(String))
+                .help("Exclude any file or directory with a regex matching that listed in this file, the file entries will be added to the ignore regexs provided by --invert_filter"),
+        )
          .arg(
             Arg::new("dereference_links")
                 .short('L')

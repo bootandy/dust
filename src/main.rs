@@ -17,7 +17,9 @@ use display::InitialDisplayData;
 use filter::AggregateData;
 use progress::PIndicator;
 use progress::ORDERING;
+use regex::Error;
 use std::collections::HashSet;
+use std::fs::read_to_string;
 use std::panic;
 use std::process;
 use sysinfo::{System, SystemExt};
@@ -141,6 +143,24 @@ fn main() {
             .collect::<Vec<PathBuf>>(),
         None => vec![],
     };
+
+    let ignore_from_file_result = match options.get_one::<String>("ignore_all_in_file") {
+        Some(val) => read_to_string(val)
+            .unwrap()
+            .lines()
+            .map(Regex::new)
+            .collect::<Vec<Result<Regex, Error>>>(),
+        None => vec![],
+    };
+    let ignore_from_file = ignore_from_file_result
+        .into_iter()
+        .filter_map(|x| x.ok())
+        .collect::<Vec<Regex>>();
+
+    let invert_filter_regexs = invert_filter_regexs
+        .into_iter()
+        .chain(ignore_from_file)
+        .collect::<Vec<Regex>>();
 
     let by_filecount = options.get_flag("by_filecount");
     let limit_filesystem = options.get_flag("limit_filesystem");
