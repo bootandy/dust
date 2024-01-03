@@ -1,8 +1,9 @@
 use std::{
+    collections::HashSet,
     io::Write,
     path::Path,
     sync::{
-        atomic::{AtomicBool, AtomicU64, AtomicU8, AtomicUsize, Ordering},
+        atomic::{AtomicU64, AtomicU8, AtomicUsize, Ordering},
         mpsc::{self, RecvTimeoutError, Sender},
         Arc, RwLock,
     },
@@ -55,7 +56,6 @@ pub struct PAtomicInfo {
     pub total_file_size: AtomicU64,
     pub state: AtomicU8,
     pub current_path: ThreadStringWrapper,
-    pub no_permissions: AtomicBool,
 }
 
 impl PAtomicInfo {
@@ -66,6 +66,13 @@ impl PAtomicInfo {
         self.total_file_size.store(0, ORDERING);
         self.num_files.store(0, ORDERING);
     }
+}
+
+#[derive(Default)]
+pub struct RuntimeErrors {
+    pub no_permissions: bool,
+    pub file_not_found: HashSet<String>,
+    pub unknown_error: HashSet<String>,
 }
 
 /* -------------------------------------------------------------------------- */

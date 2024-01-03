@@ -11,17 +11,19 @@ mod progress;
 mod utils;
 
 use crate::cli::build_cli;
+use crate::progress::RuntimeErrors;
 use clap::parser::ValuesRef;
 use dir_walker::WalkData;
 use display::InitialDisplayData;
 use filter::AggregateData;
 use progress::PIndicator;
-use progress::ORDERING;
 use regex::Error;
 use std::collections::HashSet;
 use std::fs::read_to_string;
 use std::panic;
 use std::process;
+use std::sync::Arc;
+use std::sync::Mutex;
 use sysinfo::{System, SystemExt};
 
 use self::display::draw_it;
@@ -195,11 +197,12 @@ fn main() {
         ignore_hidden,
         follow_links,
         progress_data: indicator.data.clone(),
+        errors: Arc::new(Mutex::new(RuntimeErrors::default())),
     };
     let stack_size = config.get_custom_stack_size(&options);
     init_rayon(&stack_size);
 
-    let top_level_nodes = walk_it(simplified_dirs, walk_data);
+    let top_level_nodes = walk_it(simplified_dirs, &walk_data);
 
     let tree = match summarize_file_types {
         true => get_all_file_types(&top_level_nodes, number_of_lines),
@@ -216,11 +219,31 @@ fn main() {
         }
     };
 
-    let failed_permissions = indicator.data.no_permissions.load(ORDERING);
-    indicator.stop();
     // Must have stopped indicator before we print to stderr
+    indicator.stop();
+
+    let final_errors = walk_data.errors.lock().unwrap();
+    let failed_permissions = final_errors.no_permissions;
+    if !final_errors.file_not_found.is_empty() {
+        let err = final_errors
+            .file_not_found
+            .iter()
+            .map(|a| a.as_ref())
+            .collect::<Vec<&str>>()
+            .join(", ");
+        eprintln!("No such file or directory: {}", err);
+    }
     if failed_permissions {
         eprintln!("Did not have permissions for all directories");
+    }
+    if !final_errors.unknown_error.is_empty() {
+        let err = final_errors
+            .unknown_error
+            .iter()
+            .map(|a| a.as_ref())
+            .collect::<Vec<&str>>()
+            .join(", ");
+        eprintln!("Unknown Error: {}", err);
     }
 
     if let Some(root_node) = tree {

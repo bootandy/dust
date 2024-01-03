@@ -92,7 +92,7 @@ pub fn test_with_bad_param() {
     let mut cmd = Command::cargo_bin("dust").unwrap();
     let result = cmd.arg("bad_place").unwrap();
     let stderr = str::from_utf8(&result.stderr).unwrap();
-    assert!(stderr.contains("Did not have permissions for all directories"));
+    assert!(stderr.contains("No such file or directory"));
 }
 
 #[test]
