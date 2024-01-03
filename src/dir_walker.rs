@@ -126,55 +126,80 @@ fn ignore_file(entry: &DirEntry, walk_data: &WalkData) -> bool {
 
 fn walk(dir: PathBuf, walk_data: &WalkData, depth: usize) -> Option<Node> {
     let prog_data = &walk_data.progress_data;
-    let mut children = vec![];
 
-    if let Ok(entries) = fs::read_dir(&dir) {
-        children = entries
-            .into_iter()
-            .par_bridge()
-            .filter_map(|entry| {
-                if let Ok(ref entry) = entry {
-                    // uncommenting the below line gives simpler code but
-                    // rayon doesn't parallelize as well giving a 3X performance drop
-                    // hence we unravel the recursion a bit
+    let children = if dir.is_dir() {
+        let read_dir = fs::read_dir(&dir);
+        match read_dir {
+            Ok(entries) => {
+                entries
+                    .into_iter()
+                    .par_bridge()
+                    .filter_map(|entry| {
+                        if let Ok(ref entry) = entry {
+                            // uncommenting the below line gives simpler code but
+                            // rayon doesn't parallelize as well giving a 3X performance drop
+                            // hence we unravel the recursion a bit
 
-                    // return walk(entry.path(), walk_data, depth)
+                            // return walk(entry.path(), walk_data, depth)
 
-                    if !ignore_file(entry, walk_data) {
-                        if let Ok(data) = entry.file_type() {
-                            if data.is_dir() || (walk_data.follow_links && data.is_symlink()) {
-                                return walk(entry.path(), walk_data, depth + 1);
+                            if !ignore_file(entry, walk_data) {
+                                if let Ok(data) = entry.file_type() {
+                                    if data.is_dir()
+                                        || (walk_data.follow_links && data.is_symlink())
+                                    {
+                                        return walk(entry.path(), walk_data, depth + 1);
+                                    }
+
+                                    let node = build_node(
+                                        entry.path(),
+                                        vec![],
+                                        walk_data.filter_regex,
+                                        walk_data.invert_filter_regex,
+                                        walk_data.use_apparent_size,
+                                        data.is_symlink(),
+                                        data.is_file(),
+                                        walk_data.by_filecount,
+                                        depth,
+                                    );
+
+                                    prog_data.num_files.fetch_add(1, ORDERING);
+                                    if let Some(ref file) = node {
+                                        prog_data.total_file_size.fetch_add(file.size, ORDERING);
+                                    }
+
+                                    return node;
+                                }
                             }
-
-                            let node = build_node(
-                                entry.path(),
-                                vec![],
-                                walk_data.filter_regex,
-                                walk_data.invert_filter_regex,
-                                walk_data.use_apparent_size,
-                                data.is_symlink(),
-                                data.is_file(),
-                                walk_data.by_filecount,
-                                depth,
-                            );
-
-                            prog_data.num_files.fetch_add(1, ORDERING);
-                            if let Some(ref file) = node {
-                                prog_data.total_file_size.fetch_add(file.size, ORDERING);
-                            }
-
-                            return node;
+                        } else {
+                            prog_data.no_permissions.store(true, ORDERING)
                         }
+                        None
+                    })
+                    .collect()
+            }
+            Err(failed) => {
+                match failed.kind() {
+                    std::io::ErrorKind::PermissionDenied => {
+                        prog_data.no_permissions.store(true, ORDERING)
                     }
-                } else {
-                    prog_data.no_permissions.store(true, ORDERING)
+                    std::io::ErrorKind::NotFound => {
+                        // TODO: consider turning this in to a array of the files that were not found
+                        prog_data.no_file.store(true, ORDERING)
+                    }
+                    _ => {
+                        println!("{:?}", failed);
+                        prog_data.unknown_error.store(true, ORDERING)
+                    }
                 }
-                None
-            })
-            .collect();
-    } else if !dir.is_file() {
-        walk_data.progress_data.no_permissions.store(true, ORDERING)
-    }
+                vec![]
+            }
+        }
+    } else {
+        if !dir.is_file() {
+            prog_data.no_file.store(true, ORDERING)
+        }
+        vec![]
+    };
     build_node(
         dir,
         children,

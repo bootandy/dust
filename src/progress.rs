@@ -56,6 +56,8 @@ pub struct PAtomicInfo {
     pub state: AtomicU8,
     pub current_path: ThreadStringWrapper,
     pub no_permissions: AtomicBool,
+    pub no_file: AtomicBool,
+    pub unknown_error: AtomicBool,
 }
 
 impl PAtomicInfo {
