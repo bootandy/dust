@@ -52,7 +52,11 @@ fn exact_output_test<T: AsRef<OsStr>>(valid_outputs: Vec<String>, command_args: 
 
     let output = str::from_utf8(&a.unwrap().stdout).unwrap().to_owned();
 
-    assert!(valid_outputs.iter().any(|i| output.contains(i)));
+    let will_fail = valid_outputs.iter().any(|i| output.contains(i));
+    if !will_fail {
+        eprintln!("output:\n{}\ndoes not contain any of:\n{:?}",output, valid_outputs.iter());
+    }
+    assert!(will_fail)
 }
 
 // "windows" result data can vary by host (size seems to be variable by one byte); fix code vs test and re-enable
