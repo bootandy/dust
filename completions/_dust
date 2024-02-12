@@ -70,8 +70,7 @@ _dust() {
 '--help[Print help]' \
 '-V[Print version]' \
 '--version[Print version]' \
-'*::params:' \
-'*:inputs:_files' \
+'*::params:_files' \
 && ret=0
 }
 
