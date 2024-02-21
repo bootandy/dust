@@ -163,13 +163,6 @@ pub fn build_cli() -> Command {
                 .help("Specify width of output overriding the auto detection of terminal width"),
         )
         .arg(
-            Arg::new("iso")
-                .short('H')
-                .long("si")
-                .action(clap::ArgAction::SetTrue)
-                .help("print sizes in powers of 1000 (e.g., 1.1G)")
-        )
-        .arg(
             Arg::new("disable_progress")
                 .short('P')
                 .long("no-progress")
@@ -194,11 +187,11 @@ pub fn build_cli() -> Command {
                 .help("Only files will be displayed. (Finds your largest files)"),
         )
         .arg(
-            Arg::new("display_kb")
-                .short('k')
-                .long("display-kb")
-                .action(clap::ArgAction::SetTrue)
-                .help("display the size of a file or directory in kilobytes"),
+            Arg::new("output_format")
+                .short('o')
+                .long("output-format")
+                .value_parser(value_parser!(String))
+                .help("Changes output display size. si will print sizes in powers of 1000. b/bytes kb kib mb mib gb gib will print the whole tree in that size")
         )
         .arg(
             Arg::new("stack_size")

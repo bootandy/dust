@@ -178,15 +178,13 @@ fn main() {
         .flat_map(|x| simplified_dirs.iter().map(move |d| d.join(&x)))
         .collect();
 
-    let iso = config.get_iso(&options);
-
-    let display_kb = config.get_display_kb(&options);
+    let output_format = config.get_output_format(&options);
 
     let ignore_hidden = config.get_ignore_hidden(&options);
 
     let mut indicator = PIndicator::build_me();
     if !config.get_disable_progress(&options) {
-        indicator.spawn(iso, display_kb);
+        indicator.spawn(output_format.clone())
     }
 
     let walk_data = WalkData {
@@ -210,7 +208,7 @@ fn main() {
         true => get_all_file_types(&top_level_nodes, number_of_lines),
         false => {
             let agg_data = AggregateData {
-                min_size: config.get_min_size(&options, iso),
+                min_size: config.get_min_size(&options, &output_format),
                 only_dir: config.get_only_dir(&options),
                 only_file: config.get_only_file(&options),
                 number_of_lines,
@@ -254,10 +252,9 @@ fn main() {
             is_reversed: !config.get_reverse(&options),
             colors_on: !no_colors,
             by_filecount,
-            iso,
             is_screen_reader: config.get_screen_reader(&options),
+            output_format,
             bars_on_right: config.get_bars_on_right(&options),
-            display_kb,
         };
         draw_it(
             idd,
@@ -265,7 +262,6 @@ fn main() {
             terminal_width,
             &root_node,
             config.get_skip_total(&options),
-            display_kb,
         )
     }
 }

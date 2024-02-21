@@ -31,6 +31,8 @@ _dust() {
 '(-t --file_types)*--filter=[Only include filepaths matching this regex. For png files type\: -e "\\.png\$" ]: : ' \
 '-w+[Specify width of output overriding the auto detection of terminal width]: : ' \
 '--terminal_width=[Specify width of output overriding the auto detection of terminal width]: : ' \
+'-o+[Changes output display size. si will print sizes in powers of 1000. b/bytes kb kib mb mib gb gib will print the whole tree in that size]: : ' \
+'--output-format=[Changes output display size. si will print sizes in powers of 1000. b/bytes kb kib mb mib gb gib will print the whole tree in that size]: : ' \
 '-S+[Specify memory to use as stack size - use if you see\: '\''fatal runtime error\: stack overflow'\'' (default low memory=1048576, high memory=1073741824)]: : ' \
 '--stack-size=[Specify memory to use as stack size - use if you see\: '\''fatal runtime error\: stack overflow'\'' (default low memory=1048576, high memory=1073741824)]: : ' \
 '-p[Subdirectories will not have their path shortened]' \
@@ -58,16 +60,12 @@ _dust() {
 '--ignore_hidden[Do not display hidden files]' \
 '(-d --depth -D --only-dir)-t[show only these file types]' \
 '(-d --depth -D --only-dir)--file_types[show only these file types]' \
-'-H[print sizes in powers of 1000 (e.g., 1.1G)]' \
-'--si[print sizes in powers of 1000 (e.g., 1.1G)]' \
 '-P[Disable the progress indication.]' \
 '--no-progress[Disable the progress indication.]' \
 '(-F --only-file -t --file_types)-D[Only directories will be displayed.]' \
 '(-F --only-file -t --file_types)--only-dir[Only directories will be displayed.]' \
 '(-D --only-dir)-F[Only files will be displayed. (Finds your largest files)]' \
 '(-D --only-dir)--only-file[Only files will be displayed. (Finds your largest files)]' \
-'-k[display the size of a file or directory in kilobytes]' \
-'--display-kb[display the size of a file or directory in kilobytes]' \
 '-h[Print help]' \
 '--help[Print help]' \
 '-V[Print version]' \

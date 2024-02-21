@@ -77,26 +77,16 @@ pub struct RuntimeErrors {
 
 /* -------------------------------------------------------------------------- */
 
-fn format_preparing_str(
-    prog_char: char,
-    data: &PAtomicInfo,
-    is_iso: bool,
-    is_display_kb: bool,
-) -> String {
+fn format_preparing_str(prog_char: char, data: &PAtomicInfo, output_display: &str) -> String {
     let path_in = data.current_path.get();
-    let size = human_readable_number(data.total_file_size.load(ORDERING), is_iso, is_display_kb);
+    let size = human_readable_number(data.total_file_size.load(ORDERING), output_display);
     format!("Preparing: {path_in} {size} ... {prog_char}")
 }
 
-fn format_indexing_str(
-    prog_char: char,
-    data: &PAtomicInfo,
-    is_iso: bool,
-    display_kb: bool,
-) -> String {
+fn format_indexing_str(prog_char: char, data: &PAtomicInfo, output_display: &str) -> String {
     let path_in = data.current_path.get();
     let file_count = data.num_files.load(ORDERING);
-    let size = human_readable_number(data.total_file_size.load(ORDERING), is_iso, display_kb);
+    let size = human_readable_number(data.total_file_size.load(ORDERING), output_display);
     let file_str = format!("{file_count} files, {size}");
     format!("Indexing: {path_in} {file_str} ... {prog_char}")
 }
@@ -116,7 +106,7 @@ impl PIndicator {
         }
     }
 
-    pub fn spawn(&mut self, is_iso: bool, display_kb: bool) {
+    pub fn spawn(&mut self, output_display: String) {
         let data = self.data.clone();
         let (stop_handler, receiver) = mpsc::channel::<()>();
 
@@ -135,12 +125,8 @@ impl PIndicator {
                 let prog_char = PROGRESS_CHARS[progress_char_i];
 
                 msg = match data.state.load(ORDERING) {
-                    Operation::INDEXING => {
-                        format_indexing_str(prog_char, &data, is_iso, display_kb)
-                    }
-                    Operation::PREPARING => {
-                        format_preparing_str(prog_char, &data, is_iso, display_kb)
-                    }
+                    Operation::INDEXING => format_indexing_str(prog_char, &data, &output_display),
+                    Operation::PREPARING => format_preparing_str(prog_char, &data, &output_display),
                     _ => panic!("Unknown State"),
                 };
 
