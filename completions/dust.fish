@@ -6,6 +6,7 @@ complete -c dust -s z -l min-size -d 'Minimum size file to include in output' -r
 complete -c dust -s v -l invert-filter -d 'Exclude filepaths matching this regex. To ignore png files type: -v "\\.png$" ' -r
 complete -c dust -s e -l filter -d 'Only include filepaths matching this regex. For png files type: -e "\\.png$" ' -r
 complete -c dust -s w -l terminal_width -d 'Specify width of output overriding the auto detection of terminal width' -r
+complete -c dust -s o -l output-format -d 'Changes output display size. si will print sizes in powers of 1000. b/bytes kb kib mb mib gb gib will print the whole tree in that size' -r
 complete -c dust -s S -l stack-size -d 'Specify memory to use as stack size - use if you see: \'fatal runtime error: stack overflow\' (default low memory=1048576, high memory=1073741824)' -r
 complete -c dust -s p -l full-paths -d 'Subdirectories will not have their path shortened'
 complete -c dust -s L -l dereference-links -d 'dereference sym links - Treat sym links as directories and go into them'
@@ -20,10 +21,8 @@ complete -c dust -l skip-total -d 'No total row will be displayed'
 complete -c dust -s f -l filecount -d 'Directory \'size\' is number of child files instead of disk size'
 complete -c dust -s i -l ignore_hidden -d 'Do not display hidden files'
 complete -c dust -s t -l file_types -d 'show only these file types'
-complete -c dust -s H -l si -d 'print sizes in powers of 1000 (e.g., 1.1G)'
 complete -c dust -s P -l no-progress -d 'Disable the progress indication.'
 complete -c dust -s D -l only-dir -d 'Only directories will be displayed.'
 complete -c dust -s F -l only-file -d 'Only files will be displayed. (Finds your largest files)'
-complete -c dust -s k -l display-kb -d 'display the size of a file or directory in kilobytes'
 complete -c dust -s h -l help -d 'Print help'
 complete -c dust -s V -l version -d 'Print version'

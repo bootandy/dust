@@ -68,7 +68,7 @@ Usage: dust -d 3  (Shows 3 levels of subdirectories)
 Usage: dust -D (Show only directories (eg dust -D))
 Usage: dust -F (Show only files - finds your largest files)
 Usage: dust -r (reverse order of output)
-Usage: dust -H (si print sizes in powers of 1000 instead of 1024)
+Usage: dust -o si/b/kb/kib/mb/mib/gb/gib (si - prints sizes in powers of 1000. Others print size in that format).
 Usage: dust -X ignore  (ignore all files and directories with the name 'ignore')
 Usage: dust -x (Only show directories on the same filesystem)
 Usage: dust -b (Do not show percentages or draw ASCII bars)
