@@ -26,7 +26,7 @@ pub fn get_metadata(d: &Path, use_apparent_size: bool) -> Option<(u64, Option<(u
 }
 
 #[cfg(target_family = "windows")]
-pub fn get_metadata(d: &Path, _use_apparent_size: bool) -> Option<(u64, Option<(u64, u64)>)> {
+pub fn get_metadata(d: &Path, use_apparent_size: bool) -> Option<(u64, Option<(u64, u64)>)> {
     // On windows opening the file to get size, file ID and volume can be very
     // expensive because 1) it causes a few system calls, and more importantly 2) it can cause
     // windows defender to scan the file.
@@ -90,14 +90,14 @@ pub fn get_metadata(d: &Path, _use_apparent_size: bool) -> Option<(u64, Option<(
         Ok(Handle::from_file(file))
     }
 
-    fn get_metadata_expensive(d: &Path, _use_apparent_size: bool) -> Option<(u64, Option<(u64, u64)>)> {
+    fn get_metadata_expensive(d: &Path, use_apparent_size: bool) -> Option<(u64, Option<(u64, u64)>)> {
         use winapi_util::file::information;
-        use filesize::PathExt;
 
         let h = handle_from_path_limited(d).ok()?;
         let info = information(&h).ok()?;
 
-        if _use_apparent_size {
+        if use_apparent_size {
+            use filesize::PathExt;
             Some((
                 d.size_on_disk().ok()?,
                 Some((info.file_index(), info.volume_serial_number())),
@@ -132,13 +132,13 @@ pub fn get_metadata(d: &Path, _use_apparent_size: bool) -> Option<(u64, Option<(
             if ((attr_filtered & FILE_ATTRIBUTE_ARCHIVE) != 0
                 || (attr_filtered & FILE_ATTRIBUTE_DIRECTORY) != 0
                 || md.file_attributes() == FILE_ATTRIBUTE_NORMAL)
-                && !((attr_filtered & IS_PROBABLY_ONEDRIVE != 0) && _use_apparent_size)
+                && !((attr_filtered & IS_PROBABLY_ONEDRIVE != 0) && use_apparent_size)
             {
                 Some((md.len(), None))
             } else {
-                get_metadata_expensive(d, _use_apparent_size)
+                get_metadata_expensive(d, use_apparent_size)
             }
         }
-        _ => get_metadata_expensive(d, _use_apparent_size),
+        _ => get_metadata_expensive(d, use_apparent_size),
     }
 }
