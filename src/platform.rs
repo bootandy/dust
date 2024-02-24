@@ -90,7 +90,10 @@ pub fn get_metadata(d: &Path, use_apparent_size: bool) -> Option<(u64, Option<(u
         Ok(Handle::from_file(file))
     }
 
-    fn get_metadata_expensive(d: &Path, use_apparent_size: bool) -> Option<(u64, Option<(u64, u64)>)> {
+    fn get_metadata_expensive(
+        d: &Path,
+        use_apparent_size: bool,
+    ) -> Option<(u64, Option<(u64, u64)>)> {
         use winapi_util::file::information;
 
         let h = handle_from_path_limited(d).ok()?;
@@ -126,7 +129,12 @@ pub fn get_metadata(d: &Path, use_apparent_size: bool) -> Option<(u64, Option<(u
             const FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS: u32 = 0x00400000;
             const FILE_ATTRIBUTE_OFFLINE: u32 = 0x00001000;
             // normally FILE_ATTRIBUTE_SPARSE_FILE would be enough, however Windows sometimes likes to mask it out. see: https://stackoverflow.com/q/54560454
-            const IS_PROBABLY_ONEDRIVE: u32 = FILE_ATTRIBUTE_SPARSE_FILE | FILE_ATTRIBUTE_PINNED | FILE_ATTRIBUTE_UNPINNED | FILE_ATTRIBUTE_RECALL_ON_OPEN | FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS | FILE_ATTRIBUTE_OFFLINE;
+            const IS_PROBABLY_ONEDRIVE: u32 = FILE_ATTRIBUTE_SPARSE_FILE
+                | FILE_ATTRIBUTE_PINNED
+                | FILE_ATTRIBUTE_UNPINNED
+                | FILE_ATTRIBUTE_RECALL_ON_OPEN
+                | FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS
+                | FILE_ATTRIBUTE_OFFLINE;
             let attr_filtered = md.file_attributes()
                 & !(FILE_ATTRIBUTE_HIDDEN | FILE_ATTRIBUTE_READONLY | FILE_ATTRIBUTE_SYSTEM);
             if ((attr_filtered & FILE_ATTRIBUTE_ARCHIVE) != 0
