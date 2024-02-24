@@ -26,7 +26,7 @@ pub fn get_metadata(d: &Path, use_apparent_size: bool) -> Option<(u64, Option<(u
 }
 
 #[cfg(target_family = "windows")]
-pub fn get_metadata(d: &Path, _use_apparent_size: bool) -> Option<(u64, Option<(u64, u64)>)> {
+pub fn get_metadata(d: &Path, use_apparent_size: bool) -> Option<(u64, Option<(u64, u64)>)> {
     // On windows opening the file to get size, file ID and volume can be very
     // expensive because 1) it causes a few system calls, and more importantly 2) it can cause
     // windows defender to scan the file.
@@ -90,16 +90,27 @@ pub fn get_metadata(d: &Path, _use_apparent_size: bool) -> Option<(u64, Option<(
         Ok(Handle::from_file(file))
     }
 
-    fn get_metadata_expensive(d: &Path) -> Option<(u64, Option<(u64, u64)>)> {
+    fn get_metadata_expensive(
+        d: &Path,
+        use_apparent_size: bool,
+    ) -> Option<(u64, Option<(u64, u64)>)> {
         use winapi_util::file::information;
 
         let h = handle_from_path_limited(d).ok()?;
         let info = information(&h).ok()?;
 
-        Some((
-            info.file_size(),
-            Some((info.file_index(), info.volume_serial_number())),
-        ))
+        if use_apparent_size {
+            use filesize::PathExt;
+            Some((
+                d.size_on_disk().ok()?,
+                Some((info.file_index(), info.volume_serial_number())),
+            ))
+        } else {
+            Some((
+                info.file_size(),
+                Some((info.file_index(), info.volume_serial_number())),
+            ))
+        }
     }
 
     use std::os::windows::fs::MetadataExt;
@@ -111,18 +122,31 @@ pub fn get_metadata(d: &Path, _use_apparent_size: bool) -> Option<(u64, Option<(
             const FILE_ATTRIBUTE_SYSTEM: u32 = 0x04;
             const FILE_ATTRIBUTE_NORMAL: u32 = 0x80;
             const FILE_ATTRIBUTE_DIRECTORY: u32 = 0x10;
-
+            const FILE_ATTRIBUTE_SPARSE_FILE: u32 = 0x00000200;
+            const FILE_ATTRIBUTE_PINNED: u32 = 0x00080000;
+            const FILE_ATTRIBUTE_UNPINNED: u32 = 0x00100000;
+            const FILE_ATTRIBUTE_RECALL_ON_OPEN: u32 = 0x00040000;
+            const FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS: u32 = 0x00400000;
+            const FILE_ATTRIBUTE_OFFLINE: u32 = 0x00001000;
+            // normally FILE_ATTRIBUTE_SPARSE_FILE would be enough, however Windows sometimes likes to mask it out. see: https://stackoverflow.com/q/54560454
+            const IS_PROBABLY_ONEDRIVE: u32 = FILE_ATTRIBUTE_SPARSE_FILE
+                | FILE_ATTRIBUTE_PINNED
+                | FILE_ATTRIBUTE_UNPINNED
+                | FILE_ATTRIBUTE_RECALL_ON_OPEN
+                | FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS
+                | FILE_ATTRIBUTE_OFFLINE;
             let attr_filtered = md.file_attributes()
                 & !(FILE_ATTRIBUTE_HIDDEN | FILE_ATTRIBUTE_READONLY | FILE_ATTRIBUTE_SYSTEM);
-            if (attr_filtered & FILE_ATTRIBUTE_ARCHIVE) != 0
+            if ((attr_filtered & FILE_ATTRIBUTE_ARCHIVE) != 0
                 || (attr_filtered & FILE_ATTRIBUTE_DIRECTORY) != 0
-                || md.file_attributes() == FILE_ATTRIBUTE_NORMAL
+                || md.file_attributes() == FILE_ATTRIBUTE_NORMAL)
+                && !((attr_filtered & IS_PROBABLY_ONEDRIVE != 0) && use_apparent_size)
             {
                 Some((md.len(), None))
             } else {
-                get_metadata_expensive(d)
+                get_metadata_expensive(d, use_apparent_size)
             }
         }
-        _ => get_metadata_expensive(d),
+        _ => get_metadata_expensive(d, use_apparent_size),
     }
 }
