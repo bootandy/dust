@@ -208,7 +208,7 @@ fn main() {
         true => get_all_file_types(&top_level_nodes, number_of_lines),
         false => {
             let agg_data = AggregateData {
-                min_size: config.get_min_size(&options, &output_format),
+                min_size: config.get_min_size(&options),
                 only_dir: config.get_only_dir(&options),
                 only_file: config.get_only_file(&options),
                 number_of_lines,
