@@ -1,5 +1,6 @@
 use clap::ArgMatches;
 use config_file::FromConfigFile;
+use regex::Regex;
 use serde::Deserialize;
 use std::io::IsTerminal;
 use std::path::Path;
@@ -80,17 +81,17 @@ impl Config {
 
         self.depth.unwrap_or(usize::MAX)
     }
-    pub fn get_min_size(&self, options: &ArgMatches, output_format: &str) -> Option<usize> {
+    pub fn get_min_size(&self, options: &ArgMatches) -> Option<usize> {
         let size_from_param = options.get_one::<String>("min_size");
-        self._get_min_size(size_from_param, output_format)
+        self._get_min_size(size_from_param)
     }
-    fn _get_min_size(&self, min_size: Option<&String>, output_format: &str) -> Option<usize> {
-        let size_from_param = min_size.and_then(|a| convert_min_size(a, output_format));
+    fn _get_min_size(&self, min_size: Option<&String>) -> Option<usize> {
+        let size_from_param = min_size.and_then(|a| convert_min_size(a));
 
         if size_from_param.is_none() {
             self.min_size
                 .as_ref()
-                .and_then(|a| convert_min_size(a.as_ref(), output_format))
+                .and_then(|a| convert_min_size(a.as_ref()))
         } else {
             size_from_param
         }
@@ -114,19 +115,26 @@ impl Config {
     }
 }
 
-fn convert_min_size(input: &str, output_format: &str) -> Option<usize> {
-    let chars_as_vec: Vec<char> = input.chars().collect();
-    match chars_as_vec.split_last() {
-        Some((last, start)) => {
-            let mut starts: String = start.iter().collect::<String>();
+fn convert_min_size(input: &str) -> Option<usize> {
+    // let chars_as_vec: Vec<char> = input.chars().collect();
+    let re = Regex::new(r"([0-9]+)(\w*)").unwrap();
 
+    if let Some(cap) = re.captures(input) {
+        let (_, [digits, letters]) = cap.extract();
+        let letters = letters.to_uppercase();
+        let first = letters.chars().next();
+
+        // If we did specify a letter and it doesnt begin with 'b'
+        if first.is_some() && first != Some('b') {
+            // Are we using KB, MB, GB etc ?
             for (i, u) in UNITS.iter().rev().enumerate() {
-                if Some(*u) == last.to_uppercase().next() {
-                    return match starts.parse::<usize>() {
+                if Some(*u) == first {
+                    return match digits.parse::<usize>() {
                         Ok(pure) => {
-                            //fix
-                            let num: usize = if output_format.eq("si") { 1000 } else { 1024 };
-                            let marker = pure * num.pow((i + 1) as u32);
+                            let is_si = letters.contains('I'); // KiB, MiB, etc
+                            let num: usize = if is_si { 1000 } else { 1024 };
+
+                            let marker = pure * (num.pow((i + 1) as u32));
                             Some(marker)
                         }
                         Err(_) => {
@@ -136,15 +144,19 @@ fn convert_min_size(input: &str, output_format: &str) -> Option<usize> {
                     };
                 }
             }
-            starts.push(*last);
-            starts
+            eprintln!("Ignoring invalid min-size: {input}");
+            None
+        // Else we are working with bytes
+        } else {
+            digits
                 .parse()
                 .map_err(|_| {
                     eprintln!("Ignoring invalid min-size: {input}");
                 })
                 .ok()
         }
-        None => None,
+    } else {
+        None
     }
 }
 
@@ -178,13 +190,13 @@ mod tests {
 
     #[test]
     fn test_conversion() {
-        assert_eq!(convert_min_size("55", ""), Some(55));
-        assert_eq!(convert_min_size("12344321", ""), Some(12344321));
-        assert_eq!(convert_min_size("95RUBBISH", ""), None);
-        assert_eq!(convert_min_size("10K", ""), Some(10 * 1024));
-        assert_eq!(convert_min_size("10M", ""), Some(10 * 1024usize.pow(2)));
-        assert_eq!(convert_min_size("10M", "si"), Some(10 * 1000usize.pow(2)));
-        assert_eq!(convert_min_size("2G", ""), Some(2 * 1024usize.pow(3)));
+        assert_eq!(convert_min_size("55"), Some(55));
+        assert_eq!(convert_min_size("12344321"), Some(12344321));
+        assert_eq!(convert_min_size("95RUBBISH"), None);
+        assert_eq!(convert_min_size("10K"), Some(10 * 1024));
+        assert_eq!(convert_min_size("10M"), Some(10 * 1024usize.pow(2)));
+        assert_eq!(convert_min_size("10MiB"), Some(10 * 1000usize.pow(2)));
+        assert_eq!(convert_min_size("2G"), Some(2 * 1024usize.pow(3)));
     }
 
     #[test]
@@ -193,11 +205,11 @@ mod tests {
             min_size: Some("1K".to_owned()),
             ..Default::default()
         };
-        assert_eq!(c._get_min_size(None, ""), Some(1024));
-        assert_eq!(c._get_min_size(Some(&"2K".into()), ""), Some(2048));
+        assert_eq!(c._get_min_size(None), Some(1024));
+        assert_eq!(c._get_min_size(Some(&"2K".into())), Some(2048));
 
-        assert_eq!(c._get_min_size(None, "si"), Some(1000));
-        assert_eq!(c._get_min_size(Some(&"2K".into()), "si"), Some(2000));
+        assert_eq!(c._get_min_size(Some(&"1kib".into())), Some(1000));
+        assert_eq!(c._get_min_size(Some(&"2KiB".into())), Some(2000));
     }
 
     #[test]
