@@ -409,31 +409,48 @@ fn get_pretty_name(
     }
 }
 
-pub fn human_readable_number(size: u64, output_str: &str) -> String {
+// If we are working with SI units or not
+pub fn get_type_of_thousand(output_str: &str) -> u64 {
     let is_si = output_str.contains('i'); // si, KiB, MiB, etc
-    let num: u64 = if is_si { 1000 } else { 1024 };
+    if is_si {
+        1000
+    } else {
+        1024
+    }
+}
 
+pub fn get_number_format(output_str: &str) -> Option<(u64, char)> {
     if output_str.starts_with('b') {
-        return format!("{}B", size);
+        return Some((1, 'B'));
     }
     for (i, u) in UNITS.iter().enumerate() {
         if output_str.starts_with((*u).to_ascii_lowercase()) {
-            let marker = num.pow((UNITS.len() - i) as u32);
-            return format!("{}{}", (size / marker), u);
+            let marker = get_type_of_thousand(output_str).pow((UNITS.len() - i) as u32);
+            return Some((marker, *u));
         }
     }
+    None
+}
 
-    for (i, u) in UNITS.iter().enumerate() {
-        let marker = num.pow((UNITS.len() - i) as u32);
-        if size >= marker {
-            if size / marker < 10 {
-                return format!("{:.1}{}", (size as f32 / marker as f32), u);
-            } else {
-                return format!("{}{}", (size / marker), u);
+pub fn human_readable_number(size: u64, output_str: &str) -> String {
+    match get_number_format(output_str) {
+        Some((x, u)) => {
+            format!("{}{}", (size / x), u)
+        }
+        None => {
+            for (i, u) in UNITS.iter().enumerate() {
+                let marker = get_type_of_thousand(output_str).pow((UNITS.len() - i) as u32);
+                if size >= marker {
+                    if size / marker < 10 {
+                        return format!("{:.1}{}", (size as f32 / marker as f32), u);
+                    } else {
+                        return format!("{}{}", (size / marker), u);
+                    }
+                }
             }
+            format!("{size}B")
         }
     }
-    format!("{size}B")
 }
 
 mod tests {
