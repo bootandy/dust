@@ -73,6 +73,7 @@ pub struct RuntimeErrors {
     pub no_permissions: bool,
     pub file_not_found: HashSet<String>,
     pub unknown_error: HashSet<String>,
+    pub abort: bool,
 }
 
 /* -------------------------------------------------------------------------- */

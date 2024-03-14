@@ -130,6 +130,9 @@ fn ignore_file(entry: &DirEntry, walk_data: &WalkData) -> bool {
 fn walk(dir: PathBuf, walk_data: &WalkData, depth: usize) -> Option<Node> {
     let prog_data = &walk_data.progress_data;
     let errors = &walk_data.errors;
+    if errors.lock().unwrap().abort {
+        return None;
+    }
 
     let children = if dir.is_dir() {
         let read_dir = fs::read_dir(&dir);
