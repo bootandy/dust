@@ -105,6 +105,17 @@ fn main() {
     let options = build_cli().get_matches();
     let config = get_config();
 
+    let errors = RuntimeErrors::default();
+    let error_listen_for_ctrlc = Arc::new(Mutex::new(errors));
+    let errors_for_rayon = error_listen_for_ctrlc.clone();
+    let errors_final = error_listen_for_ctrlc.clone();
+
+    ctrlc::set_handler(move || {
+        error_listen_for_ctrlc.lock().unwrap().abort = true;
+        println!("\nAborting");
+    })
+    .expect("Error setting Ctrl-C handler");
+
     let target_dirs = match options.get_many::<String>("params") {
         Some(values) => values.map(|v| v.as_str()).collect::<Vec<&str>>(),
         None => vec!["."],
@@ -197,7 +208,7 @@ fn main() {
         ignore_hidden,
         follow_links,
         progress_data: indicator.data.clone(),
-        errors: Arc::new(Mutex::new(RuntimeErrors::default())),
+        errors: errors_for_rayon,
     };
     let stack_size = config.get_custom_stack_size(&options);
     init_rayon(&stack_size);
@@ -221,6 +232,10 @@ fn main() {
 
     // Must have stopped indicator before we print to stderr
     indicator.stop();
+
+    if errors_final.lock().unwrap().abort {
+        return;
+    }
 
     let final_errors = walk_data.errors.lock().unwrap();
     let failed_permissions = final_errors.no_permissions;
