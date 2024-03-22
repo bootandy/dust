@@ -49,12 +49,13 @@ fn should_init_color(no_color: bool, force_color: bool) -> bool {
     if no_color == true {
         return false;
     }
-    // check if NO_COLOR is set https://no-color.org/
+    // check if NO_COLOR is set
+    // https://no-color.org/
     if env::var_os("NO_COLOR").is_some() {
         return false;
     }
     if terminal_size().is_none() {
-        // we are not in a terminal, color may not needed
+        // we are not in a terminal, color may not be needed
         return false;
     }
     // we are in a terminal

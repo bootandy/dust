@@ -76,7 +76,7 @@ Usage: dust -o si/b/kb/kib/mb/mib/gb/gib (si - prints sizes in powers of 1000. O
 Usage: dust -X ignore  (ignore all files and directories with the name 'ignore')
 Usage: dust -x (Only show directories on the same filesystem)
 Usage: dust -b (Do not show percentages or draw ASCII bars)
-Usage: dust -B (--bars-on-right - [Percent bars moved to right side of screen])
+Usage: dust -B (--bars-on-right - Percent bars moved to right side of screen)
 Usage: dust -i (Do not show hidden files)
 Usage: dust -c (No colors [monochrome])
 Usage: dust -C (Force colors [monochrome])
