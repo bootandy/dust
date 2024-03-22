@@ -81,6 +81,13 @@ pub fn build_cli() -> Command {
                 .help("No colors will be printed (Useful for commands like: watch)"),
         )
         .arg(
+            Arg::new("force_colors")
+                .short('C')
+                .long("force-colors")
+                .action(clap::ArgAction::SetTrue)
+                .help("Force colors print"),
+        )
+        .arg(
             Arg::new("no_bars")
                 .short('b')
                 .long("no-percent-bars")

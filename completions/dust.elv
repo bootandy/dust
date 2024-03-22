@@ -50,6 +50,8 @@ set edit:completion:arg-completer[dust] = {|@words|
             cand --reverse 'Print tree upside down (biggest highest)'
             cand -c 'No colors will be printed (Useful for commands like: watch)'
             cand --no-colors 'No colors will be printed (Useful for commands like: watch)'
+            cand -C 'Force colors print'
+            cand --force-colors 'Force colors print'
             cand -b 'No percent bars or percentages will be displayed'
             cand --no-percent-bars 'No percent bars or percentages will be displayed'
             cand -B 'percent bars moved to right side of screen'
