@@ -64,12 +64,12 @@ fn should_init_color(no_color: bool, force_color: bool) -> bool {
         // Required for windows 10
         // Fails to resolve for windows 8 so disable color
         return match ansi_term::enable_ansi_support() {
-            Ok(_) => no_color,
+            Ok(_) => true,
             Err(_) => {
                 eprintln!(
-                    "This version of Windows does not support ANSI colors, setting no_color flag"
+                    "This version of Windows does not support ANSI colors"
                 );
-                true
+                false
             }
         };
     }
