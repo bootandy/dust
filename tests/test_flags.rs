@@ -239,7 +239,6 @@ pub fn test_no_color() {
     // Red is 31
     assert!(!output.contains("\x1B[31m"));
     assert!(!output.contains("\x1B[0m"));
-    // assert!(output.contains(&formatted));
 }
 
 #[test]
@@ -248,5 +247,4 @@ pub fn test_force_color() {
     // Red is 31
     assert!(output.contains("\x1B[31m"));
     assert!(output.contains("\x1B[0m"));
-    // assert!(output.contains(&formatted));
 }
