@@ -19,6 +19,7 @@ use filter::AggregateData;
 use progress::PIndicator;
 use regex::Error;
 use std::collections::HashSet;
+use std::env;
 use std::fs::read_to_string;
 use std::panic;
 use std::process;
@@ -41,29 +42,38 @@ use utils::simplify_dir_names;
 static DEFAULT_NUMBER_OF_LINES: usize = 30;
 static DEFAULT_TERMINAL_WIDTH: usize = 80;
 
-fn init_color(no_color: bool) -> bool {
+fn should_init_color(no_color: bool, force_color: bool) -> bool {
+    if force_color {
+        return true;
+    }
+    if no_color {
+        return false;
+    }
+    // check if NO_COLOR is set
+    // https://no-color.org/
+    if env::var_os("NO_COLOR").is_some() {
+        return false;
+    }
+    if terminal_size().is_none() {
+        // we are not in a terminal, color may not be needed
+        return false;
+    }
+    // we are in a terminal
     #[cfg(windows)]
     {
-        // If no color is already set do not print a warning message
-        if no_color {
-            true
-        } else {
-            // Required for windows 10
-            // Fails to resolve for windows 8 so disable color
-            match ansi_term::enable_ansi_support() {
-                Ok(_) => no_color,
-                Err(_) => {
-                    eprintln!(
-                    "This version of Windows does not support ANSI colors, setting no_color flag"
-                );
-                    true
-                }
+        // Required for windows 10
+        // Fails to resolve for windows 8 so disable color
+        return match ansi_term::enable_ansi_support() {
+            Ok(_) => true,
+            Err(_) => {
+                eprintln!("This version of Windows does not support ANSI colors");
+                false
             }
-        }
+        };
     }
     #[cfg(not(windows))]
     {
-        no_color
+        true
     }
 }
 
@@ -147,7 +157,10 @@ fn main() {
         }
     };
 
-    let no_colors = init_color(config.get_no_colors(&options));
+    let is_colors = should_init_color(
+        config.get_no_colors(&options),
+        config.get_force_colors(&options),
+    );
 
     let ignore_directories = match options.get_many::<String>("ignore_directory") {
         Some(values) => values
@@ -265,7 +278,7 @@ fn main() {
         let idd = InitialDisplayData {
             short_paths: !config.get_full_paths(&options),
             is_reversed: !config.get_reverse(&options),
-            colors_on: !no_colors,
+            colors_on: is_colors,
             by_filecount,
             is_screen_reader: config.get_screen_reader(&options),
             output_format,

@@ -16,6 +16,7 @@ pub struct Config {
     pub display_apparent_size: Option<bool>,
     pub reverse: Option<bool>,
     pub no_colors: Option<bool>,
+    pub force_colors: Option<bool>,
     pub no_bars: Option<bool>,
     pub skip_total: Option<bool>,
     pub screen_reader: Option<bool>,
@@ -33,6 +34,9 @@ pub struct Config {
 impl Config {
     pub fn get_no_colors(&self, options: &ArgMatches) -> bool {
         Some(true) == self.no_colors || options.get_flag("no_colors")
+    }
+    pub fn get_force_colors(&self, options: &ArgMatches) -> bool {
+        Some(true) == self.force_colors || options.get_flag("force_colors")
     }
     pub fn get_disable_progress(&self, options: &ArgMatches) -> bool {
         Some(true) == self.disable_progress
