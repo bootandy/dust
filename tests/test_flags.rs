@@ -232,3 +232,21 @@ pub fn test_show_files_by_invert_regex_match_multiple() {
     assert!(!output.contains("test_dir_unicode"));
     assert!(output.contains("many"));
 }
+
+#[test]
+pub fn test_no_color() {
+    let output = build_command(vec!["-c"]);
+    // Red is 31
+    assert!(!output.contains("\x1B[31m"));
+    assert!(!output.contains("\x1B[0m"));
+    // assert!(output.contains(&formatted));
+}
+
+#[test]
+pub fn test_force_color() {
+    let output = build_command(vec!["-C"]);
+    // Red is 31
+    assert!(output.contains("\x1B[31m"));
+    assert!(output.contains("\x1B[0m"));
+    // assert!(output.contains(&formatted));
+}

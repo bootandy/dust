@@ -43,10 +43,10 @@ static DEFAULT_NUMBER_OF_LINES: usize = 30;
 static DEFAULT_TERMINAL_WIDTH: usize = 80;
 
 fn should_init_color(no_color: bool, force_color: bool) -> bool {
-    if force_color == true {
+    if force_color {
         return true;
     }
-    if no_color == true {
+    if no_color {
         return false;
     }
     // check if NO_COLOR is set
@@ -73,7 +73,7 @@ fn should_init_color(no_color: bool, force_color: bool) -> bool {
     }
     #[cfg(not(windows))]
     {
-        return true;
+        true
     }
 }
 
