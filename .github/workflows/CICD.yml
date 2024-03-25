@@ -210,7 +210,7 @@ jobs:
           echo set-output name=CARGO_TEST_OPTIONS::${CARGO_TEST_OPTIONS}
           echo ::set-output name=CARGO_TEST_OPTIONS::${CARGO_TEST_OPTIONS}
           # * strip executable?
-          STRIP="strip" ; case ${{ matrix.job.target }} in arm-unknown-linux-gnueabihf) STRIP="arm-linux-gnueabihf-strip" ;; *-pc-windows-msvc) STRIP="" ;; aarch64-unknown-linux-gnu) STRIP="aarch64-linux-gnu-strip" ;; aarch64-unknown-linux-musl) STRIP="" ;; armv7-unknown-linux-musleabi) STRIP="" ;; arm-unknown-linux-musleabi) STRIP="" ;; esac;
+          STRIP="strip" ; case ${{ matrix.job.target }} in arm-unknown-linux-gnueabihf) STRIP="arm-linux-gnueabihf-strip" ;; *-pc-windows-msvc) STRIP="" ;; aarch64-unknown-linux-gnu) STRIP="" ;; aarch64-unknown-linux-musl) STRIP="" ;; armv7-unknown-linux-musleabi) STRIP="" ;; arm-unknown-linux-musleabi) STRIP="" ;; esac;
 
 
           echo set-output name=STRIP::${STRIP}
