@@ -25,7 +25,7 @@ Because I want an easy way to see where my disk is being used.
 
 #### 🍺 Homebrew (Linux)
 
-- `brew tap tgotwig/linux-dust && brew install dust`
+- `brew install dust`
 
 #### [Pacstall](https://github.com/pacstall/pacstall) (Debian/Ubuntu)
 
