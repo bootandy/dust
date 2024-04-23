@@ -223,7 +223,6 @@ fn main() {
         progress_data: indicator.data.clone(),
         errors: errors_for_rayon,
     };
-    println!("{:#?}", options.get_one::<u16>("threads"));
     let threads_to_use: Option<u16> = options.get_one::<u16>("threads").copied();
     let stack_size = config.get_custom_stack_size(&options);
     init_rayon(&stack_size, &threads_to_use);
