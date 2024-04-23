@@ -223,7 +223,7 @@ fn main() {
         progress_data: indicator.data.clone(),
         errors: errors_for_rayon,
     };
-    let threads_to_use: Option<u16> = options.get_one::<u16>("threads").copied();
+    let threads_to_use: Option<u8> = options.get_one::<u8>("threads").copied();
     let stack_size = config.get_custom_stack_size(&options);
     init_rayon(&stack_size, &threads_to_use);
 
@@ -295,7 +295,7 @@ fn main() {
     }
 }
 
-fn init_rayon(stack_size: &Option<usize>, threads: &Option<u16>) {
+fn init_rayon(stack_size: &Option<usize>, threads: &Option<u8>) {
     // Rayon seems to raise this error on 32-bit builds
     // The global thread pool has not been initialized.: ThreadPoolBuildError { kind: GlobalPoolAlreadyInitialized }
     if cfg!(target_pointer_width = "64") {
@@ -308,7 +308,7 @@ fn init_rayon(stack_size: &Option<usize>, threads: &Option<u16>) {
     }
 }
 
-fn build_thread_pool(stack: Option<usize>, threads: Option<u16>) -> Result<(), rayon::ThreadPoolBuildError> {
+fn build_thread_pool(stack: Option<usize>, threads: Option<u8>) -> Result<(), rayon::ThreadPoolBuildError> {
     match stack {
         Some(s) => match threads{
             Some(t) => 
