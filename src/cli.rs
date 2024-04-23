@@ -17,6 +17,14 @@ pub fn build_cli() -> Command {
                 .num_args(1)
         )
         .arg(
+            Arg::new("threads")
+                .short('T')
+                .long("threads")
+                .value_parser(value_parser!(u16))
+                .help("Number of threads to use")
+                .num_args(1)
+        )
+        .arg(
             Arg::new("number_of_lines")
                 .short('n')
                 .long("number-of-lines")

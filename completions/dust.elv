@@ -20,6 +20,8 @@ set edit:completion:arg-completer[dust] = {|@words|
         &'dust'= {
             cand -d 'Depth to show'
             cand --depth 'Depth to show'
+            cand -T 'Number of threads to use'
+            cand --threads 'Number of threads to use'
             cand -n 'Number of lines of output to show. (Default is terminal_height - 10)'
             cand --number-of-lines 'Number of lines of output to show. (Default is terminal_height - 10)'
             cand -X 'Exclude any file or directory with this name'
