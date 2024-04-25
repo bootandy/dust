@@ -39,6 +39,11 @@ use terminal_size::{terminal_size, Height, Width};
 use utils::get_filesystem_devices;
 use utils::simplify_dir_names;
 
+use crate::node::Node;
+use std::fs::File;
+use std::io::Write;
+use chrono::Local;
+
 static DEFAULT_NUMBER_OF_LINES: usize = 30;
 static DEFAULT_TERMINAL_WIDTH: usize = 80;
 
@@ -228,6 +233,16 @@ fn main() {
 
     let top_level_nodes = walk_it(simplified_dirs, &walk_data);
 
+    if config.get_output_json(&options) {
+        let datetime = Local::now().format("%Y%m%d%H%M%S").to_string();
+        let output_filename = format!("node-{}.json", datetime);
+        let result = output_json(&output_filename, &top_level_nodes);
+        match result {
+            Ok(..) => {}
+            Err(err) => { eprintln!("Error: {}", err) }
+        }
+    }
+
     let tree = match summarize_file_types {
         true => get_all_file_types(&top_level_nodes, number_of_lines),
         false => {
@@ -324,4 +339,11 @@ fn init_rayon(stack_size: &Option<usize>) {
             eprintln!("Problem initializing rayon, try: export RAYON_NUM_THREADS=1")
         }
     }
+}
+
+fn output_json(output_filename: &str, top_level_nodes: &Vec<Node>) -> std::io::Result<()> {
+    let serialized: String = serde_json::to_string(&top_level_nodes).unwrap();
+    let mut file = File::create(output_filename)?;
+    file.write_all(serialized.as_bytes())?;
+    Ok(())
 }

@@ -74,6 +74,8 @@ Register-ArgumentCompleter -Native -CommandName 'dust' -ScriptBlock {
             [CompletionResult]::new('--only-dir', 'only-dir', [CompletionResultType]::ParameterName, 'Only directories will be displayed.')
             [CompletionResult]::new('-F', 'F ', [CompletionResultType]::ParameterName, 'Only files will be displayed. (Finds your largest files)')
             [CompletionResult]::new('--only-file', 'only-file', [CompletionResultType]::ParameterName, 'Only files will be displayed. (Finds your largest files)')
+            [CompletionResult]::new('-j', 'j', [CompletionResultType]::ParameterName, 'Output the directory tree as json to the current directory')
+            [CompletionResult]::new('--output-json', 'output-json', [CompletionResultType]::ParameterName, 'Output the directory tree as json to the current directory')
             [CompletionResult]::new('-h', 'h', [CompletionResultType]::ParameterName, 'Print help')
             [CompletionResult]::new('--help', 'help', [CompletionResultType]::ParameterName, 'Print help')
             [CompletionResult]::new('-V', 'V ', [CompletionResultType]::ParameterName, 'Print version')
