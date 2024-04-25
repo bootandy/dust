@@ -238,4 +238,11 @@ pub fn build_cli() -> Command {
                 .value_parser(value_parser!(String))
                 .num_args(1..)
         )
+        .arg(
+            Arg::new("output_json")
+                .short('j')
+                .long("output-json")
+                .action(clap::ArgAction::SetTrue)
+                .help("Output the directory tree as json to the current directory"),
+        )
 }

@@ -5,8 +5,9 @@ use crate::utils::is_filtered_out_due_to_regex;
 use regex::Regex;
 use std::cmp::Ordering;
 use std::path::PathBuf;
+use serde::Serialize;
 
-#[derive(Debug, Eq, Clone)]
+#[derive(Debug, Eq, Clone, Serialize)]
 pub struct Node {
     pub name: PathBuf,
     pub size: u64,

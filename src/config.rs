@@ -29,6 +29,7 @@ pub struct Config {
     pub depth: Option<usize>,
     pub bars_on_right: Option<bool>,
     pub stack_size: Option<usize>,
+    pub output_json: Option<bool>,
 }
 
 impl Config {
@@ -116,6 +117,9 @@ impl Config {
         } else {
             from_cmd_line.copied()
         }
+    }
+    pub fn get_output_json(&self, options: &ArgMatches) -> bool {
+        Some(true) == self.output_json || options.get_flag("output_json")
     }
 }
 

@@ -4,7 +4,7 @@
 .SH NAME
 Dust \- Like du but more intuitive
 .SH SYNOPSIS
-\fBdust\fR [\fB\-d\fR|\fB\-\-depth\fR] [\fB\-n\fR|\fB\-\-number\-of\-lines\fR] [\fB\-p\fR|\fB\-\-full\-paths\fR] [\fB\-X\fR|\fB\-\-ignore\-directory\fR] [\fB\-I\fR|\fB\-\-ignore\-all\-in\-file\fR] [\fB\-L\fR|\fB\-\-dereference\-links\fR] [\fB\-x\fR|\fB\-\-limit\-filesystem\fR] [\fB\-s\fR|\fB\-\-apparent\-size\fR] [\fB\-r\fR|\fB\-\-reverse\fR] [\fB\-c\fR|\fB\-\-no\-colors\fR] [\fB\-C\fR|\fB\-\-force\-colors\fR] [\fB\-b\fR|\fB\-\-no\-percent\-bars\fR] [\fB\-B\fR|\fB\-\-bars\-on\-right\fR] [\fB\-z\fR|\fB\-\-min\-size\fR] [\fB\-R\fR|\fB\-\-screen\-reader\fR] [\fB\-\-skip\-total\fR] [\fB\-f\fR|\fB\-\-filecount\fR] [\fB\-i\fR|\fB\-\-ignore_hidden\fR] [\fB\-v\fR|\fB\-\-invert\-filter\fR] [\fB\-e\fR|\fB\-\-filter\fR] [\fB\-t\fR|\fB\-\-file_types\fR] [\fB\-w\fR|\fB\-\-terminal_width\fR] [\fB\-P\fR|\fB\-\-no\-progress\fR] [\fB\-D\fR|\fB\-\-only\-dir\fR] [\fB\-F\fR|\fB\-\-only\-file\fR] [\fB\-o\fR|\fB\-\-output\-format\fR] [\fB\-S\fR|\fB\-\-stack\-size\fR] [\fB\-h\fR|\fB\-\-help\fR] [\fB\-V\fR|\fB\-\-version\fR] [\fIPATH\fR] 
+\fBdust\fR [\fB\-d\fR|\fB\-\-depth\fR] [\fB\-n\fR|\fB\-\-number\-of\-lines\fR] [\fB\-p\fR|\fB\-\-full\-paths\fR] [\fB\-X\fR|\fB\-\-ignore\-directory\fR] [\fB\-I\fR|\fB\-\-ignore\-all\-in\-file\fR] [\fB\-L\fR|\fB\-\-dereference\-links\fR] [\fB\-x\fR|\fB\-\-limit\-filesystem\fR] [\fB\-s\fR|\fB\-\-apparent\-size\fR] [\fB\-r\fR|\fB\-\-reverse\fR] [\fB\-c\fR|\fB\-\-no\-colors\fR] [\fB\-C\fR|\fB\-\-force\-colors\fR] [\fB\-b\fR|\fB\-\-no\-percent\-bars\fR] [\fB\-B\fR|\fB\-\-bars\-on\-right\fR] [\fB\-z\fR|\fB\-\-min\-size\fR] [\fB\-R\fR|\fB\-\-screen\-reader\fR] [\fB\-\-skip\-total\fR] [\fB\-f\fR|\fB\-\-filecount\fR] [\fB\-i\fR|\fB\-\-ignore_hidden\fR] [\fB\-v\fR|\fB\-\-invert\-filter\fR] [\fB\-e\fR|\fB\-\-filter\fR] [\fB\-t\fR|\fB\-\-file_types\fR] [\fB\-w\fR|\fB\-\-terminal_width\fR] [\fB\-P\fR|\fB\-\-no\-progress\fR] [\fB\-D\fR|\fB\-\-only\-dir\fR] [\fB\-F\fR|\fB\-\-only\-file\fR] [\fB\-o\fR|\fB\-\-output\-format\fR] [\fB\-S\fR|\fB\-\-stack\-size\fR] [\fB\-j\fR|\fB\-\-output\-json\fR] [\fB\-h\fR|\fB\-\-help\fR] [\fB\-V\fR|\fB\-\-version\fR] [\fIPATH\fR] 
 .SH DESCRIPTION
 Like du but more intuitive
 .SH OPTIONS
@@ -93,6 +93,9 @@ Changes output display size. si will print sizes in powers of 1000. b k m g t kb
 .TP
 \fB\-S\fR, \fB\-\-stack\-size\fR=\fISTACK_SIZE\fR
 Specify memory to use as stack size \- use if you see: \*(Aqfatal runtime error: stack overflow\*(Aq (default low memory=1048576, high memory=1073741824)
+.TP
+\fB\-j\fR, \fB\-\-output\-json\fR
+Output the directory tree as json to the current directory
 .TP
 \fB\-h\fR, \fB\-\-help\fR
 Print help
