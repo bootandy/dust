@@ -299,27 +299,24 @@ fn init_rayon(stack_size: &Option<usize>, threads: &Option<u8>) {
     // Rayon seems to raise this error on 32-bit builds
     // The global thread pool has not been initialized.: ThreadPoolBuildError { kind: GlobalPoolAlreadyInitialized }
     if cfg!(target_pointer_width = "64") {
-        let result = panic::catch_unwind(|| {
-            build_thread_pool(*stack_size, *threads)
-        });
+        let result = panic::catch_unwind(|| build_thread_pool(*stack_size, *threads));
         if result.is_err() {
             eprintln!("Problem initializing rayon, try: export RAYON_NUM_THREADS=1")
         }
     }
 }
 
-fn build_thread_pool(stack: Option<usize>, threads: Option<u8>) -> Result<(), rayon::ThreadPoolBuildError> {
+fn build_thread_pool(
+    stack: Option<usize>,
+    threads: Option<u8>,
+) -> Result<(), rayon::ThreadPoolBuildError> {
     match stack {
-        Some(s) => match threads{
-            Some(t) => 
-                rayon::ThreadPoolBuilder::new()
+        Some(s) => match threads {
+            Some(t) => rayon::ThreadPoolBuilder::new()
                 .num_threads(t.into())
                 .stack_size(s)
                 .build_global(),
-            None =>
-                rayon::ThreadPoolBuilder::new()
-                .stack_size(s)
-                .build_global(),
+            None => rayon::ThreadPoolBuilder::new().stack_size(s).build_global(),
         },
         None => {
             let large_stack = usize::pow(1024, 3);
@@ -328,14 +325,15 @@ fn build_thread_pool(stack: Option<usize>, threads: Option<u8>) -> Result<(), ra
             let available = s.available_memory();
             if available > large_stack.try_into().unwrap() {
                 match threads {
-                    Some(t) => 
-                        // Larger stack size to handle cases with lots of nested directories
+                    Some(t) =>
+                    // Larger stack size to handle cases with lots of nested directories
+                    {
                         rayon::ThreadPoolBuilder::new()
-                        .num_threads(t.into())
-                        .stack_size(large_stack)
-                        .build_global(),
-                    None =>
-                        rayon::ThreadPoolBuilder::new()
+                            .num_threads(t.into())
+                            .stack_size(large_stack)
+                            .build_global()
+                    }
+                    None => rayon::ThreadPoolBuilder::new()
                         .stack_size(large_stack)
                         .build_global(),
                 }
