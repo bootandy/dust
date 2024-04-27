@@ -411,11 +411,14 @@ fn get_pretty_name(
 
 // If we are working with SI units or not
 pub fn get_type_of_thousand(output_str: &str) -> u64 {
-    let is_si = output_str.contains('i'); // si, KiB, MiB, etc
-    if is_si {
-        1000
-    } else {
+    if output_str.is_empty() {
         1024
+    } else if output_str == "si" {
+        1000
+    } else if output_str.contains('i') {
+        1024
+    } else {
+        1000
     }
 }
 
@@ -557,14 +560,14 @@ mod tests {
         let hrn = human_readable_number;
         assert_eq!(hrn(1023, "b"), "1023B");
         assert_eq!(hrn(1000 * 1000, "bytes"), "1000000B");
-        assert_eq!(hrn(1023, "kb"), "0K");
-        assert_eq!(hrn(1023, "kib"), "1K");
-        assert_eq!(hrn(1024, "kb"), "1K");
-        assert_eq!(hrn(1024 * 512, "kb"), "512K");
-        assert_eq!(hrn(1024 * 1024, "kb"), "1024K");
-        assert_eq!(hrn(1024 * 1000 * 1000 * 20, "kb"), "20000000K");
-        assert_eq!(hrn(1024 * 1024 * 1000 * 20, "mb"), "20000M");
-        assert_eq!(hrn(1024 * 1024 * 1024 * 20, "gb"), "20G");
+        assert_eq!(hrn(1023, "kb"), "1K");
+        assert_eq!(hrn(1023, "kib"), "0K");
+        assert_eq!(hrn(1024, "kib"), "1K");
+        assert_eq!(hrn(1024 * 512, "kib"), "512K");
+        assert_eq!(hrn(1024 * 1024, "kib"), "1024K");
+        assert_eq!(hrn(1024 * 1000 * 1000 * 20, "kib"), "20000000K");
+        assert_eq!(hrn(1024 * 1024 * 1000 * 20, "mib"), "20000M");
+        assert_eq!(hrn(1024 * 1024 * 1024 * 20, "gib"), "20G");
     }
 
     #[cfg(test)]
