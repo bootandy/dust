@@ -183,23 +183,23 @@ mod tests {
         assert_eq!(convert_min_size("55"), Some(55));
         assert_eq!(convert_min_size("12344321"), Some(12344321));
         assert_eq!(convert_min_size("95RUBBISH"), None);
-        assert_eq!(convert_min_size("10K"), Some(10 * 1024));
-        assert_eq!(convert_min_size("10M"), Some(10 * 1024usize.pow(2)));
-        assert_eq!(convert_min_size("10MiB"), Some(10 * 1000usize.pow(2)));
-        assert_eq!(convert_min_size("2G"), Some(2 * 1024usize.pow(3)));
+        assert_eq!(convert_min_size("10Ki"), Some(10 * 1024));
+        assert_eq!(convert_min_size("10MiB"), Some(10 * 1024usize.pow(2)));
+        assert_eq!(convert_min_size("10M"), Some(10 * 1000usize.pow(2)));
+        assert_eq!(convert_min_size("2Gi"), Some(2 * 1024usize.pow(3)));
     }
 
     #[test]
     fn test_min_size_from_config_applied_or_overridden() {
         let c = Config {
-            min_size: Some("1K".to_owned()),
+            min_size: Some("1KiB".to_owned()),
             ..Default::default()
         };
         assert_eq!(c._get_min_size(None), Some(1024));
-        assert_eq!(c._get_min_size(Some(&"2K".into())), Some(2048));
+        assert_eq!(c._get_min_size(Some(&"2KiB".into())), Some(2048));
 
-        assert_eq!(c._get_min_size(Some(&"1kib".into())), Some(1000));
-        assert_eq!(c._get_min_size(Some(&"2KiB".into())), Some(2000));
+        assert_eq!(c._get_min_size(Some(&"1kb".into())), Some(1000));
+        assert_eq!(c._get_min_size(Some(&"2KB".into())), Some(2000));
     }
 
     #[test]
