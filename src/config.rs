@@ -185,7 +185,8 @@ mod tests {
         assert_eq!(convert_min_size("95RUBBISH"), None);
         assert_eq!(convert_min_size("10Ki"), Some(10 * 1024));
         assert_eq!(convert_min_size("10MiB"), Some(10 * 1024usize.pow(2)));
-        assert_eq!(convert_min_size("10M"), Some(10 * 1000usize.pow(2)));
+        assert_eq!(convert_min_size("10M"), Some(10 * 1024usize.pow(2)));
+        assert_eq!(convert_min_size("10Mb"), Some(10 * 1000usize.pow(2)));
         assert_eq!(convert_min_size("2Gi"), Some(2 * 1024usize.pow(3)));
     }
 
