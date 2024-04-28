@@ -1,4 +1,4 @@
-use clap::{value_parser, Arg, Command};
+use clap::{builder::PossibleValue, value_parser, Arg, Command};
 
 // For single thread mode set this variable on your command line:
 // export RAYON_NUM_THREADS=1
@@ -11,6 +11,7 @@ pub fn build_cli() -> Command {
             Arg::new("depth")
                 .short('d')
                 .long("depth")
+                .value_name("DEPTH")
                 .value_parser(value_parser!(usize))
                 .help("Depth to show")
                 .num_args(1)
@@ -19,6 +20,7 @@ pub fn build_cli() -> Command {
             Arg::new("number_of_lines")
                 .short('n')
                 .long("number-of-lines")
+                .value_name("NUMBER")
                 .value_parser(value_parser!(usize))
                 .help("Number of lines of output to show. (Default is terminal_height - 10)")
                 .num_args(1)
@@ -34,6 +36,8 @@ pub fn build_cli() -> Command {
             Arg::new("ignore_directory")
                 .short('X')
                 .long("ignore-directory")
+                .value_name("PATH")
+                .value_hint(clap::ValueHint::AnyPath)
                 .action(clap::ArgAction::Append)
                 .help("Exclude any file or directory with this name"),
         )
@@ -41,6 +45,8 @@ pub fn build_cli() -> Command {
             Arg::new("ignore_all_in_file")
                 .short('I')
                 .long("ignore-all-in-file")
+                .value_name("FILE")
+                .value_hint(clap::ValueHint::FilePath)
                 .value_parser(value_parser!(String))
                 .help("Exclude any file or directory with a regex matching that listed in this file, the file entries will be added to the ignore regexs provided by --invert_filter"),
         )
@@ -104,6 +110,7 @@ pub fn build_cli() -> Command {
             Arg::new("min_size")
                 .short('z')
                 .long("min-size")
+                .value_name("MIN_SIZE")
                 .num_args(1)
                 .help("Minimum size file to include in output"),
         )
@@ -138,6 +145,7 @@ pub fn build_cli() -> Command {
             Arg::new("invert_filter")
                 .short('v')
                 .long("invert-filter")
+                .value_name("REGEX")
                 .action(clap::ArgAction::Append)
                 .conflicts_with("filter")
                 .conflicts_with("types")
@@ -147,6 +155,7 @@ pub fn build_cli() -> Command {
             Arg::new("filter")
                 .short('e')
                 .long("filter")
+                .value_name("REGEX")
                 .action(clap::ArgAction::Append)
                 .conflicts_with("types")
                 .help("Only include filepaths matching this regex. For png files type: -e \"\\.png$\" "),
@@ -164,8 +173,9 @@ pub fn build_cli() -> Command {
             Arg::new("width")
                 .short('w')
                 .long("terminal_width")
-                .num_args(1)
+                .value_name("WIDTH")
                 .value_parser(value_parser!(usize))
+                .num_args(1)
                 .help("Specify width of output overriding the auto detection of terminal width"),
         )
         .arg(
@@ -196,17 +206,36 @@ pub fn build_cli() -> Command {
             Arg::new("output_format")
                 .short('o')
                 .long("output-format")
-                .value_parser(value_parser!(String))
-                .help("Changes output display size. si will print sizes in powers of 1000. b/bytes kb kib mb mib gb gib will print the whole tree in that size")
+                .value_name("FORMAT")
+                .value_parser([
+                    PossibleValue::new("si"),
+                    PossibleValue::new("b"),
+                    PossibleValue::new("k").alias("kib"),
+                    PossibleValue::new("m").alias("mib"),
+                    PossibleValue::new("g").alias("gib"),
+                    PossibleValue::new("t").alias("tib"),
+                    PossibleValue::new("kb"),
+                    PossibleValue::new("mb"),
+                    PossibleValue::new("gb"),
+                    PossibleValue::new("tb"),
+                ])
+                .ignore_case(true)
+                .help("Changes output display size. si will print sizes in powers of 1000. b k m g t kb mb gb tb will print the whole tree in that size.")
         )
         .arg(
             Arg::new("stack_size")
                 .short('S')
                 .long("stack-size")
-                .num_args(1)
+                .value_name("STACK_SIZE")
                 .value_parser(value_parser!(usize))
+                .num_args(1)
                 .help("Specify memory to use as stack size - use if you see: 'fatal runtime error: stack overflow' (default low memory=1048576, high memory=1073741824)"),
         )
-        .arg(Arg::new("params").num_args(1..)
-            .value_parser(value_parser!(String)))
+        .arg(
+            Arg::new("params")
+                .value_name("PATH")
+                .value_hint(clap::ValueHint::AnyPath)
+                .value_parser(value_parser!(String))
+                .num_args(1..)
+        )
 }
