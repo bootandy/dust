@@ -415,7 +415,7 @@ pub fn get_type_of_thousand(output_str: &str) -> u64 {
         1024
     } else if output_str == "si" {
         1000
-    } else if output_str.contains('i') {
+    } else if output_str.contains('i') || output_str.len() == 1 {
         1024
     } else {
         1000
@@ -555,12 +555,14 @@ mod tests {
         assert_eq!(human_readable_number(1024 * 100, "si"), "102K");
     }
 
+    // Refer to https://en.wikipedia.org/wiki/Byte#Multiple-byte_units
     #[test]
     fn test_human_readable_number_kb() {
         let hrn = human_readable_number;
         assert_eq!(hrn(1023, "b"), "1023B");
         assert_eq!(hrn(1000 * 1000, "bytes"), "1000000B");
         assert_eq!(hrn(1023, "kb"), "1K");
+        assert_eq!(hrn(1023, "k"), "0K");
         assert_eq!(hrn(1023, "kib"), "0K");
         assert_eq!(hrn(1024, "kib"), "1K");
         assert_eq!(hrn(1024 * 512, "kib"), "512K");
