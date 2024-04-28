@@ -1,0 +1,104 @@
+#compdef dust
+
+autoload -U is-at-least
+
+_dust() {
+    typeset -A opt_args
+    typeset -a _arguments_options
+    local ret=1
+
+    if is-at-least 5.2; then
+        _arguments_options=(-s -S -C)
+    else
+        _arguments_options=(-s -C)
+    fi
+
+    local context curcontext="$curcontext" state line
+    _arguments "${_arguments_options[@]}" \
+'-d+[Depth to show]:depth' \
+'--depth=[Depth to show]:depth' \
+'-n+[Number of lines of output to show. (Default is terminal_height - 10)]:number of lines' \
+'--number-of-lines=[Number of lines of output to show. (Default is terminal_height - 10)]:number of lines' \
+'*-X+[Exclude any file or directory with this name]:ignore directory:_files' \
+'*--ignore-directory=[Exclude any file or directory with this name]:ignore directory:_files' \
+'-I+[Exclude any file or directory with a regex matching that listed in this file, the file entries will be added to the ignore regexs provided by --invert_filter]:ignore all in file:_files' \
+'--ignore-all-in-file=[Exclude any file or directory with a regex matching that listed in this file, the file entries will be added to the ignore regexs provided by --invert_filter]:ignore all in file:_files' \
+'-z+[Minimum size file to include in output]:min size' \
+'--min-size=[Minimum size file to include in output]:min size' \
+'(-e --filter -t --file_types)*-v+[Exclude filepaths matching this regex. To ignore png files type\: -v "\\.png\$" ]:invert filter' \
+'(-e --filter -t --file_types)*--invert-filter=[Exclude filepaths matching this regex. To ignore png files type\: -v "\\.png\$" ]:invert filter' \
+'(-t --file_types)*-e+[Only include filepaths matching this regex. For png files type\: -e "\\.png\$" ]:filter' \
+'(-t --file_types)*--filter=[Only include filepaths matching this regex. For png files type\: -e "\\.png\$" ]:filter' \
+'-w+[Specify width of output overriding the auto detection of terminal width]:width' \
+'--terminal_width=[Specify width of output overriding the auto detection of terminal width]:width' \
+'-o+[Changes output display size. si will print sizes in powers of 1000. b/bytes kb kib mb mib gb gib will print the whole tree in that size]:output format:_dust_output_formats' \
+'--output-format=[Changes output display size. si will print sizes in powers of 1000. b/bytes kb kib mb mib gb gib will print the whole tree in that size]:output format:_dust_output_formats' \
+'-S+[Specify memory to use as stack size - use if you see\: '\''fatal runtime error\: stack overflow'\'' (default low memory=1048576, high memory=1073741824)]:stack size' \
+'--stack-size=[Specify memory to use as stack size - use if you see\: '\''fatal runtime error\: stack overflow'\'' (default low memory=1048576, high memory=1073741824)]:stack size' \
+'-p[Subdirectories will not have their path shortened]' \
+'--full-paths[Subdirectories will not have their path shortened]' \
+'-L[dereference sym links - Treat sym links as directories and go into them]' \
+'--dereference-links[dereference sym links - Treat sym links as directories and go into them]' \
+'-x[Only count the files and directories on the same filesystem as the supplied directory]' \
+'--limit-filesystem[Only count the files and directories on the same filesystem as the supplied directory]' \
+'-s[Use file length instead of blocks]' \
+'--apparent-size[Use file length instead of blocks]' \
+'-r[Print tree upside down (biggest highest)]' \
+'--reverse[Print tree upside down (biggest highest)]' \
+'-c[No colors will be printed (Useful for commands like\: watch)]' \
+'--no-colors[No colors will be printed (Useful for commands like\: watch)]' \
+'-C[Force colors print]' \
+'--force-colors[Force colors print]' \
+'-b[No percent bars or percentages will be displayed]' \
+'--no-percent-bars[No percent bars or percentages will be displayed]' \
+'-B[percent bars moved to right side of screen]' \
+'--bars-on-right[percent bars moved to right side of screen]' \
+'-R[For screen readers. Removes bars. Adds new column\: depth level (May want to use -p too for full path)]' \
+'--screen-reader[For screen readers. Removes bars. Adds new column\: depth level (May want to use -p too for full path)]' \
+'--skip-total[No total row will be displayed]' \
+'-f[Directory '\''size'\'' is number of child files instead of disk size]' \
+'--filecount[Directory '\''size'\'' is number of child files instead of disk size]' \
+'-i[Do not display hidden files]' \
+'--ignore_hidden[Do not display hidden files]' \
+'(-d --depth -D --only-dir)-t[show only these file types]' \
+'(-d --depth -D --only-dir)--file_types[show only these file types]' \
+'-P[Disable the progress indication.]' \
+'--no-progress[Disable the progress indication.]' \
+'(-F --only-file -t --file_types)-D[Only directories will be displayed.]' \
+'(-F --only-file -t --file_types)--only-dir[Only directories will be displayed.]' \
+'(-D --only-dir)-F[Only files will be displayed. (Finds your largest files)]' \
+'(-D --only-dir)--only-file[Only files will be displayed. (Finds your largest files)]' \
+'-h[Print help]' \
+'--help[Print help]' \
+'-V[Print version]' \
+'--version[Print version]' \
+'*: :_files' \
+&& ret=0
+}
+
+(( $+functions[_dust_commands] )) ||
+_dust_commands() {
+    local commands; commands=()
+    _describe -t commands 'dust commands' commands "$@"
+}
+
+(( $+functions[_dust_output_formats] )) ||
+_dust_output_formats() {
+    local -a output_formats=(
+        'si[sizes in powers of 1000]'
+        'b[bytes]'
+        'kb[kilobytes]'
+        'kib[kibibytes]'
+        'mb[megabytes]'
+        'mib[mebibytes]'
+        'gb[gigabytes]'
+        'gib[gibibytes]'
+    )
+    _values 'output format' "${output_formats[@]}"
+}
+
+if [ "$funcstack[1]" = "_dust" ]; then
+    _dust "$@"
+else
+    compdef _dust dust
+fi
