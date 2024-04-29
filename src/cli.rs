@@ -7,7 +7,6 @@ pub fn build_cli() -> Command {
     Command::new("Dust")
         .about("Like du but more intuitive")
         .version(env!("CARGO_PKG_VERSION"))
-        .trailing_var_arg(true)
         .arg(
             Arg::new("depth")
                 .short('d')
