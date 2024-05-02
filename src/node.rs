@@ -3,9 +3,9 @@ use crate::utils::is_filtered_out_due_to_invert_regex;
 use crate::utils::is_filtered_out_due_to_regex;
 
 use regex::Regex;
+use serde::Serialize;
 use std::cmp::Ordering;
 use std::path::PathBuf;
-use serde::Serialize;
 
 #[derive(Debug, Eq, Clone, Serialize)]
 pub struct Node {
