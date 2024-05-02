@@ -40,9 +40,9 @@ use utils::get_filesystem_devices;
 use utils::simplify_dir_names;
 
 use crate::node::Node;
+use chrono::Local;
 use std::fs::File;
 use std::io::Write;
-use chrono::Local;
 
 static DEFAULT_NUMBER_OF_LINES: usize = 30;
 static DEFAULT_TERMINAL_WIDTH: usize = 80;
@@ -239,7 +239,9 @@ fn main() {
         let result = output_json(&output_filename, &top_level_nodes);
         match result {
             Ok(..) => {}
-            Err(err) => { eprintln!("Error: {}", err) }
+            Err(err) => {
+                eprintln!("Error: {}", err)
+            }
         }
     }
 
