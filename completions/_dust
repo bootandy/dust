@@ -15,28 +15,26 @@ _dust() {
 
     local context curcontext="$curcontext" state line
     _arguments "${_arguments_options[@]}" \
-'-d+[Depth to show]: : ' \
-'--depth=[Depth to show]: : ' \
-'-T+[Number of threads to use]: : ' \
-'--threads=[Number of threads to use]: : ' \
-'-n+[Number of lines of output to show. (Default is terminal_height - 10)]: : ' \
-'--number-of-lines=[Number of lines of output to show. (Default is terminal_height - 10)]: : ' \
-'*-X+[Exclude any file or directory with this name]: : ' \
-'*--ignore-directory=[Exclude any file or directory with this name]: : ' \
-'-I+[Exclude any file or directory with a regex matching that listed in this file, the file entries will be added to the ignore regexs provided by --invert_filter]: : ' \
-'--ignore-all-in-file=[Exclude any file or directory with a regex matching that listed in this file, the file entries will be added to the ignore regexs provided by --invert_filter]: : ' \
-'-z+[Minimum size file to include in output]: : ' \
-'--min-size=[Minimum size file to include in output]: : ' \
-'(-e --filter -t --file_types)*-v+[Exclude filepaths matching this regex. To ignore png files type\: -v "\\.png\$" ]: : ' \
-'(-e --filter -t --file_types)*--invert-filter=[Exclude filepaths matching this regex. To ignore png files type\: -v "\\.png\$" ]: : ' \
-'(-t --file_types)*-e+[Only include filepaths matching this regex. For png files type\: -e "\\.png\$" ]: : ' \
-'(-t --file_types)*--filter=[Only include filepaths matching this regex. For png files type\: -e "\\.png\$" ]: : ' \
-'-w+[Specify width of output overriding the auto detection of terminal width]: : ' \
-'--terminal_width=[Specify width of output overriding the auto detection of terminal width]: : ' \
-'-o+[Changes output display size. si will print sizes in powers of 1000. b/bytes kb kib mb mib gb gib will print the whole tree in that size]: : ' \
-'--output-format=[Changes output display size. si will print sizes in powers of 1000. b/bytes kb kib mb mib gb gib will print the whole tree in that size]: : ' \
-'-S+[Specify memory to use as stack size - use if you see\: '\''fatal runtime error\: stack overflow'\'' (default low memory=1048576, high memory=1073741824)]: : ' \
-'--stack-size=[Specify memory to use as stack size - use if you see\: '\''fatal runtime error\: stack overflow'\'' (default low memory=1048576, high memory=1073741824)]: : ' \
+'-d+[Depth to show]:DEPTH: ' \
+'--depth=[Depth to show]:DEPTH: ' \
+'-n+[Number of lines of output to show. (Default is terminal_height - 10)]:NUMBER: ' \
+'--number-of-lines=[Number of lines of output to show. (Default is terminal_height - 10)]:NUMBER: ' \
+'*-X+[Exclude any file or directory with this name]:PATH:_files' \
+'*--ignore-directory=[Exclude any file or directory with this name]:PATH:_files' \
+'-I+[Exclude any file or directory with a regex matching that listed in this file, the file entries will be added to the ignore regexs provided by --invert_filter]:FILE:_files' \
+'--ignore-all-in-file=[Exclude any file or directory with a regex matching that listed in this file, the file entries will be added to the ignore regexs provided by --invert_filter]:FILE:_files' \
+'-z+[Minimum size file to include in output]:MIN_SIZE: ' \
+'--min-size=[Minimum size file to include in output]:MIN_SIZE: ' \
+'(-e --filter -t --file_types)*-v+[Exclude filepaths matching this regex. To ignore png files type\: -v "\\.png\$" ]:REGEX: ' \
+'(-e --filter -t --file_types)*--invert-filter=[Exclude filepaths matching this regex. To ignore png files type\: -v "\\.png\$" ]:REGEX: ' \
+'(-t --file_types)*-e+[Only include filepaths matching this regex. For png files type\: -e "\\.png\$" ]:REGEX: ' \
+'(-t --file_types)*--filter=[Only include filepaths matching this regex. For png files type\: -e "\\.png\$" ]:REGEX: ' \
+'-w+[Specify width of output overriding the auto detection of terminal width]:WIDTH: ' \
+'--terminal_width=[Specify width of output overriding the auto detection of terminal width]:WIDTH: ' \
+'-o+[Changes output display size. si will print sizes in powers of 1000. b k m g t kb mb gb tb will print the whole tree in that size.]:FORMAT:(si b k m g t kb mb gb tb)' \
+'--output-format=[Changes output display size. si will print sizes in powers of 1000. b k m g t kb mb gb tb will print the whole tree in that size.]:FORMAT:(si b k m g t kb mb gb tb)' \
+'-S+[Specify memory to use as stack size - use if you see\: '\''fatal runtime error\: stack overflow'\'' (default low memory=1048576, high memory=1073741824)]:STACK_SIZE: ' \
+'--stack-size=[Specify memory to use as stack size - use if you see\: '\''fatal runtime error\: stack overflow'\'' (default low memory=1048576, high memory=1073741824)]:STACK_SIZE: ' \
 '-p[Subdirectories will not have their path shortened]' \
 '--full-paths[Subdirectories will not have their path shortened]' \
 '-L[dereference sym links - Treat sym links as directories and go into them]' \
@@ -74,7 +72,7 @@ _dust() {
 '--help[Print help]' \
 '-V[Print version]' \
 '--version[Print version]' \
-'*::params:' \
+'*::params:_files' \
 && ret=0
 }
 
