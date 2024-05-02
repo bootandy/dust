@@ -228,8 +228,9 @@ fn main() {
         progress_data: indicator.data.clone(),
         errors: errors_for_rayon,
     };
+    let threads_to_use: Option<u8> = options.get_one::<u8>("threads").copied();
     let stack_size = config.get_custom_stack_size(&options);
-    init_rayon(&stack_size);
+    init_rayon(&stack_size, &threads_to_use);
 
     let top_level_nodes = walk_it(simplified_dirs, &walk_data);
 
@@ -311,32 +312,11 @@ fn main() {
     }
 }
 
-fn init_rayon(stack_size: &Option<usize>) {
+fn init_rayon(stack_size: &Option<usize>, threads: &Option<u8>) {
     // Rayon seems to raise this error on 32-bit builds
     // The global thread pool has not been initialized.: ThreadPoolBuildError { kind: GlobalPoolAlreadyInitialized }
     if cfg!(target_pointer_width = "64") {
-        let result = panic::catch_unwind(|| {
-            match stack_size {
-                Some(n) => rayon::ThreadPoolBuilder::new()
-                    .stack_size(*n)
-                    .build_global(),
-                None => {
-                    let large_stack = usize::pow(1024, 3);
-                    let mut s = System::new();
-                    s.refresh_memory();
-                    let available = s.available_memory();
-
-                    if available > large_stack.try_into().unwrap() {
-                        // Larger stack size to handle cases with lots of nested directories
-                        rayon::ThreadPoolBuilder::new()
-                            .stack_size(large_stack)
-                            .build_global()
-                    } else {
-                        rayon::ThreadPoolBuilder::new().build_global()
-                    }
-                }
-            }
-        });
+        let result = panic::catch_unwind(|| build_thread_pool(*stack_size, *threads));
         if result.is_err() {
             eprintln!("Problem initializing rayon, try: export RAYON_NUM_THREADS=1")
         }
@@ -348,4 +328,42 @@ fn output_json(output_filename: &str, top_level_nodes: &Vec<Node>) -> std::io::R
     let mut file = File::create(output_filename)?;
     file.write_all(serialized.as_bytes())?;
     Ok(())
+}
+
+fn build_thread_pool(
+    stack: Option<usize>,
+    threads: Option<u8>,
+) -> Result<(), rayon::ThreadPoolBuildError> {
+    match stack {
+        Some(s) => match threads {
+            Some(t) => rayon::ThreadPoolBuilder::new()
+                .num_threads(t.into())
+                .stack_size(s)
+                .build_global(),
+            None => rayon::ThreadPoolBuilder::new().stack_size(s).build_global(),
+        },
+        None => {
+            let large_stack = usize::pow(1024, 3);
+            let mut s = System::new();
+            s.refresh_memory();
+            let available = s.available_memory();
+            if available > large_stack.try_into().unwrap() {
+                match threads {
+                    Some(t) =>
+                    // Larger stack size to handle cases with lots of nested directories
+                    {
+                        rayon::ThreadPoolBuilder::new()
+                            .num_threads(t.into())
+                            .stack_size(large_stack)
+                            .build_global()
+                    }
+                    None => rayon::ThreadPoolBuilder::new()
+                        .stack_size(large_stack)
+                        .build_global(),
+                }
+            } else {
+                rayon::ThreadPoolBuilder::new().build_global()
+            }
+        }
+    }
 }

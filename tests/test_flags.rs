@@ -60,6 +60,12 @@ pub fn test_d_flag_works() {
 }
 
 #[test]
+pub fn test_threads_flag_works() {
+    let output = build_command(vec!["-T", "1", "tests/test_dir/"]);
+    assert!(output.contains("hello_file"));
+}
+
+#[test]
 pub fn test_d_flag_works_and_still_recurses_down() {
     // We had a bug where running with '-d 1' would stop at the first directory and the code
     // would fail to recurse down
