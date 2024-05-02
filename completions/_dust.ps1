@@ -23,6 +23,8 @@ Register-ArgumentCompleter -Native -CommandName 'dust' -ScriptBlock {
         'dust' {
             [CompletionResult]::new('-d', 'd', [CompletionResultType]::ParameterName, 'Depth to show')
             [CompletionResult]::new('--depth', 'depth', [CompletionResultType]::ParameterName, 'Depth to show')
+            [CompletionResult]::new('-T', 'T ', [CompletionResultType]::ParameterName, 'Number of threads to use')
+            [CompletionResult]::new('--threads', 'threads', [CompletionResultType]::ParameterName, 'Number of threads to use')
             [CompletionResult]::new('-n', 'n', [CompletionResultType]::ParameterName, 'Number of lines of output to show. (Default is terminal_height - 10)')
             [CompletionResult]::new('--number-of-lines', 'number-of-lines', [CompletionResultType]::ParameterName, 'Number of lines of output to show. (Default is terminal_height - 10)')
             [CompletionResult]::new('-X', 'X ', [CompletionResultType]::ParameterName, 'Exclude any file or directory with this name')
