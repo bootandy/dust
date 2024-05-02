@@ -1,6 +1,8 @@
 use std::path::PathBuf;
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
+use serde::Serialize;
+
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Serialize)]
 pub struct DisplayNode {
     // Note: the order of fields in important here, for PartialEq and PartialOrd
     pub size: u64,

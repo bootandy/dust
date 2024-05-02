@@ -3,11 +3,10 @@ use crate::utils::is_filtered_out_due_to_invert_regex;
 use crate::utils::is_filtered_out_due_to_regex;
 
 use regex::Regex;
-use serde::Serialize;
 use std::cmp::Ordering;
 use std::path::PathBuf;
 
-#[derive(Debug, Eq, Clone, Serialize)]
+#[derive(Debug, Eq, Clone)]
 pub struct Node {
     pub name: PathBuf,
     pub size: u64,
