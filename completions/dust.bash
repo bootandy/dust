@@ -19,7 +19,7 @@ _dust() {
 
     case "${cmd}" in
         dust)
-            opts="-d -n -p -X -I -L -x -s -r -c -C -b -B -z -R -f -i -v -e -t -w -P -D -F -o -S -h -V --depth --number-of-lines --full-paths --ignore-directory --ignore-all-in-file --dereference-links --limit-filesystem --apparent-size --reverse --no-colors --force-colors --no-percent-bars --bars-on-right --min-size --screen-reader --skip-total --filecount --ignore_hidden --invert-filter --filter --file_types --terminal_width --no-progress --only-dir --only-file --output-format --stack-size --help --version [PATH]..."
+            opts="-d -T -n -p -X -I -L -x -s -r -c -C -b -B -z -R -f -i -v -e -t -w -P -D -F -o -S -h -V --depth --threads --number-of-lines --full-paths --ignore-directory --ignore-all-in-file --dereference-links --limit-filesystem --apparent-size --reverse --no-colors --force-colors --no-percent-bars --bars-on-right --min-size --screen-reader --skip-total --filecount --ignore_hidden --invert-filter --filter --file_types --terminal_width --no-progress --only-dir --only-file --output-format --stack-size --help --version [params]..."
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 1 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -30,6 +30,14 @@ _dust() {
                     return 0
                     ;;
                 -d)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --threads)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                -T)
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;
@@ -50,33 +58,11 @@ _dust() {
                     return 0
                     ;;
                 --ignore-all-in-file)
-                    local oldifs
-                    if [[ -v IFS ]]; then
-                        oldifs="$IFS"
-                    fi
-                    IFS=$'\n'
                     COMPREPLY=($(compgen -f "${cur}"))
-                    if [[ -v oldifs ]]; then
-                        IFS="$oldifs"
-                    fi
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o filenames
-                    fi
                     return 0
                     ;;
                 -I)
-                    local oldifs
-                    if [[ -v IFS ]]; then
-                        oldifs="$IFS"
-                    fi
-                    IFS=$'\n'
                     COMPREPLY=($(compgen -f "${cur}"))
-                    if [[ -v oldifs ]]; then
-                        IFS="$oldifs"
-                    fi
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o filenames
-                    fi
                     return 0
                     ;;
                 --min-size)
@@ -112,11 +98,11 @@ _dust() {
                     return 0
                     ;;
                 --output-format)
-                    COMPREPLY=($(compgen -W "si b k m g t kb mb gb tb" -- "${cur}"))
+                    COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;
                 -o)
-                    COMPREPLY=($(compgen -W "si b k m g t kb mb gb tb" -- "${cur}"))
+                    COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;
                 --stack-size)
