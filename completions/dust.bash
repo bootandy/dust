@@ -19,7 +19,7 @@ _dust() {
 
     case "${cmd}" in
         dust)
-            opts="-d -T -n -p -X -I -L -x -s -r -c -C -b -B -z -R -f -i -v -e -t -w -P -D -F -o -S -h -V --depth --threads --number-of-lines --full-paths --ignore-directory --ignore-all-in-file --dereference-links --limit-filesystem --apparent-size --reverse --no-colors --force-colors --no-percent-bars --bars-on-right --min-size --screen-reader --skip-total --filecount --ignore_hidden --invert-filter --filter --file_types --terminal_width --no-progress --only-dir --only-file --output-format --stack-size --help --version [params]..."
+            opts="-d -n -p -X -I -L -x -s -r -c -C -b -B -z -R -f -i -v -e -t -w -P -D -F -o -S -h -V --depth --number-of-lines --full-paths --ignore-directory --ignore-all-in-file --dereference-links --limit-filesystem --apparent-size --reverse --no-colors --force-colors --no-percent-bars --bars-on-right --min-size --screen-reader --skip-total --filecount --ignore_hidden --invert-filter --filter --file_types --terminal_width --no-progress --only-dir --only-file --output-format --stack-size --help --version [params]..."
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 1 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -30,14 +30,6 @@ _dust() {
                     return 0
                     ;;
                 -d)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                --threads)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                -T)
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;
