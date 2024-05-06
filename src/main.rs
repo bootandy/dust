@@ -228,7 +228,7 @@ fn main() {
         progress_data: indicator.data.clone(),
         errors: errors_for_rayon,
     };
-    let threads_to_use: Option<u8> = options.get_one::<u8>("threads").copied();
+    let threads_to_use = config.get_threads(&options);
     let stack_size = config.get_custom_stack_size(&options);
     init_rayon(&stack_size, &threads_to_use);
 
@@ -312,7 +312,7 @@ fn main() {
     }
 }
 
-fn init_rayon(stack_size: &Option<usize>, threads: &Option<u8>) {
+fn init_rayon(stack_size: &Option<usize>, threads: &Option<usize>) {
     // Rayon seems to raise this error on 32-bit builds
     // The global thread pool has not been initialized.: ThreadPoolBuildError { kind: GlobalPoolAlreadyInitialized }
     if cfg!(target_pointer_width = "64") {
@@ -332,38 +332,31 @@ fn output_json(output_filename: &str, top_level_nodes: &Vec<Node>) -> std::io::R
 
 fn build_thread_pool(
     stack: Option<usize>,
-    threads: Option<u8>,
+    threads: Option<usize>,
 ) -> Result<(), rayon::ThreadPoolBuildError> {
-    match stack {
-        Some(s) => match threads {
-            Some(t) => rayon::ThreadPoolBuilder::new()
-                .num_threads(t.into())
-                .stack_size(s)
-                .build_global(),
-            None => rayon::ThreadPoolBuilder::new().stack_size(s).build_global(),
-        },
+    let mut pool = rayon::ThreadPoolBuilder::new();
+
+    if let Some(thread_count) = threads {
+        pool = pool.num_threads(thread_count);
+    }
+
+    let stack_size = match stack {
+        Some(s) => Some(s),
         None => {
             let large_stack = usize::pow(1024, 3);
             let mut s = System::new();
             s.refresh_memory();
+            // Larger stack size if possible to handle cases with lots of nested directories
             let available = s.available_memory();
             if available > large_stack.try_into().unwrap() {
-                match threads {
-                    Some(t) =>
-                    // Larger stack size to handle cases with lots of nested directories
-                    {
-                        rayon::ThreadPoolBuilder::new()
-                            .num_threads(t.into())
-                            .stack_size(large_stack)
-                            .build_global()
-                    }
-                    None => rayon::ThreadPoolBuilder::new()
-                        .stack_size(large_stack)
-                        .build_global(),
-                }
+                Some(large_stack)
             } else {
-                rayon::ThreadPoolBuilder::new().build_global()
+                None
             }
         }
+    };
+    if let Some(stack_size_param) = stack_size {
+        pool = pool.stack_size(stack_size_param);
     }
+    pool.build_global()
 }

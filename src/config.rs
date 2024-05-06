@@ -29,6 +29,7 @@ pub struct Config {
     pub depth: Option<usize>,
     pub bars_on_right: Option<bool>,
     pub stack_size: Option<usize>,
+    pub threads: Option<usize>,
     pub output_json: Option<bool>,
 }
 
@@ -114,6 +115,14 @@ impl Config {
         let from_cmd_line = options.get_one::<usize>("stack_size");
         if from_cmd_line.is_none() {
             self.stack_size
+        } else {
+            from_cmd_line.copied()
+        }
+    }
+    pub fn get_threads(&self, options: &ArgMatches) -> Option<usize> {
+        let from_cmd_line = options.get_one::<usize>("threads");
+        if from_cmd_line.is_none() {
+            self.threads
         } else {
             from_cmd_line.copied()
         }
