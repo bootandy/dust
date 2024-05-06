@@ -20,7 +20,7 @@ pub fn build_cli() -> Command {
             Arg::new("threads")
                 .short('T')
                 .long("threads")
-                .value_parser(value_parser!(u8))
+                .value_parser(value_parser!(usize))
                 .help("Number of threads to use")
                 .num_args(1)
         )
