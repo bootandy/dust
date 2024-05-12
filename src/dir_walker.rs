@@ -142,44 +142,49 @@ fn walk(dir: PathBuf, walk_data: &WalkData, depth: usize) -> Option<Node> {
                     .into_iter()
                     .par_bridge()
                     .filter_map(|entry| {
-                        if let Ok(ref entry) = entry {
-                            // uncommenting the below line gives simpler code but
-                            // rayon doesn't parallelize as well giving a 3X performance drop
-                            // hence we unravel the recursion a bit
+                        match entry {
+                            Ok(ref entry) => {
+                                // uncommenting the below line gives simpler code but
+                                // rayon doesn't parallelize as well giving a 3X performance drop
+                                // hence we unravel the recursion a bit
 
-                            // return walk(entry.path(), walk_data, depth)
+                                // return walk(entry.path(), walk_data, depth)
 
-                            if !ignore_file(entry, walk_data) {
-                                if let Ok(data) = entry.file_type() {
-                                    if data.is_dir()
-                                        || (walk_data.follow_links && data.is_symlink())
-                                    {
-                                        return walk(entry.path(), walk_data, depth + 1);
+                                if !ignore_file(entry, walk_data) {
+                                    if let Ok(data) = entry.file_type() {
+                                        if data.is_dir()
+                                            || (walk_data.follow_links && data.is_symlink())
+                                        {
+                                            return walk(entry.path(), walk_data, depth + 1);
+                                        }
+
+                                        let node = build_node(
+                                            entry.path(),
+                                            vec![],
+                                            walk_data.filter_regex,
+                                            walk_data.invert_filter_regex,
+                                            walk_data.use_apparent_size,
+                                            data.is_symlink(),
+                                            data.is_file(),
+                                            walk_data.by_filecount,
+                                            depth,
+                                        );
+
+                                        prog_data.num_files.fetch_add(1, ORDERING);
+                                        if let Some(ref file) = node {
+                                            prog_data
+                                                .total_file_size
+                                                .fetch_add(file.size, ORDERING);
+                                        }
+
+                                        return node;
                                     }
-
-                                    let node = build_node(
-                                        entry.path(),
-                                        vec![],
-                                        walk_data.filter_regex,
-                                        walk_data.invert_filter_regex,
-                                        walk_data.use_apparent_size,
-                                        data.is_symlink(),
-                                        data.is_file(),
-                                        walk_data.by_filecount,
-                                        depth,
-                                    );
-
-                                    prog_data.num_files.fetch_add(1, ORDERING);
-                                    if let Some(ref file) = node {
-                                        prog_data.total_file_size.fetch_add(file.size, ORDERING);
-                                    }
-
-                                    return node;
                                 }
                             }
-                        } else {
-                            let mut editable_error = errors.lock().unwrap();
-                            editable_error.no_permissions = true
+                            Err(ref failed) => {
+                                let mut editable_error = errors.lock().unwrap();
+                                editable_error.no_permissions.insert(failed.to_string());
+                            }
                         }
                         None
                     })
@@ -189,7 +194,9 @@ fn walk(dir: PathBuf, walk_data: &WalkData, depth: usize) -> Option<Node> {
                 let mut editable_error = errors.lock().unwrap();
                 match failed.kind() {
                     std::io::ErrorKind::PermissionDenied => {
-                        editable_error.no_permissions = true;
+                        editable_error
+                            .no_permissions
+                            .insert(dir.to_string_lossy().into());
                     }
                     std::io::ErrorKind::NotFound => {
                         editable_error.file_not_found.insert(failed.to_string());

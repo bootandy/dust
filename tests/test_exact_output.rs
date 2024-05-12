@@ -41,7 +41,11 @@ fn initialize() {
     });
 }
 
-fn exact_output_test<T: AsRef<OsStr>>(valid_outputs: Vec<String>, command_args: Vec<T>) {
+fn exact_output_test<T: AsRef<OsStr>>(
+    command_args: Vec<T>,
+    valid_outputs: Vec<String>,
+    error_outputs: Vec<String>,
+) {
     initialize();
 
     let mut a = &mut Command::cargo_bin("dust").unwrap();
@@ -50,17 +54,32 @@ fn exact_output_test<T: AsRef<OsStr>>(valid_outputs: Vec<String>, command_args: 
         a = a.arg(p);
     }
 
-    let output = str::from_utf8(&a.unwrap().stdout).unwrap().to_owned();
-
-    let will_fail = valid_outputs.iter().any(|i| output.contains(i));
-    if !will_fail {
-        eprintln!(
-            "output:\n{}\ndoes not contain any of:\n{}",
-            output,
-            valid_outputs.join("\n\n")
-        );
+    if !valid_outputs.is_empty() {
+        let stdout_output = str::from_utf8(&a.unwrap().stdout).unwrap().to_owned();
+        let will_fail = valid_outputs.iter().any(|i| stdout_output.contains(i));
+        if !will_fail {
+            eprintln!(
+                "output(stdout):\n{}\ndoes not contain any of:\n{}",
+                stdout_output,
+                valid_outputs.join("\n\n")
+            );
+        }
+        assert!(will_fail);
     }
-    assert!(will_fail)
+
+    // check stderr
+    if !error_outputs.is_empty() {
+        let stderr_output = str::from_utf8(&a.unwrap().stderr).unwrap().to_owned();
+        let will_fail = error_outputs.iter().any(|i| stderr_output.contains(i));
+        if !will_fail {
+            eprintln!(
+                "output(stderr):\n{}\ndoes not contain any of:\n{}",
+                stderr_output,
+                valid_outputs.join("\n\n")
+            );
+        }
+        assert!(will_fail);
+    }
 }
 
 // "windows" result data can vary by host (size seems to be variable by one byte); fix code vs test and re-enable
@@ -68,7 +87,7 @@ fn exact_output_test<T: AsRef<OsStr>>(valid_outputs: Vec<String>, command_args: 
 #[test]
 pub fn test_main_basic() {
     // -c is no color mode - This makes testing much simpler
-    exact_output_test(main_output(), vec!["-c", "-B", "/tmp/test_dir/"])
+    exact_output_test(vec!["-c", "-B", "/tmp/test_dir/"], main_output(), vec![]);
 }
 
 #[cfg_attr(target_os = "windows", ignore)]
@@ -81,7 +100,7 @@ pub fn test_main_multi_arg() {
         "/tmp/test_dir",
         "/tmp/test_dir",
     ];
-    exact_output_test(main_output(), command_args);
+    exact_output_test(command_args, main_output(), vec![]);
 }
 
 fn main_output() -> Vec<String> {
@@ -112,7 +131,7 @@ fn main_output() -> Vec<String> {
 #[test]
 pub fn test_main_long_paths() {
     let command_args = vec!["-c", "-p", "-B", "/tmp/test_dir/"];
-    exact_output_test(main_output_long_paths(), command_args);
+    exact_output_test(command_args, main_output_long_paths(), vec![]);
 }
 
 fn main_output_long_paths() -> Vec<String> {
@@ -140,7 +159,7 @@ fn main_output_long_paths() -> Vec<String> {
 #[test]
 pub fn test_substring_of_names_and_long_names() {
     let command_args = vec!["-c", "-B", "/tmp/test_dir2"];
-    exact_output_test(no_substring_of_names_output(), command_args);
+    exact_output_test(command_args, no_substring_of_names_output(), vec![]);
 }
 
 fn no_substring_of_names_output() -> Vec<String> {
@@ -174,7 +193,7 @@ fn no_substring_of_names_output() -> Vec<String> {
 #[test]
 pub fn test_unicode_directories() {
     let command_args = vec!["-c", "-B", "/tmp/test_dir_unicode"];
-    exact_output_test(unicode_dir(), command_args);
+    exact_output_test(command_args, unicode_dir(), vec![]);
 }
 
 fn unicode_dir() -> Vec<String> {
@@ -201,7 +220,7 @@ fn unicode_dir() -> Vec<String> {
 #[test]
 pub fn test_apparent_size() {
     let command_args = vec!["-c", "-s", "-b", "/tmp/test_dir"];
-    exact_output_test(apparent_size_output(), command_args);
+    exact_output_test(command_args, apparent_size_output(), vec![]);
 }
 
 fn apparent_size_output() -> Vec<String> {
@@ -221,4 +240,23 @@ fn apparent_size_output() -> Vec<String> {
     .to_string();
 
     vec![one_space_before, two_space_before]
+}
+
+#[cfg_attr(target_os = "windows", ignore)]
+#[test]
+pub fn test_permission() {
+    Command::new("sh")
+        .arg("-c")
+        .arg("mkdir -p /tmp/unreadable_folder && chmod 000 /tmp/unreadable_folder")
+        .output()
+        .unwrap();
+    let command_args = vec!["/tmp/unreadable_folder"];
+    let permission_msg = r#"Did not have permissions"#.trim().to_string();
+    exact_output_test(command_args, vec![], vec![permission_msg]);
+
+    Command::new("sh")
+        .arg("-c")
+        .arg("chmod 555 /tmp/unreadable_folder")
+        .output()
+        .unwrap();
 }
