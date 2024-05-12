@@ -252,7 +252,6 @@ fn main() {
     }
 
     let final_errors = walk_data.errors.lock().unwrap();
-    let failed_permissions = final_errors.no_permissions;
     if !final_errors.file_not_found.is_empty() {
         let err = final_errors
             .file_not_found
@@ -262,8 +261,14 @@ fn main() {
             .join(", ");
         eprintln!("No such file or directory: {}", err);
     }
-    if failed_permissions {
-        eprintln!("Did not have permissions for all directories");
+    if !final_errors.no_permissions.is_empty() {
+        let err = final_errors
+            .no_permissions
+            .iter()
+            .map(|a| a.as_ref())
+            .collect::<Vec<&str>>()
+            .join(", ");
+        eprintln!("Did not have permissions for directories: {}", err);
     }
     if !final_errors.unknown_error.is_empty() {
         let err = final_errors
