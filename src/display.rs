@@ -573,7 +573,7 @@ mod tests {
     }
 
     #[cfg(test)]
-    fn build_draw_data<'a>(disp: &'a DisplayData, size: u32) -> (DrawData<'a>, DisplayNode) {
+    fn build_draw_data(disp: &DisplayData, size: u32) -> (DrawData<'_>, DisplayNode) {
         let n = DisplayNode {
             name: PathBuf::from("/short"),
             size: 2_u64.pow(size),
