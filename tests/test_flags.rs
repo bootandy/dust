@@ -139,9 +139,9 @@ pub fn test_show_files_by_type() {
 #[cfg(target_family = "unix")]
 pub fn test_show_files_only() {
     let output = build_command(vec!["-c", "-F", "tests/test_dir"]);
-    assert!(output.contains("tests/test_dir/many/a_file"));
-    assert!(output.contains("tests/test_dir/many/hello_file"));
-    assert!(!output.contains("tests/test_dir/many "));
+    assert!(output.contains("a_file"));
+    assert!(output.contains("hello_file"));
+    assert!(!output.contains("many"));
 }
 
 #[test]

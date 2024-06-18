@@ -52,9 +52,7 @@ impl Config {
         Some(true) == self.ignore_hidden || options.get_flag("ignore_hidden")
     }
     pub fn get_full_paths(&self, options: &ArgMatches) -> bool {
-        Some(true) == self.display_full_paths
-            || options.get_flag("display_full_paths")
-            // || self.get_only_file(options)
+        Some(true) == self.display_full_paths || options.get_flag("display_full_paths")
     }
     pub fn get_reverse(&self, options: &ArgMatches) -> bool {
         Some(true) == self.reverse || options.get_flag("reverse")
