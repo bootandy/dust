@@ -73,6 +73,7 @@ _dust() {
 '(-D --only-dir)--only-file[Only files will be displayed. (Finds your largest files)]' \
 '-j[Output the directory tree as json to the current directory]' \
 '--output-json[Output the directory tree as json to the current directory]' \
+'--from-standard[Read file list from standard input]' \
 '-h[Print help]' \
 '--help[Print help]' \
 '-V[Print version]' \

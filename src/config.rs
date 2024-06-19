@@ -32,9 +32,13 @@ pub struct Config {
     pub threads: Option<usize>,
     pub output_json: Option<bool>,
     pub print_errors: Option<bool>,
+    pub from_standard: Option<bool>,
 }
 
 impl Config {
+    pub fn get_from_standard(&self, options: &ArgMatches) -> bool {
+        Some(true) == self.from_standard || options.get_flag("from_standard")
+    }
     pub fn get_no_colors(&self, options: &ArgMatches) -> bool {
         Some(true) == self.no_colors || options.get_flag("no_colors")
     }

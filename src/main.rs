@@ -21,6 +21,7 @@ use regex::Error;
 use std::collections::HashSet;
 use std::env;
 use std::fs::read_to_string;
+use std::io;
 use std::panic;
 use std::process;
 use std::sync::Arc;
@@ -126,9 +127,23 @@ fn main() {
     })
     .expect("Error setting Ctrl-C handler");
 
-    let target_dirs = match options.get_many::<String>("params") {
-        Some(values) => values.map(|v| v.as_str()).collect::<Vec<&str>>(),
-        None => vec!["."],
+    let target_dirs = match config.get_from_standard(&options) {
+        true => {
+            let mut targets_to_add = io::stdin()
+                .lines()
+                .map_while(Result::ok)
+                .collect::<Vec<String>>();
+
+            if targets_to_add.is_empty() {
+                eprintln!("No input provided, defaulting to current directory");
+                targets_to_add.push(".".to_owned());
+            }
+            targets_to_add
+        }
+        false => match options.get_many::<String>("params") {
+            Some(values) => values.cloned().collect(),
+            None => vec![".".to_owned()],
+        },
     };
 
     let summarize_file_types = options.get_flag("types");
