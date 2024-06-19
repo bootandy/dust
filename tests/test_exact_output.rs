@@ -244,14 +244,34 @@ fn apparent_size_output() -> Vec<String> {
 
 #[cfg_attr(target_os = "windows", ignore)]
 #[test]
-pub fn test_permission() {
+pub fn test_permission_normal() {
     Command::new("sh")
         .arg("-c")
         .arg("mkdir -p /tmp/unreadable_folder && chmod 000 /tmp/unreadable_folder")
         .output()
         .unwrap();
     let command_args = vec!["/tmp/unreadable_folder"];
-    let permission_msg = r#"Did not have permissions"#.trim().to_string();
+    let permission_msg = r#"Did not have permissions for all"#.trim().to_string();
+    exact_output_test(command_args, vec![], vec![permission_msg]);
+
+    Command::new("sh")
+        .arg("-c")
+        .arg("chmod 555 /tmp/unreadable_folder")
+        .output()
+        .unwrap();
+}
+
+#[cfg_attr(target_os = "windows", ignore)]
+#[test]
+pub fn test_permission_flag() {
+    Command::new("sh")
+        .arg("-c")
+        .arg("mkdir -p /tmp/unreadable_folder && chmod 000 /tmp/unreadable_folder")
+        .output()
+        .unwrap();
+    // add the flag to CLI
+    let command_args = vec!["--print-errors", "/tmp/unreadable_folder"];
+    let permission_msg = r#"Did not have permissions for directories"#.trim().to_string();
     exact_output_test(command_args, vec![], vec![permission_msg]);
 
     Command::new("sh")

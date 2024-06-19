@@ -31,6 +31,7 @@ pub struct Config {
     pub stack_size: Option<usize>,
     pub threads: Option<usize>,
     pub output_json: Option<bool>,
+    pub print_errors: Option<bool>,
 }
 
 impl Config {
@@ -104,6 +105,10 @@ impl Config {
     }
     pub fn get_only_dir(&self, options: &ArgMatches) -> bool {
         Some(true) == self.only_dir || options.get_flag("only_dir")
+    }
+
+    pub fn get_print_errors(&self, options: &ArgMatches) -> bool {
+        Some(true) == self.print_errors || options.get_flag("print_errors")
     }
     pub fn get_only_file(&self, options: &ArgMatches) -> bool {
         Some(true) == self.only_file || options.get_flag("only_file")
