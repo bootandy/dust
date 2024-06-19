@@ -69,6 +69,7 @@ set edit:completion:arg-completer[dust] = {|@words|
             cand --file_types 'show only these file types'
             cand -P 'Disable the progress indication.'
             cand --no-progress 'Disable the progress indication.'
+            cand --print-errors 'Print path with errors.'
             cand -D 'Only directories will be displayed.'
             cand --only-dir 'Only directories will be displayed.'
             cand -F 'Only files will be displayed. (Finds your largest files)'

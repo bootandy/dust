@@ -262,13 +262,19 @@ fn main() {
         eprintln!("No such file or directory: {}", err);
     }
     if !final_errors.no_permissions.is_empty() {
-        let err = final_errors
-            .no_permissions
-            .iter()
-            .map(|a| a.as_ref())
-            .collect::<Vec<&str>>()
-            .join(", ");
-        eprintln!("Did not have permissions for directories: {}", err);
+        if config.get_print_errors(&options) {
+            let err = final_errors
+                .no_permissions
+                .iter()
+                .map(|a| a.as_ref())
+                .collect::<Vec<&str>>()
+                .join(", ");
+            eprintln!("Did not have permissions for directories: {}", err);
+        } else {
+            eprintln!(
+                "Did not have permissions for all directories (add --print-errors to see errors)"
+            );
+        }
     }
     if !final_errors.unknown_error.is_empty() {
         let err = final_errors

@@ -24,6 +24,7 @@ complete -c dust -s f -l filecount -d 'Directory \'size\' is number of child fil
 complete -c dust -s i -l ignore_hidden -d 'Do not display hidden files'
 complete -c dust -s t -l file_types -d 'show only these file types'
 complete -c dust -s P -l no-progress -d 'Disable the progress indication.'
+complete -c dust -l print-errors -d 'Print path with errors.'
 complete -c dust -s D -l only-dir -d 'Only directories will be displayed.'
 complete -c dust -s F -l only-file -d 'Only files will be displayed. (Finds your largest files)'
 complete -c dust -s j -l output-json -d 'Output the directory tree as json to the current directory'

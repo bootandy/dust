@@ -194,6 +194,12 @@ pub fn build_cli() -> Command {
                 .help("Disable the progress indication."),
         )
         .arg(
+            Arg::new("print_errors")
+                .long("print-errors")
+                .action(clap::ArgAction::SetTrue)
+                .help("Print path with errors."),
+        )
+        .arg(
             Arg::new("only_dir")
                 .short('D')
                 .long("only-dir")

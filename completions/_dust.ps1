@@ -72,6 +72,7 @@ Register-ArgumentCompleter -Native -CommandName 'dust' -ScriptBlock {
             [CompletionResult]::new('--file_types', 'file_types', [CompletionResultType]::ParameterName, 'show only these file types')
             [CompletionResult]::new('-P', 'P ', [CompletionResultType]::ParameterName, 'Disable the progress indication.')
             [CompletionResult]::new('--no-progress', 'no-progress', [CompletionResultType]::ParameterName, 'Disable the progress indication.')
+            [CompletionResult]::new('--print-errors', 'print-errors', [CompletionResultType]::ParameterName, 'Print path with errors.')
             [CompletionResult]::new('-D', 'D ', [CompletionResultType]::ParameterName, 'Only directories will be displayed.')
             [CompletionResult]::new('--only-dir', 'only-dir', [CompletionResultType]::ParameterName, 'Only directories will be displayed.')
             [CompletionResult]::new('-F', 'F ', [CompletionResultType]::ParameterName, 'Only files will be displayed. (Finds your largest files)')
