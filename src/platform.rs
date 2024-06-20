@@ -10,15 +10,29 @@ fn get_block_size() -> u64 {
     512
 }
 
+type InodeAndDevice = (u64, u64);
+type FileTime = (i64, i64, i64);
+
 #[cfg(target_family = "unix")]
-pub fn get_metadata(d: &Path, use_apparent_size: bool) -> Option<(u64, Option<(u64, u64)>)> {
+pub fn get_metadata(
+    d: &Path,
+    use_apparent_size: bool,
+) -> Option<(u64, Option<InodeAndDevice>, FileTime)> {
     use std::os::unix::fs::MetadataExt;
     match d.metadata() {
         Ok(md) => {
             if use_apparent_size {
-                Some((md.len(), Some((md.ino(), md.dev()))))
+                Some((
+                    md.len(),
+                    Some((md.ino(), md.dev())),
+                    (md.mtime(), md.atime(), md.ctime()),
+                ))
             } else {
-                Some((md.blocks() * get_block_size(), Some((md.ino(), md.dev()))))
+                Some((
+                    md.blocks() * get_block_size(),
+                    Some((md.ino(), md.dev())),
+                    (md.mtime(), md.atime(), md.ctime()),
+                ))
             }
         }
         Err(_e) => None,
@@ -26,7 +40,10 @@ pub fn get_metadata(d: &Path, use_apparent_size: bool) -> Option<(u64, Option<(u
 }
 
 #[cfg(target_family = "windows")]
-pub fn get_metadata(d: &Path, use_apparent_size: bool) -> Option<(u64, Option<(u64, u64)>)> {
+pub fn get_metadata(
+    d: &Path,
+    use_apparent_size: bool,
+) -> Option<(u64, Option<InodeAndDevice>, FileTime)> {
     // On windows opening the file to get size, file ID and volume can be very
     // expensive because 1) it causes a few system calls, and more importantly 2) it can cause
     // windows defender to scan the file.
@@ -93,7 +110,7 @@ pub fn get_metadata(d: &Path, use_apparent_size: bool) -> Option<(u64, Option<(u
     fn get_metadata_expensive(
         d: &Path,
         use_apparent_size: bool,
-    ) -> Option<(u64, Option<(u64, u64)>)> {
+    ) -> Option<(u64, Option<InodeAndDevice>, FileTime)> {
         use winapi_util::file::information;
 
         let h = handle_from_path_limited(d).ok()?;
@@ -104,11 +121,21 @@ pub fn get_metadata(d: &Path, use_apparent_size: bool) -> Option<(u64, Option<(u
             Some((
                 d.size_on_disk().ok()?,
                 Some((info.file_index(), info.volume_serial_number())),
+                (
+                    info.last_write_time().unwrap() as i64,
+                    info.last_access_time().unwrap() as i64,
+                    info.creation_time().unwrap() as i64,
+                ),
             ))
         } else {
             Some((
                 info.file_size(),
                 Some((info.file_index(), info.volume_serial_number())),
+                (
+                    info.last_write_time().unwrap() as i64,
+                    info.last_access_time().unwrap() as i64,
+                    info.creation_time().unwrap() as i64,
+                ),
             ))
         }
     }
@@ -142,7 +169,15 @@ pub fn get_metadata(d: &Path, use_apparent_size: bool) -> Option<(u64, Option<(u
                 || md.file_attributes() == FILE_ATTRIBUTE_NORMAL)
                 && !((attr_filtered & IS_PROBABLY_ONEDRIVE != 0) && use_apparent_size)
             {
-                Some((md.len(), None))
+                Some((
+                    md.len(),
+                    None,
+                    (
+                        md.last_write_time() as i64,
+                        md.last_access_time() as i64,
+                        md.creation_time() as i64,
+                    ),
+                ))
             } else {
                 get_metadata_expensive(d, use_apparent_size)
             }

@@ -2,6 +2,9 @@ use platform::get_metadata;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
+use crate::config::DAY_SECEONDS;
+
+use crate::dir_walker::Operater;
 use crate::platform;
 use regex::Regex;
 
@@ -36,7 +39,7 @@ pub fn get_filesystem_devices<'a, P: IntoIterator<Item = &'a PathBuf>>(paths: P)
     paths
         .into_iter()
         .filter_map(|p| match get_metadata(p, false) {
-            Some((_size, Some((_id, dev)))) => Some(dev),
+            Some((_size, Some((_id, dev)), _time)) => Some(dev),
             _ => None,
         })
         .collect()
@@ -59,6 +62,16 @@ pub fn is_filtered_out_due_to_regex(filter_regex: &[Regex], dir: &Path) -> bool 
         filter_regex
             .iter()
             .all(|f| !f.is_match(&dir.as_os_str().to_string_lossy()))
+    }
+}
+
+pub fn is_filtered_out_due_to_file_time(filter_time: &(Operater, i64), actual_time: i64) -> bool {
+    match filter_time {
+        (Operater::Equal, bound_time) => {
+            !(actual_time >= *bound_time && actual_time < *bound_time + DAY_SECEONDS)
+        }
+        (Operater::GreaterThan, bound_time) => actual_time < *bound_time,
+        (Operater::LessThan, bound_time) => actual_time > *bound_time,
     }
 }
 
