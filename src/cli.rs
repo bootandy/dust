@@ -259,4 +259,31 @@ pub fn build_cli() -> Command {
                 .action(clap::ArgAction::SetTrue)
                 .help("Output the directory tree as json to the current directory"),
         )
+        .arg(
+            Arg::new("mtime")
+            .short('M')
+            .long("mtime")
+            .num_args(1)
+            .allow_hyphen_values(true)
+            .value_parser(value_parser!(String))
+            .help("+/-n matches files modified more/less than n days ago , and n matches files modified exactly n days ago, days are rounded down.That is +n => (−∞, curr−(n+1)), n => [curr−(n+1), curr−n), and -n => (𝑐𝑢𝑟𝑟−𝑛, +∞)")
+        )
+        .arg(
+            Arg::new("atime")
+            .short('A')
+            .long("atime")
+            .num_args(1)
+            .allow_hyphen_values(true)
+            .value_parser(value_parser!(String))
+            .help("just like -mtime, but based on file access time")
+        )
+        .arg(
+            Arg::new("ctime")
+            .short('y')
+            .long("ctime")
+            .num_args(1)
+            .allow_hyphen_values(true)
+            .value_parser(value_parser!(String))
+            .help("just like -mtime, but based on file change time")
+        )
 }
