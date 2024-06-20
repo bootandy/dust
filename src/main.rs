@@ -24,6 +24,8 @@ use std::fs::read_to_string;
 use std::io;
 use std::panic;
 use std::process;
+use std::sync::atomic::AtomicBool;
+use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use std::sync::Mutex;
 use sysinfo::{System, SystemExt};
@@ -120,13 +122,19 @@ fn main() {
     let error_listen_for_ctrlc = Arc::new(Mutex::new(errors));
     let errors_for_rayon = error_listen_for_ctrlc.clone();
     let errors_final = error_listen_for_ctrlc.clone();
+    let is_in_listing = Arc::new(AtomicBool::new(false));
+    let cloned_is_in_listing = Arc::clone(&is_in_listing);
 
     ctrlc::set_handler(move || {
         error_listen_for_ctrlc.lock().unwrap().abort = true;
         println!("\nAborting");
+        if cloned_is_in_listing.load(Ordering::Relaxed) {
+            process::exit(1);
+        }
     })
     .expect("Error setting Ctrl-C handler");
 
+    is_in_listing.store(true, Ordering::Relaxed);
     let target_dirs = match config.get_files_from(&options) {
         Some(path) => {
             if path == "-" {
@@ -142,8 +150,13 @@ fn main() {
                 targets_to_add
             } else {
                 // read file
-                let file_content = read_to_string(path).unwrap();
-                file_content.lines().map(|x| x.to_string()).collect()
+                match read_to_string(path) {
+                    Ok(file_content) => file_content.lines().map(|x| x.to_string()).collect(),
+                    Err(e) => {
+                        eprintln!("Error reading file: {e}");
+                        vec![".".to_owned()]
+                    }
+                }
             }
         }
         None => match options.get_many::<String>("params") {
@@ -151,6 +164,7 @@ fn main() {
             None => vec![".".to_owned()],
         },
     };
+    is_in_listing.store(false, Ordering::Relaxed);
 
     let summarize_file_types = options.get_flag("types");
 

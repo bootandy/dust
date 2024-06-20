@@ -92,6 +92,7 @@ Usage: dust -S (Custom Stack size - Use if you see: 'fatal runtime error: stack 
 Usage: dust --skip-total (No total row will be displayed)
 Usage: dust -z 40000/30MB/20kib (Exclude output files/directories below size 40000 bytes / 30MB / 20KiB)
 Usage: dust -j (Prints JSON representation of directories, try: dust -j  | jq)
+Usage: dust --files0-from=FILE (Reads null-terminated file paths from FILE); If FILE is - then read from stdin
 ```
 
 ## Config file
