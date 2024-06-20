@@ -39,10 +39,7 @@ impl Config {
     pub fn get_files_from(&self, options: &ArgMatches) -> Option<String> {
         let from_file = options.get_one::<String>("files0_from");
         match from_file {
-            None => match &self.files0_from {
-                Some(x) => Some(x.to_string()),
-                None => None,
-            },
+            None => self.files0_from.as_ref().map(|x| x.to_string()),
             Some(x) => Some(x.to_string()),
         }
     }
