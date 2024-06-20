@@ -265,6 +265,6 @@ pub fn build_cli() -> Command {
                 .value_hint(clap::ValueHint::AnyPath)
                 .value_parser(value_parser!(String))
                 .num_args(1)
-                .help("Read file list from input"),
+                .help("run dust on NUL-terminated file names specified in file; if argument is -, then read names from standard input"),
         )
 }

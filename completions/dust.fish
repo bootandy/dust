@@ -9,7 +9,7 @@ complete -c dust -s e -l filter -d 'Only include filepaths matching this regex. 
 complete -c dust -s w -l terminal_width -d 'Specify width of output overriding the auto detection of terminal width' -r
 complete -c dust -s o -l output-format -d 'Changes output display size. si will print sizes in powers of 1000. b k m g t kb mb gb tb will print the whole tree in that size.' -r -f -a "{si	'',b	'',k	'',m	'',g	'',t	'',kb	'',mb	'',gb	'',tb	''}"
 complete -c dust -s S -l stack-size -d 'Specify memory to use as stack size - use if you see: \'fatal runtime error: stack overflow\' (default low memory=1048576, high memory=1073741824)' -r
-complete -c dust -l files0-from -d 'Read file list from input' -r -F
+complete -c dust -l files0-from -d 'run dust on NUL-terminated file names specified in file; if argument is -, then read names from standard input' -r -F
 complete -c dust -s p -l full-paths -d 'Subdirectories will not have their path shortened'
 complete -c dust -s L -l dereference-links -d 'dereference sym links - Treat sym links as directories and go into them'
 complete -c dust -s x -l limit-filesystem -d 'Only count the files and directories on the same filesystem as the supplied directory'
