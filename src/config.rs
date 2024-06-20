@@ -32,12 +32,19 @@ pub struct Config {
     pub threads: Option<usize>,
     pub output_json: Option<bool>,
     pub print_errors: Option<bool>,
-    pub from_standard: Option<bool>,
+    pub files0_from: Option<String>,
 }
 
 impl Config {
-    pub fn get_from_standard(&self, options: &ArgMatches) -> bool {
-        Some(true) == self.from_standard || options.get_flag("from_standard")
+    pub fn get_files_from(&self, options: &ArgMatches) -> Option<String> {
+        let from_file = options.get_one::<String>("files0_from");
+        match from_file {
+            None => match &self.files0_from {
+                Some(x) => Some(x.to_string()),
+                None => None,
+            },
+            Some(x) => Some(x.to_string()),
+        }
     }
     pub fn get_no_colors(&self, options: &ArgMatches) -> bool {
         Some(true) == self.no_colors || options.get_flag("no_colors")

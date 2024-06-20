@@ -260,9 +260,11 @@ pub fn build_cli() -> Command {
                 .help("Output the directory tree as json to the current directory"),
         )
         .arg(
-            Arg::new("from_standard")
-                .long("from-standard")
-                .action(clap::ArgAction::SetTrue)
-                .help("Read file list from standard input"),
+            Arg::new("files0_from")
+                .long("files0-from")
+                .value_hint(clap::ValueHint::AnyPath)
+                .value_parser(value_parser!(String))
+                .num_args(1)
+                .help("Read file list from input"),
         )
 }

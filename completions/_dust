@@ -37,6 +37,7 @@ _dust() {
 '--output-format=[Changes output display size. si will print sizes in powers of 1000. b k m g t kb mb gb tb will print the whole tree in that size.]:FORMAT:(si b k m g t kb mb gb tb)' \
 '-S+[Specify memory to use as stack size - use if you see\: '\''fatal runtime error\: stack overflow'\'' (default low memory=1048576, high memory=1073741824)]:STACK_SIZE: ' \
 '--stack-size=[Specify memory to use as stack size - use if you see\: '\''fatal runtime error\: stack overflow'\'' (default low memory=1048576, high memory=1073741824)]:STACK_SIZE: ' \
+'--files0-from=[Read file list from input]: :_files' \
 '-p[Subdirectories will not have their path shortened]' \
 '--full-paths[Subdirectories will not have their path shortened]' \
 '-L[dereference sym links - Treat sym links as directories and go into them]' \
@@ -73,7 +74,6 @@ _dust() {
 '(-D --only-dir)--only-file[Only files will be displayed. (Finds your largest files)]' \
 '-j[Output the directory tree as json to the current directory]' \
 '--output-json[Output the directory tree as json to the current directory]' \
-'--from-standard[Read file list from standard input]' \
 '-h[Print help]' \
 '--help[Print help]' \
 '-V[Print version]' \

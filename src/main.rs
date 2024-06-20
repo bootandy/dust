@@ -127,20 +127,26 @@ fn main() {
     })
     .expect("Error setting Ctrl-C handler");
 
-    let target_dirs = match config.get_from_standard(&options) {
-        true => {
-            let mut targets_to_add = io::stdin()
-                .lines()
-                .map_while(Result::ok)
-                .collect::<Vec<String>>();
+    let target_dirs = match config.get_files_from(&options) {
+        Some(path) => {
+            if path == "-" {
+                let mut targets_to_add = io::stdin()
+                    .lines()
+                    .map_while(Result::ok)
+                    .collect::<Vec<String>>();
 
-            if targets_to_add.is_empty() {
-                eprintln!("No input provided, defaulting to current directory");
-                targets_to_add.push(".".to_owned());
+                if targets_to_add.is_empty() {
+                    eprintln!("No input provided, defaulting to current directory");
+                    targets_to_add.push(".".to_owned());
+                }
+                targets_to_add
+            } else {
+                // read file
+                let file_content = read_to_string(path).unwrap();
+                file_content.lines().map(|x| x.to_string()).collect()
             }
-            targets_to_add
         }
-        false => match options.get_many::<String>("params") {
+        None => match options.get_many::<String>("params") {
             Some(values) => values.cloned().collect(),
             None => vec![".".to_owned()],
         },
