@@ -34,11 +34,12 @@ pub fn simplify_dir_names<P: AsRef<Path>>(filenames: Vec<P>) -> HashSet<PathBuf>
     top_level_names
 }
 
-pub fn get_filesystem_devices<'a, P: IntoIterator<Item = &'a PathBuf>>(paths: P) -> HashSet<u64> {
+pub fn get_filesystem_devices<'a, P: IntoIterator<Item = &'a str>>(paths: P) -> HashSet<u64> {
     // Gets the device ids for the filesystems which are used by the argument paths
     paths
         .into_iter()
-        .filter_map(|p| match get_metadata(p, false) {
+        .map(PathBuf::from)
+        .filter_map(|p| match get_metadata(&p, false) {
             Some((_size, Some((_id, dev)), _time)) => Some(dev),
             _ => None,
         })
