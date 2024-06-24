@@ -8,10 +8,10 @@ use crate::dir_walker::Operater;
 use crate::platform;
 use regex::Regex;
 
-pub fn simplify_dir_names<P: AsRef<Path>>(filenames: Vec<P>) -> HashSet<PathBuf> {
-    let mut top_level_names: HashSet<PathBuf> = HashSet::with_capacity(filenames.len());
+pub fn simplify_dir_names<P: AsRef<Path>>(dirs: &[P]) -> HashSet<PathBuf> {
+    let mut top_level_names: HashSet<PathBuf> = HashSet::with_capacity(dirs.len());
 
-    for t in filenames {
+    for t in dirs {
         let top_level_name = normalize_path(t);
         let mut can_add = true;
         let mut to_remove: Vec<PathBuf> = Vec::new();
@@ -34,12 +34,11 @@ pub fn simplify_dir_names<P: AsRef<Path>>(filenames: Vec<P>) -> HashSet<PathBuf>
     top_level_names
 }
 
-pub fn get_filesystem_devices<'a, P: IntoIterator<Item = &'a str>>(paths: P) -> HashSet<u64> {
+pub fn get_filesystem_devices<P: AsRef<Path>>(paths: &[P]) -> HashSet<u64> {
     // Gets the device ids for the filesystems which are used by the argument paths
     paths
-        .into_iter()
-        .map(PathBuf::from)
-        .filter_map(|p| match get_metadata(&p, false) {
+        .iter()
+        .filter_map(|p| match get_metadata(p, false) {
             Some((_size, Some((_id, dev)), _time)) => Some(dev),
             _ => None,
         })
@@ -96,15 +95,15 @@ mod tests {
     fn test_simplify_dir() {
         let mut correct = HashSet::new();
         correct.insert(PathBuf::from("a"));
-        assert_eq!(simplify_dir_names(vec!["a"]), correct);
+        assert_eq!(simplify_dir_names(&["a"]), correct);
     }
 
     #[test]
     fn test_simplify_dir_rm_subdir() {
         let mut correct = HashSet::new();
         correct.insert(["a", "b"].iter().collect::<PathBuf>());
-        assert_eq!(simplify_dir_names(vec!["a/b/c", "a/b", "a/b/d/f"]), correct);
-        assert_eq!(simplify_dir_names(vec!["a/b", "a/b/c", "a/b/d/f"]), correct);
+        assert_eq!(simplify_dir_names(&["a/b/c", "a/b", "a/b/d/f"]), correct);
+        assert_eq!(simplify_dir_names(&["a/b", "a/b/c", "a/b/d/f"]), correct);
     }
 
     #[test]
@@ -113,7 +112,7 @@ mod tests {
         correct.insert(["a", "b"].iter().collect::<PathBuf>());
         correct.insert(PathBuf::from("c"));
         assert_eq!(
-            simplify_dir_names(vec![
+            simplify_dir_names(&[
                 "a/b",
                 "a/b//",
                 "a/././b///",
@@ -132,14 +131,14 @@ mod tests {
         correct.insert(PathBuf::from("b"));
         correct.insert(["c", "a", "b"].iter().collect::<PathBuf>());
         correct.insert(["a", "b"].iter().collect::<PathBuf>());
-        assert_eq!(simplify_dir_names(vec!["a/b", "c/a/b/", "b"]), correct);
+        assert_eq!(simplify_dir_names(&["a/b", "c/a/b/", "b"]), correct);
     }
 
     #[test]
     fn test_simplify_dir_dots() {
         let mut correct = HashSet::new();
         correct.insert(PathBuf::from("src"));
-        assert_eq!(simplify_dir_names(vec!["src/."]), correct);
+        assert_eq!(simplify_dir_names(&["src/."]), correct);
     }
 
     #[test]
@@ -147,7 +146,7 @@ mod tests {
         let mut correct = HashSet::new();
         correct.insert(PathBuf::from("src"));
         correct.insert(PathBuf::from("src_v2"));
-        assert_eq!(simplify_dir_names(vec!["src/", "src_v2"]), correct);
+        assert_eq!(simplify_dir_names(&["src/", "src_v2"]), correct);
     }
 
     #[test]

@@ -193,9 +193,9 @@ fn main() {
     let follow_links = options.get_flag("dereference_links");
 
     let allowed_filesystems = limit_filesystem
-        .then(|| get_filesystem_devices(target_dirs.iter().cloned()))
+        .then(|| get_filesystem_devices(&target_dirs))
         .unwrap_or_default();
-    let simplified_dirs = simplify_dir_names(target_dirs);
+    let simplified_dirs = simplify_dir_names(&target_dirs);
 
     let ignored_full_path: HashSet<PathBuf> = ignore_directories
         .into_iter()

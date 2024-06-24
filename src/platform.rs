@@ -14,12 +14,12 @@ type InodeAndDevice = (u64, u64);
 type FileTime = (i64, i64, i64);
 
 #[cfg(target_family = "unix")]
-pub fn get_metadata(
-    d: &Path,
+pub fn get_metadata<P: AsRef<Path>>(
+    path: P,
     use_apparent_size: bool,
 ) -> Option<(u64, Option<InodeAndDevice>, FileTime)> {
     use std::os::unix::fs::MetadataExt;
-    match d.metadata() {
+    match path.as_ref().metadata() {
         Ok(md) => {
             if use_apparent_size {
                 Some((
@@ -40,8 +40,8 @@ pub fn get_metadata(
 }
 
 #[cfg(target_family = "windows")]
-pub fn get_metadata(
-    d: &Path,
+pub fn get_metadata<P: AsRef<Path>>(
+    path: P,
     use_apparent_size: bool,
 ) -> Option<(u64, Option<InodeAndDevice>, FileTime)> {
     // On windows opening the file to get size, file ID and volume can be very
@@ -82,7 +82,7 @@ pub fn get_metadata(
 
     use std::io;
     use winapi_util::Handle;
-    fn handle_from_path_limited<P: AsRef<Path>>(path: P) -> io::Result<Handle> {
+    fn handle_from_path_limited(path: &Path) -> io::Result<Handle> {
         use std::fs::OpenOptions;
         use std::os::windows::fs::OpenOptionsExt;
         const FILE_READ_ATTRIBUTES: u32 = 0x0080;
@@ -108,18 +108,18 @@ pub fn get_metadata(
     }
 
     fn get_metadata_expensive(
-        d: &Path,
+        path: &Path,
         use_apparent_size: bool,
     ) -> Option<(u64, Option<InodeAndDevice>, FileTime)> {
         use winapi_util::file::information;
 
-        let h = handle_from_path_limited(d).ok()?;
+        let h = handle_from_path_limited(path).ok()?;
         let info = information(&h).ok()?;
 
         if use_apparent_size {
             use filesize::PathExt;
             Some((
-                d.size_on_disk().ok()?,
+                path.size_on_disk().ok()?,
                 Some((info.file_index(), info.volume_serial_number())),
                 (
                     info.last_write_time().unwrap() as i64,
@@ -141,7 +141,8 @@ pub fn get_metadata(
     }
 
     use std::os::windows::fs::MetadataExt;
-    match d.metadata() {
+    let path = path.as_ref();
+    match path.metadata() {
         Ok(ref md) => {
             const FILE_ATTRIBUTE_ARCHIVE: u32 = 0x20;
             const FILE_ATTRIBUTE_READONLY: u32 = 0x01;
@@ -179,9 +180,9 @@ pub fn get_metadata(
                     ),
                 ))
             } else {
-                get_metadata_expensive(d, use_apparent_size)
+                get_metadata_expensive(path, use_apparent_size)
             }
         }
-        _ => get_metadata_expensive(d, use_apparent_size),
+        _ => get_metadata_expensive(path, use_apparent_size),
     }
 }
