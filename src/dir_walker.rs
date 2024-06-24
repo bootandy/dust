@@ -111,7 +111,7 @@ fn ignore_file(entry: &DirEntry, walk_data: &WalkData) -> bool {
     let is_dot_file = entry.file_name().to_str().unwrap_or("").starts_with('.');
     let is_ignored_path = walk_data.ignore_directories.contains(&entry.path());
 
-    let size_inode_device = get_metadata(&entry.path(), false);
+    let size_inode_device = get_metadata(entry.path(), false);
     if let Some((_size, Some((_id, dev)), (modified_time, accessed_time, changed_time))) =
         size_inode_device
     {
