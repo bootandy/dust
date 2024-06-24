@@ -1,10 +1,11 @@
 use assert_cmd::Command;
 use std::ffi::OsStr;
 use std::process::Output;
-use std::str;
 use std::sync::Once;
+use std::{fs, io, str};
 
 static INIT: Once = Once::new();
+static UNREADABLE_DIR_PATH: &str = "/tmp/unreadable_dir";
 
 /**
  * This file contains tests that verify the exact output of the command.
@@ -34,17 +35,26 @@ fn copy_test_data(dir: &str) {
         .map_err(|err| eprintln!("Error copying directory for test setup\n{:?}", err));
 }
 
+fn create_unreadable_directory() -> io::Result<()> {
+    #[cfg(unix)]
+    {
+        use std::fs::Permissions;
+        use std::os::unix::fs::PermissionsExt;
+        fs::create_dir_all(UNREADABLE_DIR_PATH)?;
+        fs::set_permissions(UNREADABLE_DIR_PATH, Permissions::from_mode(0))?;
+    }
+    Ok(())
+}
+
 fn initialize() {
     INIT.call_once(|| {
         copy_test_data("tests/test_dir");
         copy_test_data("tests/test_dir2");
         copy_test_data("tests/test_dir_unicode");
 
-        Command::new("sh")
-            .arg("-c")
-            .arg("mkdir -p /tmp/unreadable_folder && chmod 000 /tmp/unreadable_folder")
-            .output()
-            .unwrap();
+        if let Err(e) = create_unreadable_directory() {
+            panic!("Failed to create unreadable directory: {}", e);
+        }
     });
 }
 
@@ -242,7 +252,7 @@ fn apparent_size_output() -> Vec<String> {
 #[cfg_attr(target_os = "windows", ignore)]
 #[test]
 pub fn test_permission_normal() {
-    let command_args = vec!["/tmp/unreadable_folder"];
+    let command_args = vec![UNREADABLE_DIR_PATH];
     let permission_msg =
         r#"Did not have permissions for all directories (add --print-errors to see errors)"#
             .trim()
@@ -254,9 +264,10 @@ pub fn test_permission_normal() {
 #[test]
 pub fn test_permission_flag() {
     // add the flag to CLI
-    let command_args = vec!["--print-errors", "/tmp/unreadable_folder"];
-    let permission_msg = r#"Did not have permissions for directories: /tmp/unreadable_folder"#
-        .trim()
-        .to_string();
+    let command_args = vec!["--print-errors", UNREADABLE_DIR_PATH];
+    let permission_msg = format!(
+        "Did not have permissions for directories: {}",
+        UNREADABLE_DIR_PATH
+    );
     exact_stderr_test(command_args, permission_msg);
 }
