@@ -2,7 +2,7 @@ use platform::get_metadata;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
-use crate::config::DAY_SECEONDS;
+use crate::config::DAY_SECONDS;
 
 use crate::dir_walker::Operater;
 use crate::platform;
@@ -68,7 +68,7 @@ pub fn is_filtered_out_due_to_regex(filter_regex: &[Regex], dir: &Path) -> bool 
 pub fn is_filtered_out_due_to_file_time(filter_time: &(Operater, i64), actual_time: i64) -> bool {
     match filter_time {
         (Operater::Equal, bound_time) => {
-            !(actual_time >= *bound_time && actual_time < *bound_time + DAY_SECEONDS)
+            !(actual_time >= *bound_time && actual_time < *bound_time + DAY_SECONDS)
         }
         (Operater::GreaterThan, bound_time) => actual_time < *bound_time,
         (Operater::LessThan, bound_time) => actual_time > *bound_time,

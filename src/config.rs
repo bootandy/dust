@@ -10,7 +10,7 @@ use std::path::PathBuf;
 use crate::dir_walker::Operater;
 use crate::display::get_number_format;
 
-pub static DAY_SECEONDS: i64 = 24 * 60 * 60;
+pub static DAY_SECONDS: i64 = 24 * 60 * 60;
 
 #[derive(Deserialize, Default)]
 #[serde(rename_all = "kebab-case")]
@@ -182,11 +182,11 @@ fn get_filter_time_operator(
                     .parse::<i64>()
                     .unwrap_or_else(|_| panic!("invalid data format"))
                     .abs()
-                    * DAY_SECEONDS;
+                    * DAY_SECONDS;
             match val.chars().next().expect("Value should not be empty") {
-                '+' => (Operater::LessThan, time - DAY_SECEONDS),
+                '+' => (Operater::LessThan, time - DAY_SECONDS),
                 '-' => (Operater::GreaterThan, time),
-                _ => (Operater::Equal, time - DAY_SECEONDS),
+                _ => (Operater::Equal, time - DAY_SECONDS),
             }
         }
         None => (Operater::GreaterThan, 0),
