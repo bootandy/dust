@@ -1,9 +1,11 @@
 use assert_cmd::Command;
 use std::ffi::OsStr;
-use std::str;
+use std::process::Output;
 use std::sync::Once;
+use std::{fs, io, str};
 
 static INIT: Once = Once::new();
+static UNREADABLE_DIR_PATH: &str = "/tmp/unreadable_dir";
 
 /**
  * This file contains tests that verify the exact output of the command.
@@ -33,53 +35,58 @@ fn copy_test_data(dir: &str) {
         .map_err(|err| eprintln!("Error copying directory for test setup\n{:?}", err));
 }
 
+fn create_unreadable_directory() -> io::Result<()> {
+    #[cfg(unix)]
+    {
+        use std::fs::Permissions;
+        use std::os::unix::fs::PermissionsExt;
+        fs::create_dir_all(UNREADABLE_DIR_PATH)?;
+        fs::set_permissions(UNREADABLE_DIR_PATH, Permissions::from_mode(0))?;
+    }
+    Ok(())
+}
+
 fn initialize() {
     INIT.call_once(|| {
         copy_test_data("tests/test_dir");
         copy_test_data("tests/test_dir2");
         copy_test_data("tests/test_dir_unicode");
+
+        if let Err(e) = create_unreadable_directory() {
+            panic!("Failed to create unreadable directory: {}", e);
+        }
     });
 }
 
-fn exact_output_test<T: AsRef<OsStr>>(
-    command_args: Vec<T>,
-    valid_outputs: Vec<String>,
-    error_outputs: Vec<String>,
-) {
+fn run_cmd<T: AsRef<OsStr>>(command_args: &[T]) -> Output {
     initialize();
-
-    let mut a = &mut Command::cargo_bin("dust").unwrap();
-
+    let mut to_run = &mut Command::cargo_bin("dust").unwrap();
     for p in command_args {
-        a = a.arg(p);
+        to_run = to_run.arg(p);
     }
+    to_run.unwrap()
+}
 
-    if !valid_outputs.is_empty() {
-        let stdout_output = str::from_utf8(&a.unwrap().stdout).unwrap().to_owned();
-        let will_fail = valid_outputs.iter().any(|i| stdout_output.contains(i));
-        if !will_fail {
-            eprintln!(
-                "output(stdout):\n{}\ndoes not contain any of:\n{}",
-                stdout_output,
-                valid_outputs.join("\n\n")
-            );
-        }
-        assert!(will_fail);
-    }
+fn exact_stdout_test<T: AsRef<OsStr>>(command_args: &[T], valid_stdout: Vec<String>) {
+    let to_run = run_cmd(command_args);
 
-    // check stderr
-    if !error_outputs.is_empty() {
-        let stderr_output = str::from_utf8(&a.unwrap().stderr).unwrap().to_owned();
-        let will_fail = error_outputs.iter().any(|i| stderr_output.contains(i));
-        if !will_fail {
-            eprintln!(
-                "output(stderr):\n{}\ndoes not contain any of:\n{}",
-                stderr_output,
-                valid_outputs.join("\n\n")
-            );
-        }
-        assert!(will_fail);
+    let stdout_output = str::from_utf8(&to_run.stdout).unwrap().to_owned();
+    let will_fail = valid_stdout.iter().any(|i| stdout_output.contains(i));
+    if !will_fail {
+        eprintln!(
+            "output(stdout):\n{}\ndoes not contain any of:\n{}",
+            stdout_output,
+            valid_stdout.join("\n\n")
+        );
     }
+    assert!(will_fail);
+}
+
+fn exact_stderr_test<T: AsRef<OsStr>>(command_args: &[T], valid_stderr: String) {
+    let to_run = run_cmd(command_args);
+
+    let stderr_output = str::from_utf8(&to_run.stderr).unwrap().trim();
+    assert_eq!(stderr_output, valid_stderr);
 }
 
 // "windows" result data can vary by host (size seems to be variable by one byte); fix code vs test and re-enable
@@ -87,20 +94,20 @@ fn exact_output_test<T: AsRef<OsStr>>(
 #[test]
 pub fn test_main_basic() {
     // -c is no color mode - This makes testing much simpler
-    exact_output_test(vec!["-c", "-B", "/tmp/test_dir/"], main_output(), vec![]);
+    exact_stdout_test(&["-c", "-B", "/tmp/test_dir/"], main_output());
 }
 
 #[cfg_attr(target_os = "windows", ignore)]
 #[test]
 pub fn test_main_multi_arg() {
-    let command_args = vec![
+    let command_args = [
         "-c",
         "-B",
         "/tmp/test_dir/many/",
         "/tmp/test_dir",
         "/tmp/test_dir",
     ];
-    exact_output_test(command_args, main_output(), vec![]);
+    exact_stdout_test(&command_args, main_output());
 }
 
 fn main_output() -> Vec<String> {
@@ -130,8 +137,8 @@ fn main_output() -> Vec<String> {
 #[cfg_attr(target_os = "windows", ignore)]
 #[test]
 pub fn test_main_long_paths() {
-    let command_args = vec!["-c", "-p", "-B", "/tmp/test_dir/"];
-    exact_output_test(command_args, main_output_long_paths(), vec![]);
+    let command_args = ["-c", "-p", "-B", "/tmp/test_dir/"];
+    exact_stdout_test(&command_args, main_output_long_paths());
 }
 
 fn main_output_long_paths() -> Vec<String> {
@@ -158,8 +165,8 @@ fn main_output_long_paths() -> Vec<String> {
 #[cfg_attr(target_os = "windows", ignore)]
 #[test]
 pub fn test_substring_of_names_and_long_names() {
-    let command_args = vec!["-c", "-B", "/tmp/test_dir2"];
-    exact_output_test(command_args, no_substring_of_names_output(), vec![]);
+    let command_args = ["-c", "-B", "/tmp/test_dir2"];
+    exact_stdout_test(&command_args, no_substring_of_names_output());
 }
 
 fn no_substring_of_names_output() -> Vec<String> {
@@ -192,8 +199,8 @@ fn no_substring_of_names_output() -> Vec<String> {
 #[cfg_attr(target_os = "windows", ignore)]
 #[test]
 pub fn test_unicode_directories() {
-    let command_args = vec!["-c", "-B", "/tmp/test_dir_unicode"];
-    exact_output_test(command_args, unicode_dir(), vec![]);
+    let command_args = ["-c", "-B", "/tmp/test_dir_unicode"];
+    exact_stdout_test(&command_args, unicode_dir());
 }
 
 fn unicode_dir() -> Vec<String> {
@@ -219,8 +226,8 @@ fn unicode_dir() -> Vec<String> {
 #[cfg_attr(target_os = "windows", ignore)]
 #[test]
 pub fn test_apparent_size() {
-    let command_args = vec!["-c", "-s", "-b", "/tmp/test_dir"];
-    exact_output_test(command_args, apparent_size_output(), vec![]);
+    let command_args = ["-c", "-s", "-b", "/tmp/test_dir"];
+    exact_stdout_test(&command_args, apparent_size_output());
 }
 
 fn apparent_size_output() -> Vec<String> {
@@ -245,38 +252,22 @@ fn apparent_size_output() -> Vec<String> {
 #[cfg_attr(target_os = "windows", ignore)]
 #[test]
 pub fn test_permission_normal() {
-    Command::new("sh")
-        .arg("-c")
-        .arg("mkdir -p /tmp/unreadable_folder && chmod 000 /tmp/unreadable_folder")
-        .output()
-        .unwrap();
-    let command_args = vec!["/tmp/unreadable_folder"];
-    let permission_msg = r#"Did not have permissions for all"#.trim().to_string();
-    exact_output_test(command_args, vec![], vec![permission_msg]);
-
-    Command::new("sh")
-        .arg("-c")
-        .arg("chmod 555 /tmp/unreadable_folder")
-        .output()
-        .unwrap();
+    let command_args = [UNREADABLE_DIR_PATH];
+    let permission_msg =
+        r#"Did not have permissions for all directories (add --print-errors to see errors)"#
+            .trim()
+            .to_string();
+    exact_stderr_test(&command_args, permission_msg);
 }
 
 #[cfg_attr(target_os = "windows", ignore)]
 #[test]
 pub fn test_permission_flag() {
-    Command::new("sh")
-        .arg("-c")
-        .arg("mkdir -p /tmp/unreadable_folder && chmod 000 /tmp/unreadable_folder")
-        .output()
-        .unwrap();
     // add the flag to CLI
-    let command_args = vec!["--print-errors", "/tmp/unreadable_folder"];
-    let permission_msg = r#"Did not have permissions for directories"#.trim().to_string();
-    exact_output_test(command_args, vec![], vec![permission_msg]);
-
-    Command::new("sh")
-        .arg("-c")
-        .arg("chmod 555 /tmp/unreadable_folder")
-        .output()
-        .unwrap();
+    let command_args = ["--print-errors", UNREADABLE_DIR_PATH];
+    let permission_msg = format!(
+        "Did not have permissions for directories: {}",
+        UNREADABLE_DIR_PATH
+    );
+    exact_stderr_test(&command_args, permission_msg);
 }

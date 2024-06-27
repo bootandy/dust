@@ -1,3 +1,4 @@
+use chrono::{Local, TimeZone};
 use clap::ArgMatches;
 use config_file::FromConfigFile;
 use regex::Regex;
@@ -6,7 +7,10 @@ use std::io::IsTerminal;
 use std::path::Path;
 use std::path::PathBuf;
 
+use crate::dir_walker::Operater;
 use crate::display::get_number_format;
+
+pub static DAY_SECONDS: i64 = 24 * 60 * 60;
 
 #[derive(Deserialize, Default)]
 #[serde(rename_all = "kebab-case")]
@@ -140,6 +144,61 @@ impl Config {
     pub fn get_output_json(&self, options: &ArgMatches) -> bool {
         Some(true) == self.output_json || options.get_flag("output_json")
     }
+
+    pub fn get_modified_time_operator(&self, options: &ArgMatches) -> (Operater, i64) {
+        get_filter_time_operator(
+            options.get_one::<String>("mtime"),
+            get_current_date_epoch_seconds(),
+        )
+    }
+
+    pub fn get_accessed_time_operator(&self, options: &ArgMatches) -> (Operater, i64) {
+        get_filter_time_operator(
+            options.get_one::<String>("atime"),
+            get_current_date_epoch_seconds(),
+        )
+    }
+
+    pub fn get_created_time_operator(&self, options: &ArgMatches) -> (Operater, i64) {
+        get_filter_time_operator(
+            options.get_one::<String>("ctime"),
+            get_current_date_epoch_seconds(),
+        )
+    }
+}
+
+fn get_current_date_epoch_seconds() -> i64 {
+    // calcurate current date epoch seconds
+    let now = Local::now();
+    let current_date = now.date_naive();
+
+    let current_date_time = current_date.and_hms_opt(0, 0, 0).unwrap();
+    Local
+        .from_local_datetime(&current_date_time)
+        .unwrap()
+        .timestamp()
+}
+
+fn get_filter_time_operator(
+    option_value: Option<&String>,
+    current_date_epoch_seconds: i64,
+) -> (Operater, i64) {
+    match option_value {
+        Some(val) => {
+            let time = current_date_epoch_seconds
+                - val
+                    .parse::<i64>()
+                    .unwrap_or_else(|_| panic!("invalid data format"))
+                    .abs()
+                    * DAY_SECONDS;
+            match val.chars().next().expect("Value should not be empty") {
+                '+' => (Operater::LessThan, time - DAY_SECONDS),
+                '-' => (Operater::GreaterThan, time),
+                _ => (Operater::Equal, time - DAY_SECONDS),
+            }
+        }
+        None => (Operater::GreaterThan, 0),
+    }
 }
 
 fn convert_min_size(input: &str) -> Option<usize> {
@@ -199,7 +258,21 @@ pub fn get_config() -> Config {
 mod tests {
     #[allow(unused_imports)]
     use super::*;
+    use chrono::{Datelike, Timelike};
     use clap::{value_parser, Arg, ArgMatches, Command};
+
+    #[test]
+    fn test_get_current_date_epoch_seconds() {
+        let epoch_seconds = get_current_date_epoch_seconds();
+        let dt = Local.timestamp_opt(epoch_seconds, 0).unwrap();
+
+        assert_eq!(dt.hour(), 0);
+        assert_eq!(dt.minute(), 0);
+        assert_eq!(dt.second(), 0);
+        assert_eq!(dt.date_naive().day(), Local::now().date_naive().day());
+        assert_eq!(dt.date_naive().month(), Local::now().date_naive().month());
+        assert_eq!(dt.date_naive().year(), Local::now().date_naive().year());
+    }
 
     #[test]
     fn test_conversion() {

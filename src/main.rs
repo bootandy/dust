@@ -227,10 +227,10 @@ fn main() {
     let limit_filesystem = options.get_flag("limit_filesystem");
     let follow_links = options.get_flag("dereference_links");
 
-    let simplified_dirs = simplify_dir_names(target_dirs);
     let allowed_filesystems = limit_filesystem
-        .then(|| get_filesystem_devices(simplified_dirs.iter()))
+        .then(|| get_filesystem_devices(&target_dirs))
         .unwrap_or_default();
+    let simplified_dirs = simplify_dir_names(&target_dirs);
 
     let ignored_full_path: HashSet<PathBuf> = ignore_directories
         .into_iter()
@@ -246,11 +246,18 @@ fn main() {
         indicator.spawn(output_format.clone())
     }
 
+    let filter_modified_time = config.get_modified_time_operator(&options);
+    let filter_accessed_time = config.get_accessed_time_operator(&options);
+    let filter_changed_time = config.get_created_time_operator(&options);
+
     let walk_data = WalkData {
         ignore_directories: ignored_full_path,
         filter_regex: &filter_regexs,
         invert_filter_regex: &invert_filter_regexs,
         allowed_filesystems,
+        filter_modified_time,
+        filter_accessed_time,
+        filter_changed_time,
         use_apparent_size: config.get_apparent_size(&options),
         by_filecount,
         ignore_hidden,

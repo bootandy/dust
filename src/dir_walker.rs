@@ -7,6 +7,7 @@ use crate::progress::Operation;
 use crate::progress::PAtomicInfo;
 use crate::progress::RuntimeErrors;
 use crate::progress::ORDERING;
+use crate::utils::is_filtered_out_due_to_file_time;
 use crate::utils::is_filtered_out_due_to_invert_regex;
 use crate::utils::is_filtered_out_due_to_regex;
 use rayon::iter::ParallelBridge;
@@ -20,11 +21,22 @@ use crate::node::build_node;
 use std::fs::DirEntry;
 
 use crate::platform::get_metadata;
+
+#[derive(Debug)]
+pub enum Operater {
+    Equal = 0,
+    LessThan = 1,
+    GreaterThan = 2,
+}
+
 pub struct WalkData<'a> {
     pub ignore_directories: HashSet<PathBuf>,
     pub filter_regex: &'a [Regex],
     pub invert_filter_regex: &'a [Regex],
     pub allowed_filesystems: HashSet<u64>,
+    pub filter_modified_time: (Operater, i64),
+    pub filter_accessed_time: (Operater, i64),
+    pub filter_changed_time: (Operater, i64),
     pub use_apparent_size: bool,
     pub by_filecount: bool,
     pub ignore_hidden: bool,
@@ -99,13 +111,27 @@ fn ignore_file(entry: &DirEntry, walk_data: &WalkData) -> bool {
     let is_dot_file = entry.file_name().to_str().unwrap_or("").starts_with('.');
     let is_ignored_path = walk_data.ignore_directories.contains(&entry.path());
 
-    if !walk_data.allowed_filesystems.is_empty() {
-        let size_inode_device = get_metadata(&entry.path(), false);
-
-        if let Some((_size, Some((_id, dev)))) = size_inode_device {
-            if !walk_data.allowed_filesystems.contains(&dev) {
-                return true;
-            }
+    let size_inode_device = get_metadata(entry.path(), false);
+    if let Some((_size, Some((_id, dev)), (modified_time, accessed_time, changed_time))) =
+        size_inode_device
+    {
+        if !walk_data.allowed_filesystems.is_empty()
+            && !walk_data.allowed_filesystems.contains(&dev)
+        {
+            return true;
+        }
+        if entry.path().is_file()
+            && [
+                (&walk_data.filter_modified_time, modified_time),
+                (&walk_data.filter_accessed_time, accessed_time),
+                (&walk_data.filter_changed_time, changed_time),
+            ]
+            .iter()
+            .any(|(filter_time, actual_time)| {
+                is_filtered_out_due_to_file_time(filter_time, *actual_time)
+            })
+        {
+            return true;
         }
     }
 
@@ -130,6 +156,7 @@ fn ignore_file(entry: &DirEntry, walk_data: &WalkData) -> bool {
 fn walk(dir: PathBuf, walk_data: &WalkData, depth: usize) -> Option<Node> {
     let prog_data = &walk_data.progress_data;
     let errors = &walk_data.errors;
+
     if errors.lock().unwrap().abort {
         return None;
     }
@@ -161,13 +188,10 @@ fn walk(dir: PathBuf, walk_data: &WalkData, depth: usize) -> Option<Node> {
                                         let node = build_node(
                                             entry.path(),
                                             vec![],
-                                            walk_data.filter_regex,
-                                            walk_data.invert_filter_regex,
-                                            walk_data.use_apparent_size,
                                             data.is_symlink(),
                                             data.is_file(),
-                                            walk_data.by_filecount,
                                             depth,
+                                            walk_data,
                                         );
 
                                         prog_data.num_files.fetch_add(1, ORDERING);
@@ -216,17 +240,7 @@ fn walk(dir: PathBuf, walk_data: &WalkData, depth: usize) -> Option<Node> {
         }
         vec![]
     };
-    build_node(
-        dir,
-        children,
-        walk_data.filter_regex,
-        walk_data.invert_filter_regex,
-        walk_data.use_apparent_size,
-        false,
-        false,
-        walk_data.by_filecount,
-        depth,
-    )
+    build_node(dir, children, false, false, depth, walk_data)
 }
 
 mod tests {

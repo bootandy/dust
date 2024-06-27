@@ -37,6 +37,12 @@ _dust() {
 '--output-format=[Changes output display size. si will print sizes in powers of 1000. b k m g t kb mb gb tb will print the whole tree in that size.]:FORMAT:(si b k m g t kb mb gb tb)' \
 '-S+[Specify memory to use as stack size - use if you see\: '\''fatal runtime error\: stack overflow'\'' (default low memory=1048576, high memory=1073741824)]:STACK_SIZE: ' \
 '--stack-size=[Specify memory to use as stack size - use if you see\: '\''fatal runtime error\: stack overflow'\'' (default low memory=1048576, high memory=1073741824)]:STACK_SIZE: ' \
+'-M+[+/-n matches files modified more/less than n days ago , and n matches files modified exactly n days ago, days are rounded down.That is +n => (−∞, curr−(n+1)), n => \[curr−(n+1), curr−n), and -n => (𝑐𝑢𝑟𝑟−𝑛, +∞)]: : ' \
+'--mtime=[+/-n matches files modified more/less than n days ago , and n matches files modified exactly n days ago, days are rounded down.That is +n => (−∞, curr−(n+1)), n => \[curr−(n+1), curr−n), and -n => (𝑐𝑢𝑟𝑟−𝑛, +∞)]: : ' \
+'-A+[just like -mtime, but based on file access time]: : ' \
+'--atime=[just like -mtime, but based on file access time]: : ' \
+'-y+[just like -mtime, but based on file change time]: : ' \
+'--ctime=[just like -mtime, but based on file change time]: : ' \
 '--files0-from=[run dust on NUL-terminated file names specified in file; if argument is -, then read names from standard input]: :_files' \
 '-p[Subdirectories will not have their path shortened]' \
 '--full-paths[Subdirectories will not have their path shortened]' \
