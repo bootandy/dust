@@ -1,3 +1,4 @@
+use std::cmp::Ordering;
 use std::fs;
 use std::sync::Arc;
 use std::sync::Mutex;
@@ -95,16 +96,20 @@ fn clean_inodes(
 
 fn sort_by_inode(a: &Node, b: &Node) -> std::cmp::Ordering {
     // Sorting by inode is quicker than by sorting by name/size
-    if let Some(x) = a.inode_device {
-        if let Some(y) = b.inode_device {
+    match (a.inode_device, b.inode_device) {
+        (Some(x), Some(y)) => {
             if x.0 != y.0 {
-                return x.0.cmp(&y.0);
+                x.0.cmp(&y.0)
             } else if x.1 != y.1 {
-                return x.1.cmp(&y.1);
+                x.1.cmp(&y.1)
+            } else {
+                a.name.cmp(&b.name)
             }
         }
+        (Some(_), None) => Ordering::Greater,
+        (None, Some(_)) => Ordering::Less,
+        (None, None) => a.name.cmp(&b.name),
     }
-    a.name.cmp(&b.name)
 }
 
 fn ignore_file(entry: &DirEntry, walk_data: &WalkData) -> bool {
@@ -244,6 +249,7 @@ fn walk(dir: PathBuf, walk_data: &WalkData, depth: usize) -> Option<Node> {
 }
 
 mod tests {
+
     #[allow(unused_imports)]
     use super::*;
 
@@ -280,5 +286,42 @@ mod tests {
         // If using apparent size we include Nodes, even if duplicate inodes
         assert_eq!(clean_inodes(n.clone(), &mut inodes, true), Some(n.clone()));
         assert_eq!(clean_inodes(n.clone(), &mut inodes, true), Some(n.clone()));
+    }
+
+    #[test]
+    fn test_total_ordering_of_sort_by_inode() {
+        use std::str::FromStr;
+
+        let a = Node {
+            name: PathBuf::from_str("a").unwrap(),
+            size: 0,
+            children: vec![],
+            inode_device: Some((3, 66310)),
+            depth: 0,
+        };
+
+        let b = Node {
+            name: PathBuf::from_str("b").unwrap(),
+            size: 0,
+            children: vec![],
+            inode_device: None,
+            depth: 0,
+        };
+
+        let c = Node {
+            name: PathBuf::from_str("c").unwrap(),
+            size: 0,
+            children: vec![],
+            inode_device: Some((1, 66310)),
+            depth: 0,
+        };
+
+        assert_eq!(sort_by_inode(&a, &b), Ordering::Greater);
+        assert_eq!(sort_by_inode(&a, &c), Ordering::Greater);
+        assert_eq!(sort_by_inode(&c, &b), Ordering::Greater);
+
+        assert_eq!(sort_by_inode(&b, &a), Ordering::Less);
+        assert_eq!(sort_by_inode(&c, &a), Ordering::Less);
+        assert_eq!(sort_by_inode(&b, &c), Ordering::Less);
     }
 }
