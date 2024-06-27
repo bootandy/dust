@@ -36,9 +36,17 @@ pub struct Config {
     pub threads: Option<usize>,
     pub output_json: Option<bool>,
     pub print_errors: Option<bool>,
+    pub files0_from: Option<String>,
 }
 
 impl Config {
+    pub fn get_files_from(&self, options: &ArgMatches) -> Option<String> {
+        let from_file = options.get_one::<String>("files0_from");
+        match from_file {
+            None => self.files0_from.as_ref().map(|x| x.to_string()),
+            Some(x) => Some(x.to_string()),
+        }
+    }
     pub fn get_no_colors(&self, options: &ArgMatches) -> bool {
         Some(true) == self.no_colors || options.get_flag("no_colors")
     }

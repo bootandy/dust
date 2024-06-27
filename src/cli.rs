@@ -286,4 +286,12 @@ pub fn build_cli() -> Command {
             .value_parser(value_parser!(String))
             .help("just like -mtime, but based on file change time")
         )
+        .arg(
+            Arg::new("files0_from")
+                .long("files0-from")
+                .value_hint(clap::ValueHint::AnyPath)
+                .value_parser(value_parser!(String))
+                .num_args(1)
+                .help("run dust on NUL-terminated file names specified in file; if argument is -, then read names from standard input"),
+        )
 }

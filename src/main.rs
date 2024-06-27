@@ -21,8 +21,11 @@ use regex::Error;
 use std::collections::HashSet;
 use std::env;
 use std::fs::read_to_string;
+use std::io;
 use std::panic;
 use std::process;
+use std::sync::atomic::AtomicBool;
+use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use std::sync::Mutex;
 use sysinfo::{System, SystemExt};
@@ -119,17 +122,49 @@ fn main() {
     let error_listen_for_ctrlc = Arc::new(Mutex::new(errors));
     let errors_for_rayon = error_listen_for_ctrlc.clone();
     let errors_final = error_listen_for_ctrlc.clone();
+    let is_in_listing = Arc::new(AtomicBool::new(false));
+    let cloned_is_in_listing = Arc::clone(&is_in_listing);
 
     ctrlc::set_handler(move || {
         error_listen_for_ctrlc.lock().unwrap().abort = true;
         println!("\nAborting");
+        if cloned_is_in_listing.load(Ordering::Relaxed) {
+            process::exit(1);
+        }
     })
     .expect("Error setting Ctrl-C handler");
 
-    let target_dirs = match options.get_many::<String>("params") {
-        Some(values) => values.map(|v| v.as_str()).collect::<Vec<&str>>(),
-        None => vec!["."],
+    is_in_listing.store(true, Ordering::Relaxed);
+    let target_dirs = match config.get_files_from(&options) {
+        Some(path) => {
+            if path == "-" {
+                let mut targets_to_add = io::stdin()
+                    .lines()
+                    .map_while(Result::ok)
+                    .collect::<Vec<String>>();
+
+                if targets_to_add.is_empty() {
+                    eprintln!("No input provided, defaulting to current directory");
+                    targets_to_add.push(".".to_owned());
+                }
+                targets_to_add
+            } else {
+                // read file
+                match read_to_string(path) {
+                    Ok(file_content) => file_content.lines().map(|x| x.to_string()).collect(),
+                    Err(e) => {
+                        eprintln!("Error reading file: {e}");
+                        vec![".".to_owned()]
+                    }
+                }
+            }
+        }
+        None => match options.get_many::<String>("params") {
+            Some(values) => values.cloned().collect(),
+            None => vec![".".to_owned()],
+        },
     };
+    is_in_listing.store(false, Ordering::Relaxed);
 
     let summarize_file_types = options.get_flag("types");
 
