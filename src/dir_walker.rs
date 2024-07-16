@@ -35,9 +35,9 @@ pub struct WalkData<'a> {
     pub filter_regex: &'a [Regex],
     pub invert_filter_regex: &'a [Regex],
     pub allowed_filesystems: HashSet<u64>,
-    pub filter_modified_time: (Operater, i64),
-    pub filter_accessed_time: (Operater, i64),
-    pub filter_changed_time: (Operater, i64),
+    pub filter_modified_time: Option<(Operater, i64)>,
+    pub filter_accessed_time: Option<(Operater, i64)>,
+    pub filter_changed_time: Option<(Operater, i64)>,
     pub use_apparent_size: bool,
     pub by_filecount: bool,
     pub ignore_hidden: bool,
@@ -116,27 +116,33 @@ fn ignore_file(entry: &DirEntry, walk_data: &WalkData) -> bool {
     let is_dot_file = entry.file_name().to_str().unwrap_or("").starts_with('.');
     let is_ignored_path = walk_data.ignore_directories.contains(&entry.path());
 
-    let size_inode_device = get_metadata(entry.path(), false);
-    if let Some((_size, Some((_id, dev)), (modified_time, accessed_time, changed_time))) =
-        size_inode_device
-    {
-        if !walk_data.allowed_filesystems.is_empty()
-            && !walk_data.allowed_filesystems.contains(&dev)
-        {
-            return true;
+    if !walk_data.allowed_filesystems.is_empty() {
+        let size_inode_device = get_metadata(entry.path(), false);
+        if let Some((_size, Some((_id, dev)), _gunk)) = size_inode_device {
+            if !walk_data.allowed_filesystems.contains(&dev) {
+                return true;
+            }
         }
-        if entry.path().is_file()
-            && [
-                (&walk_data.filter_modified_time, modified_time),
-                (&walk_data.filter_accessed_time, accessed_time),
-                (&walk_data.filter_changed_time, changed_time),
-            ]
-            .iter()
-            .any(|(filter_time, actual_time)| {
-                is_filtered_out_due_to_file_time(filter_time, *actual_time)
-            })
-        {
-            return true;
+    }
+    if walk_data.filter_accessed_time.is_some()
+        || walk_data.filter_modified_time.is_some()
+        || walk_data.filter_changed_time.is_some()
+    {
+        let size_inode_device = get_metadata(entry.path(), false);
+        if let Some((_, _, (modified_time, accessed_time, changed_time))) = size_inode_device {
+            if entry.path().is_file()
+                && [
+                    (&walk_data.filter_modified_time, modified_time),
+                    (&walk_data.filter_accessed_time, accessed_time),
+                    (&walk_data.filter_changed_time, changed_time),
+                ]
+                .iter()
+                .any(|(filter_time, actual_time)| {
+                    is_filtered_out_due_to_file_time(filter_time, *actual_time)
+                })
+            {
+                return true;
+            }
         }
     }
 

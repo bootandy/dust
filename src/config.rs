@@ -145,21 +145,21 @@ impl Config {
         Some(true) == self.output_json || options.get_flag("output_json")
     }
 
-    pub fn get_modified_time_operator(&self, options: &ArgMatches) -> (Operater, i64) {
+    pub fn get_modified_time_operator(&self, options: &ArgMatches) -> Option<(Operater, i64)> {
         get_filter_time_operator(
             options.get_one::<String>("mtime"),
             get_current_date_epoch_seconds(),
         )
     }
 
-    pub fn get_accessed_time_operator(&self, options: &ArgMatches) -> (Operater, i64) {
+    pub fn get_accessed_time_operator(&self, options: &ArgMatches) -> Option<(Operater, i64)> {
         get_filter_time_operator(
             options.get_one::<String>("atime"),
             get_current_date_epoch_seconds(),
         )
     }
 
-    pub fn get_created_time_operator(&self, options: &ArgMatches) -> (Operater, i64) {
+    pub fn get_created_time_operator(&self, options: &ArgMatches) -> Option<(Operater, i64)> {
         get_filter_time_operator(
             options.get_one::<String>("ctime"),
             get_current_date_epoch_seconds(),
@@ -182,7 +182,7 @@ fn get_current_date_epoch_seconds() -> i64 {
 fn get_filter_time_operator(
     option_value: Option<&String>,
     current_date_epoch_seconds: i64,
-) -> (Operater, i64) {
+) -> Option<(Operater, i64)> {
     match option_value {
         Some(val) => {
             let time = current_date_epoch_seconds
@@ -192,12 +192,12 @@ fn get_filter_time_operator(
                     .abs()
                     * DAY_SECONDS;
             match val.chars().next().expect("Value should not be empty") {
-                '+' => (Operater::LessThan, time - DAY_SECONDS),
-                '-' => (Operater::GreaterThan, time),
-                _ => (Operater::Equal, time - DAY_SECONDS),
+                '+' => Some((Operater::LessThan, time - DAY_SECONDS)),
+                '-' => Some((Operater::GreaterThan, time)),
+                _ => Some((Operater::Equal, time - DAY_SECONDS)),
             }
         }
-        None => (Operater::GreaterThan, 0),
+        None => None,
     }
 }
 
