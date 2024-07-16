@@ -65,13 +65,17 @@ pub fn is_filtered_out_due_to_regex(filter_regex: &[Regex], dir: &Path) -> bool 
     }
 }
 
-pub fn is_filtered_out_due_to_file_time(filter_time: &(Operater, i64), actual_time: i64) -> bool {
+pub fn is_filtered_out_due_to_file_time(
+    filter_time: &Option<(Operater, i64)>,
+    actual_time: i64,
+) -> bool {
     match filter_time {
-        (Operater::Equal, bound_time) => {
+        None => false,
+        Some((Operater::Equal, bound_time)) => {
             !(actual_time >= *bound_time && actual_time < *bound_time + DAY_SECONDS)
         }
-        (Operater::GreaterThan, bound_time) => actual_time < *bound_time,
-        (Operater::LessThan, bound_time) => actual_time > *bound_time,
+        Some((Operater::GreaterThan, bound_time)) => actual_time < *bound_time,
+        Some((Operater::LessThan, bound_time)) => actual_time > *bound_time,
     }
 }
 
