@@ -2,7 +2,7 @@ use assert_cmd::Command;
 use std::ffi::OsStr;
 use std::process::Output;
 use std::sync::Once;
-use std::{fs, io, str};
+use std::{io, str};
 
 static INIT: Once = Once::new();
 static UNREADABLE_DIR_PATH: &str = "/tmp/unreadable_dir";
@@ -38,6 +38,7 @@ fn copy_test_data(dir: &str) {
 fn create_unreadable_directory() -> io::Result<()> {
     #[cfg(unix)]
     {
+        use std::fs;
         use std::fs::Permissions;
         use std::os::unix::fs::PermissionsExt;
         fs::create_dir_all(UNREADABLE_DIR_PATH)?;
