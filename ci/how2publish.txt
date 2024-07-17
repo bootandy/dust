@@ -1,16 +1,21 @@
 # ----------- To do a release ---------
+
+# ----------- Pre release ---------
 # Compare times of runs to check no drastic slow down:
 #  hyperfine 'target/release/dust /home/andy'
 #  hyperfine 'dust /home/andy'
 
-# edit version in cargo.toml
+# ----------- Release ---------
+# inc version in cargo.toml
 # cargo build --release
 # commit changed files
+# merge to master in github
+
 # tag a commit and push (increment version in Cargo.toml first):
 #   git tag v0.4.5
 #   git push origin v0.4.5
 
 # cargo publish to put it in crates.io
  
-# To install locally [Do before pushing it]
+# Optional: To install locally
 #cargo install --path .
