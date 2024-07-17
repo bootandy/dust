@@ -114,7 +114,7 @@ fn recursive_rebuilder(allowed_nodes: &HashMap<&Path, &Node>, current: &Node) ->
         .map(|c| recursive_rebuilder(allowed_nodes, c))
         .collect();
 
-    build_node(new_children, current)
+    build_display_node(new_children, current)
 }
 
 // Applies all allowed nodes as children to current node
@@ -127,10 +127,10 @@ fn flat_rebuilder(allowed_nodes: HashMap<&Path, &Node>, current: &Node) -> Displ
             children: vec![],
         })
         .collect::<Vec<DisplayNode>>();
-    build_node(new_children, current)
+    build_display_node(new_children, current)
 }
 
-fn build_node(mut new_children: Vec<DisplayNode>, current: &Node) -> DisplayNode {
+fn build_display_node(mut new_children: Vec<DisplayNode>, current: &Node) -> DisplayNode {
     new_children.sort_by(|lhs, rhs| lhs.cmp(rhs).reverse());
     DisplayNode {
         name: current.name.clone(),
