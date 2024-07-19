@@ -47,6 +47,8 @@ set edit:completion:arg-completer[dust] = {|@words|
             cand -y 'just like -mtime, but based on file change time'
             cand --ctime 'just like -mtime, but based on file change time'
             cand --files0-from 'run dust on NUL-terminated file names specified in file; if argument is -, then read names from standard input'
+            cand -m 'Directory ''size'' is max filetime of child files instead of disk size. while a/c/m for last accessed/changed/modified time'
+            cand --filetime 'Directory ''size'' is max filetime of child files instead of disk size. while a/c/m for last accessed/changed/modified time'
             cand -p 'Subdirectories will not have their path shortened'
             cand --full-paths 'Subdirectories will not have their path shortened'
             cand -L 'dereference sym links - Treat sym links as directories and go into them'

@@ -1,4 +1,5 @@
 use crate::display_node::DisplayNode;
+use crate::node::FileTime;
 use crate::node::Node;
 use std::collections::BinaryHeap;
 use std::collections::HashMap;
@@ -14,7 +15,11 @@ pub struct AggregateData {
     pub using_a_filter: bool,
 }
 
-pub fn get_biggest(top_level_nodes: Vec<Node>, display_data: AggregateData) -> Option<DisplayNode> {
+pub fn get_biggest(
+    top_level_nodes: Vec<Node>,
+    display_data: AggregateData,
+    by_filetime: &Option<FileTime>,
+) -> Option<DisplayNode> {
     if top_level_nodes.is_empty() {
         // perhaps change this, bring back Error object?
         return None;
@@ -24,7 +29,15 @@ pub fn get_biggest(top_level_nodes: Vec<Node>, display_data: AggregateData) -> O
     let root;
 
     if number_top_level_nodes > 1 {
-        let size = top_level_nodes.iter().map(|node| node.size).sum();
+        let size = if by_filetime.is_some() {
+            top_level_nodes
+                .iter()
+                .map(|node| node.size)
+                .max()
+                .unwrap_or(0)
+        } else {
+            top_level_nodes.iter().map(|node| node.size).sum()
+        };
         root = Node {
             name: PathBuf::from("(total)"),
             size,

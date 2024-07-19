@@ -224,6 +224,7 @@ fn main() {
         .collect::<Vec<Regex>>();
 
     let by_filecount = options.get_flag("by_filecount");
+    let by_filetime = config.get_filetime(&options);
     let limit_filesystem = options.get_flag("limit_filesystem");
     let follow_links = options.get_flag("dereference_links");
 
@@ -248,7 +249,7 @@ fn main() {
 
     let filter_modified_time = config.get_modified_time_operator(&options);
     let filter_accessed_time = config.get_accessed_time_operator(&options);
-    let filter_changed_time = config.get_created_time_operator(&options);
+    let filter_changed_time = config.get_changed_time_operator(&options);
 
     let walk_data = WalkData {
         ignore_directories: ignored_full_path,
@@ -260,6 +261,7 @@ fn main() {
         filter_changed_time,
         use_apparent_size: config.get_apparent_size(&options),
         by_filecount,
+        by_filetime: &by_filetime,
         ignore_hidden,
         follow_links,
         progress_data: indicator.data.clone(),
@@ -272,7 +274,7 @@ fn main() {
     let top_level_nodes = walk_it(simplified_dirs, &walk_data);
 
     let tree = match summarize_file_types {
-        true => get_all_file_types(&top_level_nodes, number_of_lines),
+        true => get_all_file_types(&top_level_nodes, number_of_lines, &by_filetime),
         false => {
             let agg_data = AggregateData {
                 min_size: config.get_min_size(&options),
@@ -282,7 +284,7 @@ fn main() {
                 depth,
                 using_a_filter: !filter_regexs.is_empty() || !invert_filter_regexs.is_empty(),
             };
-            get_biggest(top_level_nodes, agg_data)
+            get_biggest(top_level_nodes, agg_data, &by_filetime)
         }
     };
 
@@ -334,6 +336,7 @@ fn main() {
             is_reversed: !config.get_reverse(&options),
             colors_on: is_colors,
             by_filecount,
+            by_filetime,
             is_screen_reader: config.get_screen_reader(&options),
             output_format,
             bars_on_right: config.get_bars_on_right(&options),

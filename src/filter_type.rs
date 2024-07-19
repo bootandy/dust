@@ -1,4 +1,5 @@
 use crate::display_node::DisplayNode;
+use crate::node::FileTime;
 use crate::node::Node;
 use std::collections::HashMap;
 use std::ffi::OsStr;
@@ -10,7 +11,11 @@ struct ExtensionNode<'a> {
     extension: Option<&'a OsStr>,
 }
 
-pub fn get_all_file_types(top_level_nodes: &[Node], n: usize) -> Option<DisplayNode> {
+pub fn get_all_file_types(
+    top_level_nodes: &[Node],
+    n: usize,
+    by_filetime: &Option<FileTime>,
+) -> Option<DisplayNode> {
     let ext_nodes = {
         let mut extension_cumulative_sizes = HashMap::new();
         build_by_all_file_types(top_level_nodes, &mut extension_cumulative_sizes);
@@ -44,16 +49,27 @@ pub fn get_all_file_types(top_level_nodes: &[Node], n: usize) -> Option<DisplayN
 
     // ...then, aggregate the remaining nodes (if any) into a single  "(others)" node
     if ext_nodes_iter.len() > 0 {
+        let actual_size = if by_filetime.is_some() {
+            ext_nodes_iter.map(|node| node.size).max().unwrap_or(0)
+        } else {
+            ext_nodes_iter.map(|node| node.size).sum()
+        };
         displayed.push(DisplayNode {
             name: PathBuf::from("(others)"),
-            size: ext_nodes_iter.map(|node| node.size).sum(),
+            size: actual_size,
             children: vec![],
         });
     }
 
+    let actual_size: u64 = if by_filetime.is_some() {
+        displayed.iter().map(|node| node.size).max().unwrap_or(0)
+    } else {
+        displayed.iter().map(|node| node.size).sum()
+    };
+
     let result = DisplayNode {
         name: PathBuf::from("(total)"),
-        size: displayed.iter().map(|node| node.size).sum(),
+        size: actual_size,
         children: displayed,
     };
 

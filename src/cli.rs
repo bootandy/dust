@@ -294,4 +294,16 @@ pub fn build_cli() -> Command {
                 .num_args(1)
                 .help("run dust on NUL-terminated file names specified in file; if argument is -, then read names from standard input"),
         )
+        .arg(
+            Arg::new("filetime")
+                .short('m')
+                .long("filetime")
+                .num_args(1)
+                .value_parser([
+                    PossibleValue::new("a").alias("accessed"),
+                    PossibleValue::new("c").alias("changed"),
+                    PossibleValue::new("m").alias("modified"),
+                ])
+                .help("Directory 'size' is max filetime of child files instead of disk size. while a/c/m for last accessed/changed/modified time"),
+        )
 }

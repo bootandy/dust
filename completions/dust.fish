@@ -13,6 +13,7 @@ complete -c dust -s M -l mtime -d '+/-n matches files modified more/less than n 
 complete -c dust -s A -l atime -d 'just like -mtime, but based on file access time' -r
 complete -c dust -s y -l ctime -d 'just like -mtime, but based on file change time' -r
 complete -c dust -l files0-from -d 'run dust on NUL-terminated file names specified in file; if argument is -, then read names from standard input' -r -F
+complete -c dust -s m -l filetime -d 'Directory \'size\' is max filetime of child files instead of disk size. while a/c/m for last accessed/changed/modified time' -r -f -a "{a	'',c	'',m	''}"
 complete -c dust -s p -l full-paths -d 'Subdirectories will not have their path shortened'
 complete -c dust -s L -l dereference-links -d 'dereference sym links - Treat sym links as directories and go into them'
 complete -c dust -s x -l limit-filesystem -d 'Only count the files and directories on the same filesystem as the supplied directory'

@@ -1,3 +1,4 @@
+use crate::node::FileTime;
 use chrono::{Local, TimeZone};
 use clap::ArgMatches;
 use config_file::FromConfigFile;
@@ -84,6 +85,20 @@ impl Config {
         })
         .to_lowercase()
     }
+
+    pub fn get_filetime(&self, options: &ArgMatches) -> Option<FileTime> {
+        let out_fmt = options.get_one::<String>("filetime");
+        match out_fmt {
+            None => None,
+            Some(x) => match x.as_str() {
+                "m" | "modified" => Some(FileTime::Modified),
+                "a" | "accessed" => Some(FileTime::Accessed),
+                "c" | "changed" => Some(FileTime::Changed),
+                _ => unreachable!(),
+            },
+        }
+    }
+
     pub fn get_skip_total(&self, options: &ArgMatches) -> bool {
         Some(true) == self.skip_total || options.get_flag("skip_total")
     }
@@ -159,7 +174,7 @@ impl Config {
         )
     }
 
-    pub fn get_created_time_operator(&self, options: &ArgMatches) -> Option<(Operater, i64)> {
+    pub fn get_changed_time_operator(&self, options: &ArgMatches) -> Option<(Operater, i64)> {
         get_filter_time_operator(
             options.get_one::<String>("ctime"),
             get_current_date_epoch_seconds(),
@@ -259,6 +274,7 @@ mod tests {
     #[allow(unused_imports)]
     use super::*;
     use chrono::{Datelike, Timelike};
+    use clap::builder::PossibleValue;
     use clap::{value_parser, Arg, ArgMatches, Command};
 
     #[test]
@@ -336,6 +352,58 @@ mod tests {
                     .num_args(1)
                     .value_parser(value_parser!(usize)),
             )
+            .get_matches_from(args)
+    }
+
+    #[test]
+    fn test_get_filetime() {
+        // No config and no flag.
+        let c = Config::default();
+        let args = get_filetime_args(vec!["dust"]);
+        assert_eq!(c.get_filetime(&args), None);
+
+        // Config is not defined and flag is defined as access time
+        let c = Config::default();
+        let args = get_filetime_args(vec!["dust", "--filetime", "a"]);
+        assert_eq!(c.get_filetime(&args), Some(FileTime::Accessed));
+
+        let c = Config::default();
+        let args = get_filetime_args(vec!["dust", "--filetime", "accessed"]);
+        assert_eq!(c.get_filetime(&args), Some(FileTime::Accessed));
+
+        // Config is not defined and flag is defined as modified time
+        let c = Config::default();
+        let args = get_filetime_args(vec!["dust", "--filetime", "m"]);
+        assert_eq!(c.get_filetime(&args), Some(FileTime::Modified));
+
+        let c = Config::default();
+        let args = get_filetime_args(vec!["dust", "--filetime", "modified"]);
+        assert_eq!(c.get_filetime(&args), Some(FileTime::Modified));
+
+        // Config is not defined and flag is defined as changed time
+        let c = Config::default();
+        let args = get_filetime_args(vec!["dust", "--filetime", "c"]);
+        assert_eq!(c.get_filetime(&args), Some(FileTime::Changed));
+
+        let c = Config::default();
+        let args = get_filetime_args(vec!["dust", "--filetime", "changed"]);
+        assert_eq!(c.get_filetime(&args), Some(FileTime::Changed));
+    }
+
+    fn get_filetime_args(args: Vec<&str>) -> ArgMatches {
+        Command::new("Dust")
+        .arg(
+            Arg::new("filetime")
+                .short('m')
+                .long("filetime")
+                .num_args(1)
+                .value_parser([
+                    PossibleValue::new("a").alias("accessed"),
+                    PossibleValue::new("c").alias("changed"),
+                    PossibleValue::new("m").alias("modified"),
+                ])
+                .help("Directory 'size' is max filetime of child files instead of disk size. while a/c/m for accessed/changed/modified time"),
+        )
             .get_matches_from(args)
     }
 }

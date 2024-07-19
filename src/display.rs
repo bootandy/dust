@@ -1,4 +1,5 @@
 use crate::display_node::DisplayNode;
+use crate::node::FileTime;
 
 use ansi_term::Colour::Red;
 use lscolors::{LsColors, Style};
@@ -7,6 +8,7 @@ use unicode_width::UnicodeWidthStr;
 
 use stfu8::encode_u8;
 
+use chrono::{DateTime, Local, TimeZone, Utc};
 use std::cmp::max;
 use std::cmp::min;
 use std::fs;
@@ -16,12 +18,14 @@ use thousands::Separable;
 
 pub static UNITS: [char; 4] = ['T', 'G', 'M', 'K'];
 static BLOCKS: [char; 5] = ['█', '▓', '▒', '░', ' '];
+const FILETIME_SHOW_LENGTH: usize = 19;
 
 pub struct InitialDisplayData {
     pub short_paths: bool,
     pub is_reversed: bool,
     pub colors_on: bool,
     pub by_filecount: bool,
+    pub by_filetime: Option<FileTime>,
     pub is_screen_reader: bool,
     pub output_format: String,
     pub bars_on_right: bool,
@@ -141,6 +145,8 @@ pub fn draw_it(
     let num_chars_needed_on_left_most = if idd.by_filecount {
         let max_size = biggest.size;
         max_size.separate_with_commas().chars().count()
+    } else if idd.by_filetime.is_some() {
+        FILETIME_SHOW_LENGTH
     } else {
         find_biggest_size_str(root_node, &idd.output_format)
     };
@@ -342,6 +348,8 @@ pub fn format_string(
     if display_data.initial.is_screen_reader {
         // if screen_reader then bars is 'depth'
         format!("{pretty_name} {bars} {pretty_size}{percent}")
+    } else if display_data.initial.by_filetime.is_some() {
+        format!("{pretty_size} {indent}{pretty_name}")
     } else {
         format!("{pretty_size} {indent} {pretty_name}{percent}")
     }
@@ -376,6 +384,8 @@ fn get_name_percent(
 fn get_pretty_size(node: &DisplayNode, is_biggest: bool, display_data: &DisplayData) -> String {
     let output = if display_data.initial.by_filecount {
         node.size.separate_with_commas()
+    } else if display_data.initial.by_filetime.is_some() {
+        get_pretty_file_modified_time(node.size as i64)
     } else {
         human_readable_number(node.size, &display_data.initial.output_format)
     };
@@ -387,6 +397,14 @@ fn get_pretty_size(node: &DisplayNode, is_biggest: bool, display_data: &DisplayD
     } else {
         output
     }
+}
+
+fn get_pretty_file_modified_time(timestamp: i64) -> String {
+    let datetime: DateTime<Utc> = Utc.timestamp_opt(timestamp, 0).unwrap();
+
+    let local_datetime = datetime.with_timezone(&Local);
+
+    local_datetime.format("%Y-%m-%dT%H:%M:%S").to_string()
 }
 
 fn get_pretty_name(
@@ -469,6 +487,7 @@ mod tests {
             is_reversed: false,
             colors_on: false,
             by_filecount: false,
+            by_filetime: None,
             is_screen_reader: false,
             output_format: "".into(),
             bars_on_right: false,
@@ -624,5 +643,38 @@ mod tests {
         assert_eq!(bar, "████▓▓▓▓▓▓▓▓▓");
         let bar = dd.generate_bar(&n, 5);
         assert_eq!(bar, "████▓▓▓▓▓▓▓▓▓");
+    }
+
+    #[test]
+    fn test_get_pretty_file_modified_time() {
+        // Create a timestamp for 2023-07-12 00:00:00 in local time
+        let local_dt = Local.with_ymd_and_hms(2023, 7, 12, 0, 0, 0).unwrap();
+        let timestamp = local_dt.timestamp();
+
+        // Format expected output
+        let expected_output = local_dt.format("%Y-%m-%dT%H:%M:%S").to_string();
+
+        assert_eq!(get_pretty_file_modified_time(timestamp), expected_output);
+
+        // Test another timestamp
+        let local_dt = Local.with_ymd_and_hms(2020, 1, 1, 12, 0, 0).unwrap();
+        let timestamp = local_dt.timestamp();
+        let expected_output = local_dt.format("%Y-%m-%dT%H:%M:%S").to_string();
+
+        assert_eq!(get_pretty_file_modified_time(timestamp), expected_output);
+
+        // Test timestamp for epoch start (1970-01-01T00:00:00)
+        let local_dt = Local.with_ymd_and_hms(1970, 1, 1, 0, 0, 0).unwrap();
+        let timestamp = local_dt.timestamp();
+        let expected_output = local_dt.format("%Y-%m-%dT%H:%M:%S").to_string();
+
+        assert_eq!(get_pretty_file_modified_time(timestamp), expected_output);
+
+        // Test a future timestamp
+        let local_dt = Local.with_ymd_and_hms(2030, 12, 25, 6, 30, 0).unwrap();
+        let timestamp = local_dt.timestamp();
+        let expected_output = local_dt.format("%Y-%m-%dT%H:%M:%S").to_string();
+
+        assert_eq!(get_pretty_file_modified_time(timestamp), expected_output);
     }
 }
