@@ -16,6 +16,13 @@ pub struct Node {
     pub depth: usize,
 }
 
+#[derive(Debug, PartialEq)]
+pub enum FileTime {
+    Modified,
+    Accessed,
+    Changed,
+}
+
 #[allow(clippy::too_many_arguments)]
 pub fn build_node(
     dir: PathBuf,
@@ -27,6 +34,7 @@ pub fn build_node(
 ) -> Option<Node> {
     let use_apparent_size = walk_data.use_apparent_size;
     let by_filecount = walk_data.by_filecount;
+    let by_filetime = &walk_data.by_filetime;
 
     get_metadata(
         &dir,
@@ -51,6 +59,13 @@ pub fn build_node(
             0
         } else if by_filecount {
             1
+        } else if by_filetime.is_some() {
+            match by_filetime {
+                Some(FileTime::Modified) => data.2 .0.unsigned_abs(),
+                Some(FileTime::Accessed) => data.2 .1.unsigned_abs(),
+                Some(FileTime::Changed) => data.2 .2.unsigned_abs(),
+                None => unreachable!(),
+            }
         } else {
             data.0
         };

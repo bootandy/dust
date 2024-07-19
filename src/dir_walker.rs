@@ -21,6 +21,7 @@ use std::collections::HashSet;
 use crate::node::build_node;
 use std::fs::DirEntry;
 
+use crate::node::FileTime;
 use crate::platform::get_metadata;
 
 #[derive(Debug)]
@@ -40,6 +41,7 @@ pub struct WalkData<'a> {
     pub filter_changed_time: Option<(Operater, i64)>,
     pub use_apparent_size: bool,
     pub by_filecount: bool,
+    pub by_filetime: &'a Option<FileTime>,
     pub ignore_hidden: bool,
     pub follow_links: bool,
     pub progress_data: Arc<PAtomicInfo>,
@@ -57,19 +59,15 @@ pub fn walk_it(dirs: HashSet<PathBuf>, walk_data: &WalkData) -> Vec<Node> {
 
             prog_data.state.store(Operation::PREPARING, ORDERING);
 
-            clean_inodes(node, &mut inodes, walk_data.use_apparent_size)
+            clean_inodes(node, &mut inodes, walk_data)
         })
         .collect();
     top_level_nodes
 }
 
 // Remove files which have the same inode, we don't want to double count them.
-fn clean_inodes(
-    x: Node,
-    inodes: &mut HashSet<(u64, u64)>,
-    use_apparent_size: bool,
-) -> Option<Node> {
-    if !use_apparent_size {
+fn clean_inodes(x: Node, inodes: &mut HashSet<(u64, u64)>, walk_data: &WalkData) -> Option<Node> {
+    if !walk_data.use_apparent_size {
         if let Some(id) = x.inode_device {
             if !inodes.insert(id) {
                 return None;
@@ -82,12 +80,25 @@ fn clean_inodes(
     tmp.sort_by(sort_by_inode);
     let new_children: Vec<_> = tmp
         .into_iter()
-        .filter_map(|c| clean_inodes(c, inodes, use_apparent_size))
+        .filter_map(|c| clean_inodes(c, inodes, walk_data))
         .collect();
+
+    let actual_size = if walk_data.by_filetime.is_some() {
+        // If by_filetime is Some, directory 'size' is the maximum filetime among child files instead of disk size
+        new_children
+            .iter()
+            .map(|c| c.size)
+            .chain(std::iter::once(x.size))
+            .max()
+            .unwrap_or(0)
+    } else {
+        // If by_filetime is None, directory 'size' is the sum of disk sizes or file counts of child files
+        x.size + new_children.iter().map(|c| c.size).sum::<u64>()
+    };
 
     Some(Node {
         name: x.name,
-        size: x.size + new_children.iter().map(|c| c.size).sum::<u64>(),
+        size: actual_size,
         children: new_children,
         inode_device: x.inode_device,
         depth: x.depth,
@@ -280,17 +291,43 @@ mod tests {
         }
     }
 
+    #[cfg(test)]
+    fn create_walker<'a>(use_apparent_size: bool) -> WalkData<'a> {
+        use crate::PIndicator;
+        let indicator = PIndicator::build_me();
+        WalkData {
+            ignore_directories: HashSet::new(),
+            filter_regex: &[],
+            invert_filter_regex: &[],
+            allowed_filesystems: HashSet::new(),
+            filter_modified_time: Some((Operater::GreaterThan, 0)),
+            filter_accessed_time: Some((Operater::GreaterThan, 0)),
+            filter_changed_time: Some((Operater::GreaterThan, 0)),
+            use_apparent_size,
+            by_filecount: false,
+            by_filetime: &None,
+            ignore_hidden: false,
+            follow_links: false,
+            progress_data: indicator.data.clone(),
+            errors: Arc::new(Mutex::new(RuntimeErrors::default())),
+        }
+    }
+
     #[test]
     #[allow(clippy::redundant_clone)]
     fn test_should_ignore_file() {
         let mut inodes = HashSet::new();
         let n = create_node();
+        let walkdata = create_walker(false);
 
         // First time we insert the node
-        assert_eq!(clean_inodes(n.clone(), &mut inodes, false), Some(n.clone()));
+        assert_eq!(
+            clean_inodes(n.clone(), &mut inodes, &walkdata),
+            Some(n.clone())
+        );
 
         // Second time is a duplicate - we ignore it
-        assert_eq!(clean_inodes(n.clone(), &mut inodes, false), None);
+        assert_eq!(clean_inodes(n.clone(), &mut inodes, &walkdata), None);
     }
 
     #[test]
@@ -298,10 +335,17 @@ mod tests {
     fn test_should_not_ignore_files_if_using_apparent_size() {
         let mut inodes = HashSet::new();
         let n = create_node();
+        let walkdata = create_walker(true);
 
         // If using apparent size we include Nodes, even if duplicate inodes
-        assert_eq!(clean_inodes(n.clone(), &mut inodes, true), Some(n.clone()));
-        assert_eq!(clean_inodes(n.clone(), &mut inodes, true), Some(n.clone()));
+        assert_eq!(
+            clean_inodes(n.clone(), &mut inodes, &walkdata),
+            Some(n.clone())
+        );
+        assert_eq!(
+            clean_inodes(n.clone(), &mut inodes, &walkdata),
+            Some(n.clone())
+        );
     }
 
     #[test]
