@@ -28,16 +28,16 @@ pub fn build_node(
     let use_apparent_size = walk_data.use_apparent_size;
     let by_filecount = walk_data.by_filecount;
 
-    get_metadata(&dir, use_apparent_size).map(|data| {
-        let inode_device = if is_symlink && !use_apparent_size {
-            None
-        } else {
-            data.1
-        };
+    get_metadata(
+        &dir,
+        use_apparent_size,
+        walk_data.follow_links && is_symlink,
+    )
+    .map(|data| {
+        let inode_device = data.1;
 
         let size = if is_filtered_out_due_to_regex(walk_data.filter_regex, &dir)
             || is_filtered_out_due_to_invert_regex(walk_data.invert_filter_regex, &dir)
-            || (is_symlink && !use_apparent_size)
             || by_filecount && !is_file
             || [
                 (&walk_data.filter_modified_time, data.2 .0),

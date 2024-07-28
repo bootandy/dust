@@ -115,9 +115,11 @@ fn sort_by_inode(a: &Node, b: &Node) -> std::cmp::Ordering {
 fn ignore_file(entry: &DirEntry, walk_data: &WalkData) -> bool {
     let is_dot_file = entry.file_name().to_str().unwrap_or("").starts_with('.');
     let is_ignored_path = walk_data.ignore_directories.contains(&entry.path());
+    let follow_links =
+        walk_data.follow_links && entry.file_type().map_or(false, |ft| ft.is_symlink());
 
     if !walk_data.allowed_filesystems.is_empty() {
-        let size_inode_device = get_metadata(entry.path(), false);
+        let size_inode_device = get_metadata(entry.path(), false, follow_links);
         if let Some((_size, Some((_id, dev)), _gunk)) = size_inode_device {
             if !walk_data.allowed_filesystems.contains(&dev) {
                 return true;
@@ -128,7 +130,7 @@ fn ignore_file(entry: &DirEntry, walk_data: &WalkData) -> bool {
         || walk_data.filter_modified_time.is_some()
         || walk_data.filter_changed_time.is_some()
     {
-        let size_inode_device = get_metadata(entry.path(), false);
+        let size_inode_device = get_metadata(entry.path(), false, follow_links);
         if let Some((_, _, (modified_time, accessed_time, changed_time))) = size_inode_device {
             if entry.path().is_file()
                 && [
@@ -251,7 +253,15 @@ fn walk(dir: PathBuf, walk_data: &WalkData, depth: usize) -> Option<Node> {
         }
         vec![]
     };
-    build_node(dir, children, false, false, depth, walk_data)
+    let is_symlink = if walk_data.follow_links {
+        match fs::symlink_metadata(&dir) {
+            Ok(metadata) => metadata.file_type().is_symlink(),
+            Err(_) => false,
+        }
+    } else {
+        false
+    };
+    build_node(dir, children, is_symlink, false, depth, walk_data)
 }
 
 mod tests {
