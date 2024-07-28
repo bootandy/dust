@@ -17,9 +17,15 @@ type FileTime = (i64, i64, i64);
 pub fn get_metadata<P: AsRef<Path>>(
     path: P,
     use_apparent_size: bool,
+    follow_links: bool,
 ) -> Option<(u64, Option<InodeAndDevice>, FileTime)> {
     use std::os::unix::fs::MetadataExt;
-    match path.as_ref().metadata() {
+    let metadata = if follow_links {
+        path.as_ref().metadata()
+    } else {
+        path.as_ref().symlink_metadata()
+    };
+    match metadata {
         Ok(md) => {
             if use_apparent_size {
                 Some((
@@ -43,6 +49,7 @@ pub fn get_metadata<P: AsRef<Path>>(
 pub fn get_metadata<P: AsRef<Path>>(
     path: P,
     use_apparent_size: bool,
+    follow_links: bool,
 ) -> Option<(u64, Option<InodeAndDevice>, FileTime)> {
     // On windows opening the file to get size, file ID and volume can be very
     // expensive because 1) it causes a few system calls, and more importantly 2) it can cause
@@ -142,7 +149,12 @@ pub fn get_metadata<P: AsRef<Path>>(
 
     use std::os::windows::fs::MetadataExt;
     let path = path.as_ref();
-    match path.metadata() {
+    let metadata = if follow_links {
+        path.metadata()
+    } else {
+        path.symlink_metadata()
+    };
+    match metadata {
         Ok(ref md) => {
             const FILE_ATTRIBUTE_ARCHIVE: u32 = 0x20;
             const FILE_ATTRIBUTE_READONLY: u32 = 0x01;

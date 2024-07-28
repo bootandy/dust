@@ -34,13 +34,25 @@ pub fn simplify_dir_names<P: AsRef<Path>>(dirs: &[P]) -> HashSet<PathBuf> {
     top_level_names
 }
 
-pub fn get_filesystem_devices<P: AsRef<Path>>(paths: &[P]) -> HashSet<u64> {
+pub fn get_filesystem_devices<P: AsRef<Path>>(paths: &[P], follow_links: bool) -> HashSet<u64> {
+    use std::fs;
     // Gets the device ids for the filesystems which are used by the argument paths
     paths
         .iter()
-        .filter_map(|p| match get_metadata(p, false) {
-            Some((_size, Some((_id, dev)), _time)) => Some(dev),
-            _ => None,
+        .filter_map(|p| {
+            let follow_links = if follow_links {
+                // slow path: If dereference-links is set, then we check if the file is a symbolic link
+                match fs::symlink_metadata(p) {
+                    Ok(metadata) => metadata.file_type().is_symlink(),
+                    Err(_) => false,
+                }
+            } else {
+                false
+            };
+            match get_metadata(p, false, follow_links) {
+                Some((_size, Some((_id, dev)), _time)) => Some(dev),
+                _ => None,
+            }
         })
         .collect()
 }
