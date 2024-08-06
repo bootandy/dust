@@ -3,13 +3,18 @@ use std::{
     io::Write,
     path::Path,
     sync::{
-        atomic::{AtomicU64, AtomicU8, AtomicUsize, Ordering},
+        atomic::{AtomicU8, AtomicUsize, Ordering},
         mpsc::{self, RecvTimeoutError, Sender},
         Arc, RwLock,
     },
     thread::JoinHandle,
     time::Duration,
 };
+
+#[cfg(not(target_has_atomic = "64"))]
+use portable_atomic::AtomicU64;
+#[cfg(target_has_atomic = "64")]
+use std::sync::atomic::AtomicU64;
 
 use crate::display::human_readable_number;
 
