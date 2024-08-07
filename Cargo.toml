@@ -44,6 +44,9 @@ sysinfo = "0.27"
 ctrlc = "3.4"
 chrono = "0.4"
 
+[target.'cfg(not(target_has_atomic = "64"))'.dependencies]
+portable-atomic = "1.4"
+
 [target.'cfg(windows)'.dependencies]
 winapi-util = "0.1"
 filesize = "0.2.0"
