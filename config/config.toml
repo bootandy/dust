@@ -25,4 +25,4 @@ skip-total=true
 ignore-hidden=true
 
 # print sizes in powers of 1000 (e.g., 1.1G)
-iso=true
+output-format="si"
