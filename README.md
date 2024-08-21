@@ -27,6 +27,10 @@ Because I want an easy way to see where my disk is being used.
 
 - `brew install dust`
 
+#### [Snap](https://ubuntu.com/core/services/guide/snaps-intro) Ubuntu and [supported systems](https://snapcraft.io/docs/installing-snapd)
+
+- `snap install dust`
+
 #### [Pacstall](https://github.com/pacstall/pacstall) (Debian/Ubuntu)
 
 - `pacstall -I dust-bin`
