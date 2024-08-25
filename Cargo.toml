@@ -86,6 +86,16 @@ assets = [
     "usr/share/doc/du-dust/README",
     "644",
   ],
+  [
+    "man-page/dust.1",
+    "usr/share/man/man1/dust.1",
+    "644",
+  ],
+  [
+    "completions/dust.bash",
+    "usr/share/bash-completion/completions/dust",
+    "644",
+  ],
 ]
 extended-description = """\
 Dust is meant to give you an instant overview of which directories are using
