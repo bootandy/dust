@@ -81,23 +81,19 @@ fn should_init_color(no_color: bool, force_color: bool) -> bool {
 }
 
 fn get_height_of_terminal() -> usize {
-    // Simplify once https://github.com/eminence/terminal-size/pull/41 is
-    // merged
     terminal_size()
         // Windows CI runners detect a terminal height of 0
-        .map(|(_, Height(h))| max(h as usize, DEFAULT_NUMBER_OF_LINES))
+        .map(|(_, Height(h))| max(h.into(), DEFAULT_NUMBER_OF_LINES))
         .unwrap_or(DEFAULT_NUMBER_OF_LINES)
         - 10
 }
 
 fn get_width_of_terminal() -> usize {
-    // Simplify once https://github.com/eminence/terminal-size/pull/41 is
-    // merged
     terminal_size()
         .map(|(Width(w), _)| match cfg!(windows) {
             // Windows CI runners detect a very low terminal width
-            true => max(w as usize, DEFAULT_TERMINAL_WIDTH),
-            false => w as usize,
+            true => max(w.into(), DEFAULT_TERMINAL_WIDTH),
+            false => w.into(),
         })
         .unwrap_or(DEFAULT_TERMINAL_WIDTH)
 }
