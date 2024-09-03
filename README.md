@@ -35,13 +35,17 @@ Because I want an easy way to see where my disk is being used.
 
 - `pacstall -I dust-bin`
 
-### Anaconda (conda-forge)
+#### Anaconda (conda-forge)
 
 - `conda install -c conda-forge dust`
 
 #### [deb-get](https://github.com/wimpysworld/deb-get) (Debian/Ubuntu)
 
 - `deb-get install du-dust`
+
+#### [x-cmd](https://www.x-cmd.com/pkg/#VPContent)
+
+- `x env use dust`
 
 #### Windows:
 
