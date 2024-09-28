@@ -47,11 +47,14 @@ Because I want an easy way to see where my disk is being used.
 
 - `x env use dust`
 
-#### Windows:
+#### [Scoop](https://scoop.sh/) (Windows)
 
 - `scoop install dust`
-- Windows GNU version - works
 - Windows MSVC - requires: [VCRUNTIME140.dll](https://docs.microsoft.com/en-gb/cpp/windows/latest-supported-vc-redist?view=msvc-170)
+  
+#### [WinGet](https://github.com/microsoft/winget-cli) (Windows)
+
+- `winget install bootandy.dust`
 
 #### Download
 
