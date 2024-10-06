@@ -31,6 +31,8 @@ Because I want an easy way to see where my disk is being used.
 
 - `snap install dust`
 
+Note: `dust` installed through `snap` can only access files stored in the `/home` directory. See daniejstriata/dust-snap#2 for more information.
+
 #### [Pacstall](https://github.com/pacstall/pacstall) (Debian/Ubuntu)
 
 - `pacstall -I dust-bin`
