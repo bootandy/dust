@@ -2,6 +2,7 @@ use std::cmp::Ordering;
 use std::fs;
 use std::fs::Metadata;
 use std::os::linux::fs::MetadataExt;
+use std::path;
 use std::sync::Arc;
 use std::sync::Mutex;
 
@@ -118,22 +119,20 @@ pub fn walk_it(dirs: HashSet<PathBuf>, walk_data: &WalkData) -> Vec<Node> {
         // we try to insert deleted files in the node tree
         for (path, m) in &deleted_files {
             for mut top_level_node in &mut top_level_nodes {
-                // deleted files are always absolute, need to canonicalize the node tree
-                let absolute_path = top_level_node.name.canonicalize().unwrap();
-                if path.starts_with(absolute_path.components().next().unwrap()) {
-                    let inserted = insert_deleted_file_in_node(
+                // deleted files are always absolute, but not the files in the node tree
+                let absolute_path = path::absolute(&top_level_node.name).unwrap();
+                if path.starts_with(&absolute_path) {
+                    insert_deleted_file_in_node_tree(
                         path.clone(),
                         m,
                         &mut top_level_node,
                         &walk_data,
                         0,
                     );
-
-                    if !inserted {
-                        println!("Couldn't insert {:?}", &path);
-                    }
                 }
             }
+
+            // Ignoring deleted file {:?} not child of any top_level_nodes
         }
     }
 
@@ -142,23 +141,28 @@ pub fn walk_it(dirs: HashSet<PathBuf>, walk_data: &WalkData) -> Vec<Node> {
 
 /// try to insert `path` in `root`, or its children
 /// `path` is absolute
-fn insert_deleted_file_in_node(
+fn insert_deleted_file_in_node_tree(
     path: PathBuf,
     m: &Metadata,
     root: &mut Node,
     walk_data: &WalkData,
     depth: usize,
-) -> bool {
-    if path.parent().unwrap() == &root.name.canonicalize().unwrap() {
-        // we found the node that represents the parent dir
-        // TODO: filecount, filetime, regex...
-        let size = if walk_data.use_apparent_size {
-            m.st_size()
-        } else {
-            m.st_blocks() * 512
-        };
+) {
+    // TODO: filecount, filetime, regex...
+    let size = if walk_data.use_apparent_size {
+        m.st_size()
+    } else {
+        m.st_blocks() * 512
+    };
 
-        root.size += size;
+    root.size += size;
+
+    if path
+        .parent()
+        .expect("path of deleted file return by kernel always has a parent")
+        == path::absolute(&root.name).unwrap()
+    {
+        // we found the node that represents the parent dir, create the deleted file as a new file
 
         let node = Node {
             name: path.clone(),
@@ -169,17 +173,44 @@ fn insert_deleted_file_in_node(
         };
 
         root.children.push(node);
-        println!("inserted {:?} in {:?}", path, root.name);
-
-        return true;
+        return;
     }
 
+    // try to find the folder were the deleted file was
     for child in &mut root.children {
-        if path.starts_with(&child.name.canonicalize().unwrap()) {
-            return insert_deleted_file_in_node(path, m, child, &walk_data, depth + 1);
+        if path.starts_with(path::absolute(&child.name).unwrap()) {
+            insert_deleted_file_in_node_tree(path, m, child, &walk_data, depth + 1);
+            return;
         }
     }
-    return false;
+
+    // can't find a child to insert the file, we need to create a new folder
+    // a bit messy because we need to convert to/from absolute paths
+    let dir_name = path
+        .strip_prefix(path::absolute(&root.name).unwrap())
+        .unwrap()
+        .components()
+        .next()
+        .unwrap();
+    let absolute_dir_name = path::absolute(&root.name).unwrap().join(dir_name);
+
+    let new_folder = Node {
+        name: absolute_dir_name,
+        size: 0,
+        children: vec![],
+        inode_device: root.inode_device.map(|(_inode, device)| (0, device)), // keep the device, if we want to filter by device
+        depth: depth + 1,
+    };
+
+    root.children.push(new_folder);
+
+    insert_deleted_file_in_node_tree(
+        path,
+        m,
+        root.children.last_mut().unwrap(),
+        &walk_data,
+        depth + 1,
+    );
 }
 
 // Remove files which have the same inode, we don't want to double count them.
