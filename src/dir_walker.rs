@@ -121,13 +121,17 @@ pub fn walk_it(dirs: HashSet<PathBuf>, walk_data: &WalkData) -> Vec<Node> {
                 // deleted files are always absolute, need to canonicalize the node tree
                 let absolute_path = top_level_node.name.canonicalize().unwrap();
                 if path.starts_with(absolute_path.components().next().unwrap()) {
-                    insert_deleted_file_in_node(
+                    let inserted = insert_deleted_file_in_node(
                         path.clone(),
                         m,
                         &mut top_level_node,
                         &walk_data,
                         0,
                     );
+
+                    if !inserted {
+                        println!("Couldn't insert {:?}", &path);
+                    }
                 }
             }
         }
@@ -136,6 +140,8 @@ pub fn walk_it(dirs: HashSet<PathBuf>, walk_data: &WalkData) -> Vec<Node> {
     top_level_nodes
 }
 
+/// try to insert `path` in `root`, or its children
+/// `path` is absolute
 fn insert_deleted_file_in_node(
     path: PathBuf,
     m: &Metadata,
@@ -143,7 +149,7 @@ fn insert_deleted_file_in_node(
     walk_data: &WalkData,
     depth: usize,
 ) -> bool {
-    if path.parent().unwrap() == root.name {
+    if path.parent().unwrap() == &root.name.canonicalize().unwrap() {
         // we found the node that represents the parent dir
         // TODO: filecount, filetime, regex...
         let size = if walk_data.use_apparent_size {
@@ -169,11 +175,10 @@ fn insert_deleted_file_in_node(
     }
 
     for child in &mut root.children {
-        if path.starts_with(&child.name) {
+        if path.starts_with(&child.name.canonicalize().unwrap()) {
             return insert_deleted_file_in_node(path, m, child, &walk_data, depth + 1);
         }
     }
-
     return false;
 }
 
