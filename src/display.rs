@@ -16,7 +16,7 @@ use std::iter::repeat;
 use std::path::Path;
 use thousands::Separable;
 
-pub static UNITS: [char; 4] = ['T', 'G', 'M', 'K'];
+pub static UNITS: [char; 5] = ['P', 'T', 'G', 'M', 'K'];
 static BLOCKS: [char; 5] = ['█', '▓', '▒', '░', ' '];
 const FILETIME_SHOW_LENGTH: usize = 19;
 
@@ -566,6 +566,8 @@ mod tests {
         assert_eq!(human_readable_number(1024 * 1024 * 1024 - 1, ""), "1023M");
         assert_eq!(human_readable_number(1024 * 1024 * 1024 * 20, ""), "20G");
         assert_eq!(human_readable_number(1024 * 1024 * 1024 * 1024, ""), "1.0T");
+        assert_eq!(human_readable_number(1024 * 1024 * 1024 * 1024 * 234, ""), "234T");
+        assert_eq!(human_readable_number(1024 * 1024 * 1024 * 1024 * 1024, ""), "1.0P");
     }
 
     #[test]
