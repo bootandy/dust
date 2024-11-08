@@ -566,8 +566,14 @@ mod tests {
         assert_eq!(human_readable_number(1024 * 1024 * 1024 - 1, ""), "1023M");
         assert_eq!(human_readable_number(1024 * 1024 * 1024 * 20, ""), "20G");
         assert_eq!(human_readable_number(1024 * 1024 * 1024 * 1024, ""), "1.0T");
-        assert_eq!(human_readable_number(1024 * 1024 * 1024 * 1024 * 234, ""), "234T");
-        assert_eq!(human_readable_number(1024 * 1024 * 1024 * 1024 * 1024, ""), "1.0P");
+        assert_eq!(
+            human_readable_number(1024 * 1024 * 1024 * 1024 * 234, ""),
+            "234T"
+        );
+        assert_eq!(
+            human_readable_number(1024 * 1024 * 1024 * 1024 * 1024, ""),
+            "1.0P"
+        );
     }
 
     #[test]
