@@ -1,9 +1,13 @@
 use std::cmp::Ordering;
 use std::fs;
+use std::fs::Metadata;
+use std::os::linux::fs::MetadataExt;
+use std::path;
 use std::sync::Arc;
 use std::sync::Mutex;
 
 use crate::node::Node;
+use crate::platform::InodeAndDevice;
 use crate::progress::Operation;
 use crate::progress::PAtomicInfo;
 use crate::progress::RuntimeErrors;
@@ -11,6 +15,7 @@ use crate::progress::ORDERING;
 use crate::utils::is_filtered_out_due_to_file_time;
 use crate::utils::is_filtered_out_due_to_invert_regex;
 use crate::utils::is_filtered_out_due_to_regex;
+use procfs::process::FDTarget;
 use rayon::iter::ParallelBridge;
 use rayon::prelude::ParallelIterator;
 use regex::Regex;
@@ -48,9 +53,44 @@ pub struct WalkData<'a> {
     pub errors: Arc<Mutex<RuntimeErrors>>,
 }
 
+/// Return deleted file still accessed by a process by walking /proc/$PID/fd/$FD
+/// Deleted files have nlinks == 0
+fn get_deleted_files() -> Vec<(PathBuf, Metadata)> {
+    let mut deleted_files = Vec::new();
+
+    for p in procfs::process::all_processes().unwrap() {
+        let Ok(p) = p else {
+            continue;
+        };
+        let Ok(fds) = p.fd() else {
+            continue;
+        };
+
+        for fd in fds {
+            let Ok(fd) = fd else {
+                continue;
+            };
+
+            if let FDTarget::Path(path) = &fd.target {
+                let proc_fd = format!("/proc/{}/fd/{}", p.pid, fd.fd);
+                let Ok(metadata) = std::fs::metadata(&proc_fd) else {
+                    continue;
+                };
+
+                if metadata.st_nlink() == 0 {
+                    // TODO: remove " (deleted)", not part of actual name
+                    deleted_files.push((path.clone(), metadata));
+                }
+            }
+        }
+    }
+
+    deleted_files
+}
+
 pub fn walk_it(dirs: HashSet<PathBuf>, walk_data: &WalkData) -> Vec<Node> {
     let mut inodes = HashSet::new();
-    let top_level_nodes: Vec<_> = dirs
+    let mut top_level_nodes: Vec<_> = dirs
         .into_iter()
         .filter_map(|d| {
             let prog_data = &walk_data.progress_data;
@@ -62,11 +102,123 @@ pub fn walk_it(dirs: HashSet<PathBuf>, walk_data: &WalkData) -> Vec<Node> {
             clean_inodes(node, &mut inodes, walk_data)
         })
         .collect();
+
+    // TODO: use a flag
+    let handle_deleted_files = true;
+
+    if handle_deleted_files {
+        let deleted_files: Vec<_> = get_deleted_files()
+            .into_iter()
+            .filter(|(_path, metadata)| {
+                let inode_and_device = (metadata.st_ino(), metadata.st_dev());
+                // ignore inodes already collected as part of regular files
+                !inodes.contains(&inode_and_device)
+            })
+            .collect();
+
+        // we try to insert deleted files in the node tree
+        for (path, m) in &deleted_files {
+            for mut top_level_node in &mut top_level_nodes {
+                // deleted files are always absolute, but not the files in the node tree
+                let absolute_path = path::absolute(&top_level_node.name).unwrap();
+                if path.starts_with(&absolute_path) {
+                    insert_deleted_file_in_node_tree(
+                        path.clone(),
+                        m,
+                        &mut top_level_node,
+                        &walk_data,
+                        0,
+                    );
+                }
+            }
+
+            // Ignoring deleted file {:?} not child of any top_level_nodes
+        }
+    }
+
     top_level_nodes
 }
 
+/// try to insert `path` in `root`, or its children
+/// `path` is absolute
+fn insert_deleted_file_in_node_tree(
+    path: PathBuf,
+    m: &Metadata,
+    root: &mut Node,
+    walk_data: &WalkData,
+    depth: usize,
+) {
+    // TODO: filecount, filetime, regex...
+    let size = if walk_data.use_apparent_size {
+        m.st_size()
+    } else {
+        m.st_blocks() * 512
+    };
+
+    root.size += size;
+
+    if path
+        .parent()
+        .expect("path of deleted file return by kernel always has a parent")
+        == path::absolute(&root.name).unwrap()
+    {
+        // we found the node that represents the parent dir, create the deleted file as a new file
+
+        let node = Node {
+            name: path.clone(),
+            size,
+            children: vec![],
+            inode_device: Some((m.st_ino(), m.st_dev())),
+            depth,
+        };
+
+        root.children.push(node);
+        return;
+    }
+
+    // try to find the folder were the deleted file was
+    for child in &mut root.children {
+        if path.starts_with(path::absolute(&child.name).unwrap()) {
+            insert_deleted_file_in_node_tree(path, m, child, &walk_data, depth + 1);
+            return;
+        }
+    }
+
+    // can't find a child to insert the file, we need to create a new folder
+    // a bit messy because we need to convert to/from absolute paths
+    let dir_name = path
+        .strip_prefix(path::absolute(&root.name).unwrap())
+        .unwrap()
+        .components()
+        .next()
+        .unwrap();
+    let absolute_dir_name = path::absolute(&root.name).unwrap().join(dir_name);
+
+    let new_folder = Node {
+        name: absolute_dir_name,
+        size: 0,
+        children: vec![],
+        inode_device: root.inode_device.map(|(_inode, device)| (0, device)), // keep the device, if we want to filter by device
+        depth: depth + 1,
+    };
+
+    root.children.push(new_folder);
+
+    insert_deleted_file_in_node_tree(
+        path,
+        m,
+        root.children.last_mut().unwrap(),
+        &walk_data,
+        depth + 1,
+    );
+}
+
 // Remove files which have the same inode, we don't want to double count them.
-fn clean_inodes(x: Node, inodes: &mut HashSet<(u64, u64)>, walk_data: &WalkData) -> Option<Node> {
+fn clean_inodes(
+    x: Node,
+    inodes: &mut HashSet<InodeAndDevice>,
+    walk_data: &WalkData,
+) -> Option<Node> {
     if !walk_data.use_apparent_size {
         if let Some(id) = x.inode_device {
             if !inodes.insert(id) {

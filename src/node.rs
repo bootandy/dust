@@ -1,5 +1,6 @@
 use crate::dir_walker::WalkData;
 use crate::platform::get_metadata;
+use crate::platform::InodeAndDevice;
 use crate::utils::is_filtered_out_due_to_file_time;
 use crate::utils::is_filtered_out_due_to_invert_regex;
 use crate::utils::is_filtered_out_due_to_regex;
@@ -12,7 +13,7 @@ pub struct Node {
     pub name: PathBuf,
     pub size: u64,
     pub children: Vec<Node>,
-    pub inode_device: Option<(u64, u64)>,
+    pub inode_device: Option<InodeAndDevice>,
     pub depth: usize,
 }
 
@@ -25,7 +26,7 @@ pub enum FileTime {
 
 #[allow(clippy::too_many_arguments)]
 pub fn build_node(
-    dir: PathBuf,
+    path: PathBuf,
     children: Vec<Node>,
     is_symlink: bool,
     is_file: bool,
@@ -37,15 +38,15 @@ pub fn build_node(
     let by_filetime = &walk_data.by_filetime;
 
     get_metadata(
-        &dir,
+        &path,
         use_apparent_size,
         walk_data.follow_links && is_symlink,
     )
     .map(|data| {
         let inode_device = data.1;
 
-        let size = if is_filtered_out_due_to_regex(walk_data.filter_regex, &dir)
-            || is_filtered_out_due_to_invert_regex(walk_data.invert_filter_regex, &dir)
+        let size = if is_filtered_out_due_to_regex(walk_data.filter_regex, &path)
+            || is_filtered_out_due_to_invert_regex(walk_data.invert_filter_regex, &path)
             || by_filecount && !is_file
             || [
                 (&walk_data.filter_modified_time, data.2 .0),
@@ -71,7 +72,7 @@ pub fn build_node(
         };
 
         Node {
-            name: dir,
+            name: path,
             size,
             children,
             inode_device,

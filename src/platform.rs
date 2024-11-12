@@ -10,7 +10,7 @@ fn get_block_size() -> u64 {
     512
 }
 
-type InodeAndDevice = (u64, u64);
+pub(crate) type InodeAndDevice = (u64, u64);
 type FileTime = (i64, i64, i64);
 
 #[cfg(target_family = "unix")]
