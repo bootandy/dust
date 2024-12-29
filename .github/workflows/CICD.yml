@@ -45,6 +45,8 @@ jobs:
           override: true
           profile: minimal # minimal component installation (ie, no documentation)
           components: rustfmt, clippy
+      - name: typos-action
+        uses: crate-ci/typos@v1.28.4
       - name: "`fmt` testing"
         if: steps.vars.outputs.JOB_DO_FORMAT_TESTING
         uses: actions-rs/cargo@v1
