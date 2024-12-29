@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 
 use crate::config::DAY_SECONDS;
 
-use crate::dir_walker::Operater;
+use crate::dir_walker::Operator;
 use crate::platform;
 use regex::Regex;
 
@@ -78,16 +78,16 @@ pub fn is_filtered_out_due_to_regex(filter_regex: &[Regex], dir: &Path) -> bool 
 }
 
 pub fn is_filtered_out_due_to_file_time(
-    filter_time: &Option<(Operater, i64)>,
+    filter_time: &Option<(Operator, i64)>,
     actual_time: i64,
 ) -> bool {
     match filter_time {
         None => false,
-        Some((Operater::Equal, bound_time)) => {
+        Some((Operator::Equal, bound_time)) => {
             !(actual_time >= *bound_time && actual_time < *bound_time + DAY_SECONDS)
         }
-        Some((Operater::GreaterThan, bound_time)) => actual_time < *bound_time,
-        Some((Operater::LessThan, bound_time)) => actual_time > *bound_time,
+        Some((Operator::GreaterThan, bound_time)) => actual_time < *bound_time,
+        Some((Operator::LessThan, bound_time)) => actual_time > *bound_time,
     }
 }
 

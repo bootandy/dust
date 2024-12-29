@@ -8,7 +8,7 @@ use std::io::IsTerminal;
 use std::path::Path;
 use std::path::PathBuf;
 
-use crate::dir_walker::Operater;
+use crate::dir_walker::Operator;
 use crate::display::get_number_format;
 
 pub static DAY_SECONDS: i64 = 24 * 60 * 60;
@@ -160,21 +160,21 @@ impl Config {
         Some(true) == self.output_json || options.get_flag("output_json")
     }
 
-    pub fn get_modified_time_operator(&self, options: &ArgMatches) -> Option<(Operater, i64)> {
+    pub fn get_modified_time_operator(&self, options: &ArgMatches) -> Option<(Operator, i64)> {
         get_filter_time_operator(
             options.get_one::<String>("mtime"),
             get_current_date_epoch_seconds(),
         )
     }
 
-    pub fn get_accessed_time_operator(&self, options: &ArgMatches) -> Option<(Operater, i64)> {
+    pub fn get_accessed_time_operator(&self, options: &ArgMatches) -> Option<(Operator, i64)> {
         get_filter_time_operator(
             options.get_one::<String>("atime"),
             get_current_date_epoch_seconds(),
         )
     }
 
-    pub fn get_changed_time_operator(&self, options: &ArgMatches) -> Option<(Operater, i64)> {
+    pub fn get_changed_time_operator(&self, options: &ArgMatches) -> Option<(Operator, i64)> {
         get_filter_time_operator(
             options.get_one::<String>("ctime"),
             get_current_date_epoch_seconds(),
@@ -183,7 +183,7 @@ impl Config {
 }
 
 fn get_current_date_epoch_seconds() -> i64 {
-    // calcurate current date epoch seconds
+    // calculate current date epoch seconds
     let now = Local::now();
     let current_date = now.date_naive();
 
@@ -197,7 +197,7 @@ fn get_current_date_epoch_seconds() -> i64 {
 fn get_filter_time_operator(
     option_value: Option<&String>,
     current_date_epoch_seconds: i64,
-) -> Option<(Operater, i64)> {
+) -> Option<(Operator, i64)> {
     match option_value {
         Some(val) => {
             let time = current_date_epoch_seconds
@@ -207,9 +207,9 @@ fn get_filter_time_operator(
                     .abs()
                     * DAY_SECONDS;
             match val.chars().next().expect("Value should not be empty") {
-                '+' => Some((Operater::LessThan, time - DAY_SECONDS)),
-                '-' => Some((Operater::GreaterThan, time)),
-                _ => Some((Operater::Equal, time - DAY_SECONDS)),
+                '+' => Some((Operator::LessThan, time - DAY_SECONDS)),
+                '-' => Some((Operator::GreaterThan, time)),
+                _ => Some((Operator::Equal, time - DAY_SECONDS)),
             }
         }
         None => None,

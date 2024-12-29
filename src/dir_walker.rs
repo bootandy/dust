@@ -25,7 +25,7 @@ use crate::node::FileTime;
 use crate::platform::get_metadata;
 
 #[derive(Debug)]
-pub enum Operater {
+pub enum Operator {
     Equal = 0,
     LessThan = 1,
     GreaterThan = 2,
@@ -36,9 +36,9 @@ pub struct WalkData<'a> {
     pub filter_regex: &'a [Regex],
     pub invert_filter_regex: &'a [Regex],
     pub allowed_filesystems: HashSet<u64>,
-    pub filter_modified_time: Option<(Operater, i64)>,
-    pub filter_accessed_time: Option<(Operater, i64)>,
-    pub filter_changed_time: Option<(Operater, i64)>,
+    pub filter_modified_time: Option<(Operator, i64)>,
+    pub filter_accessed_time: Option<(Operator, i64)>,
+    pub filter_changed_time: Option<(Operator, i64)>,
     pub use_apparent_size: bool,
     pub by_filecount: bool,
     pub by_filetime: &'a Option<FileTime>,
@@ -300,9 +300,9 @@ mod tests {
             filter_regex: &[],
             invert_filter_regex: &[],
             allowed_filesystems: HashSet::new(),
-            filter_modified_time: Some((Operater::GreaterThan, 0)),
-            filter_accessed_time: Some((Operater::GreaterThan, 0)),
-            filter_changed_time: Some((Operater::GreaterThan, 0)),
+            filter_modified_time: Some((Operator::GreaterThan, 0)),
+            filter_accessed_time: Some((Operator::GreaterThan, 0)),
+            filter_changed_time: Some((Operator::GreaterThan, 0)),
             use_apparent_size,
             by_filecount: false,
             by_filetime: &None,
