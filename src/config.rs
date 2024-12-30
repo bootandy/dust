@@ -258,16 +258,15 @@ pub fn get_config(conf_path: Option<String>) -> Config {
         Some(path_str) => {
             let path = Path::new(&path_str);
             if path.exists() {
-                match Config::from_config_file(&path) {
+                match Config::from_config_file(path) {
                     Ok(config) => return config,
-                    Err(e) => eprintln!(
-                        "Ignoring invalid config file ({}): {:?}",
-                        &path.display(),
-                        e
-                    ),
+                    Err(e) => {
+                        eprintln!("Ignoring invalid config file '{}': {}", &path.display(), e)
+                    }
                 }
+            } else {
+                eprintln!("Config file {:?} doesn't exists", &path.display());
             }
-            eprintln!("Config file {:?} doesn't exists", &path.display());
         }
         None => {
             if let Some(home) = directories::BaseDirs::new() {
