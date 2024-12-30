@@ -112,7 +112,7 @@ fn get_regex_value(maybe_value: Option<ValuesRef<String>>) -> Vec<Regex> {
 
 fn main() {
     let options = build_cli().get_matches();
-    let config = get_config();
+    let config = get_config(options.get_one::<String>("config").cloned());
 
     let errors = RuntimeErrors::default();
     let error_listen_for_ctrlc = Arc::new(Mutex::new(errors));

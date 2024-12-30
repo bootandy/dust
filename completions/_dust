@@ -14,15 +14,16 @@ _dust() {
     fi
 
     local context curcontext="$curcontext" state line
-    _arguments "${_arguments_options[@]}" \
+    _arguments "${_arguments_options[@]}" : \
 '-d+[Depth to show]:DEPTH: ' \
 '--depth=[Depth to show]:DEPTH: ' \
 '-T+[Number of threads to use]: : ' \
 '--threads=[Number of threads to use]: : ' \
+'--config=[Specify a config file to use]:FILE:_files' \
 '-n+[Number of lines of output to show. (Default is terminal_height - 10)]:NUMBER: ' \
 '--number-of-lines=[Number of lines of output to show. (Default is terminal_height - 10)]:NUMBER: ' \
-'*-X+[Exclude any file or directory with this name]:PATH:_files' \
-'*--ignore-directory=[Exclude any file or directory with this name]:PATH:_files' \
+'*-X+[Exclude any file or directory with this path]:PATH:_files' \
+'*--ignore-directory=[Exclude any file or directory with this path]:PATH:_files' \
 '-I+[Exclude any file or directory with a regex matching that listed in this file, the file entries will be added to the ignore regexs provided by --invert_filter]:FILE:_files' \
 '--ignore-all-in-file=[Exclude any file or directory with a regex matching that listed in this file, the file entries will be added to the ignore regexs provided by --invert_filter]:FILE:_files' \
 '-z+[Minimum size file to include in output]:MIN_SIZE: ' \
