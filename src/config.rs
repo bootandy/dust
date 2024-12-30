@@ -231,7 +231,7 @@ fn convert_min_size(input: &str) -> Option<usize> {
                 match number_format {
                     Some((multiple, _)) => Some(parsed_digits * (multiple as usize)),
                     None => {
-                        if letters.eq("") {
+                        if letters.is_empty() {
                             Some(parsed_digits)
                         } else {
                             eprintln!("Ignoring invalid min-size: {input}");
