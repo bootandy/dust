@@ -45,6 +45,9 @@ jobs:
           override: true
           profile: minimal # minimal component installation (ie, no documentation)
           components: rustfmt, clippy
+      - name: Install wget for Windows
+        if: matrix.job.os == 'windows-latest'
+        run: choco install wget --no-progress
       - name: typos-action
         uses: crate-ci/typos@v1.28.4
       - name: "`fmt` testing"
