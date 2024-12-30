@@ -15,7 +15,6 @@ pub static DAY_SECONDS: i64 = 24 * 60 * 60;
 
 #[derive(Deserialize, Default)]
 #[serde(rename_all = "kebab-case")]
-#[serde(deny_unknown_fields)]
 pub struct Config {
     pub display_full_paths: Option<bool>,
     pub display_apparent_size: Option<bool>,
@@ -254,12 +253,30 @@ fn get_config_locations(base: &Path) -> Vec<PathBuf> {
     ]
 }
 
-pub fn get_config() -> Config {
-    if let Some(home) = directories::BaseDirs::new() {
-        for path in get_config_locations(home.home_dir()) {
+pub fn get_config(conf_path: Option<String>) -> Config {
+    match conf_path {
+        Some(path_str) => {
+            let path = Path::new(&path_str);
             if path.exists() {
-                if let Ok(config) = Config::from_config_file(path) {
-                    return config;
+                match Config::from_config_file(&path) {
+                    Ok(config) => return config,
+                    Err(e) => eprintln!(
+                        "Ignoring invalid config file ({}): {:?}",
+                        &path.display(),
+                        e
+                    ),
+                }
+            }
+            eprintln!("Config file {:?} doesn't exists", &path.display());
+        }
+        None => {
+            if let Some(home) = directories::BaseDirs::new() {
+                for path in get_config_locations(home.home_dir()) {
+                    if path.exists() {
+                        if let Ok(config) = Config::from_config_file(&path) {
+                            return config;
+                        }
+                    }
                 }
             }
         }
