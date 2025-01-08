@@ -27,12 +27,12 @@ _dust() {
 '--ignore-all-in-file=[Exclude any file or directory with a regex matching that listed in this file, the file entries will be added to the ignore regexs provided by --invert_filter]:FILE:_files' \
 '-z+[Minimum size file to include in output]:MIN_SIZE: ' \
 '--min-size=[Minimum size file to include in output]:MIN_SIZE: ' \
-'(-e --filter -t --file_types)*-v+[Exclude filepaths matching this regex. To ignore png files type\: -v "\\.png\$" ]:REGEX: ' \
-'(-e --filter -t --file_types)*--invert-filter=[Exclude filepaths matching this regex. To ignore png files type\: -v "\\.png\$" ]:REGEX: ' \
-'(-t --file_types)*-e+[Only include filepaths matching this regex. For png files type\: -e "\\.png\$" ]:REGEX: ' \
-'(-t --file_types)*--filter=[Only include filepaths matching this regex. For png files type\: -e "\\.png\$" ]:REGEX: ' \
+'(-e --filter -t --file-types)*-v+[Exclude filepaths matching this regex. To ignore png files type\: -v "\\.png\$" ]:REGEX: ' \
+'(-e --filter -t --file-types)*--invert-filter=[Exclude filepaths matching this regex. To ignore png files type\: -v "\\.png\$" ]:REGEX: ' \
+'(-t --file-types)*-e+[Only include filepaths matching this regex. For png files type\: -e "\\.png\$" ]:REGEX: ' \
+'(-t --file-types)*--filter=[Only include filepaths matching this regex. For png files type\: -e "\\.png\$" ]:REGEX: ' \
 '-w+[Specify width of output overriding the auto detection of terminal width]:WIDTH: ' \
-'--terminal_width=[Specify width of output overriding the auto detection of terminal width]:WIDTH: ' \
+'--terminal-width=[Specify width of output overriding the auto detection of terminal width]:WIDTH: ' \
 '-o+[Changes output display size. si will print sizes in powers of 1000. b k m g t kb mb gb tb will print the whole tree in that size.]:FORMAT:(si b k m g t kb mb gb tb)' \
 '--output-format=[Changes output display size. si will print sizes in powers of 1000. b k m g t kb mb gb tb will print the whole tree in that size.]:FORMAT:(si b k m g t kb mb gb tb)' \
 '-S+[Specify memory to use as stack size - use if you see\: '\''fatal runtime error\: stack overflow'\'' (default low memory=1048576, high memory=1073741824)]:STACK_SIZE: ' \
@@ -70,14 +70,14 @@ _dust() {
 '-f[Directory '\''size'\'' is number of child files instead of disk size]' \
 '--filecount[Directory '\''size'\'' is number of child files instead of disk size]' \
 '-i[Do not display hidden files]' \
-'--ignore_hidden[Do not display hidden files]' \
+'--ignore-hidden[Do not display hidden files]' \
 '(-d --depth -D --only-dir)-t[show only these file types]' \
-'(-d --depth -D --only-dir)--file_types[show only these file types]' \
+'(-d --depth -D --only-dir)--file-types[show only these file types]' \
 '-P[Disable the progress indication.]' \
 '--no-progress[Disable the progress indication.]' \
 '--print-errors[Print path with errors.]' \
-'(-F --only-file -t --file_types)-D[Only directories will be displayed.]' \
-'(-F --only-file -t --file_types)--only-dir[Only directories will be displayed.]' \
+'(-F --only-file -t --file-types)-D[Only directories will be displayed.]' \
+'(-F --only-file -t --file-types)--only-dir[Only directories will be displayed.]' \
 '(-D --only-dir)-F[Only files will be displayed. (Finds your largest files)]' \
 '(-D --only-dir)--only-file[Only files will be displayed. (Finds your largest files)]' \
 '-j[Output the directory tree as json to the current directory]' \
