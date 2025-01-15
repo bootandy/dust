@@ -1,8 +1,12 @@
+use std::cell::RefCell;
 use std::path::PathBuf;
 
-use serde::Serialize;
+use serde::ser::SerializeStruct;
+use serde::{Serialize, Serializer};
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Serialize)]
+use crate::display::human_readable_number;
+
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub struct DisplayNode {
     // Note: the order of fields in important here, for PartialEq and PartialOrd
     pub size: u64,
@@ -23,5 +27,32 @@ impl DisplayNode {
             Box::new(self.children.iter())
         };
         out
+    }
+}
+
+// Only used for -j 'json' flag combined with -o 'output_type' flag
+// Used to pass the output_type into the custom Serde serializer
+thread_local! {
+    pub static OUTPUT_TYPE: RefCell<String> = const { RefCell::new(String::new()) };
+}
+
+/*
+We need the custom Serialize incase someone uses the -o flag to pass a custom output type in
+(show size in Mb / Gb etc).
+Sadly this also necessitates a global variable OUTPUT_TYPE as we can not pass the output_type flag
+into the serialize method
+ */
+impl Serialize for DisplayNode {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let readable_size = OUTPUT_TYPE
+            .with(|output_type| human_readable_number(self.size, output_type.borrow().as_str()));
+        let mut state = serializer.serialize_struct("DisplayNode", 2)?;
+        state.serialize_field("size", &(readable_size))?;
+        state.serialize_field("name", &self.name)?;
+        state.serialize_field("children", &self.children)?;
+        state.end()
     }
 }
