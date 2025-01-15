@@ -126,8 +126,7 @@ fn sort_by_inode(a: &Node, b: &Node) -> std::cmp::Ordering {
 fn ignore_file(entry: &DirEntry, walk_data: &WalkData) -> bool {
     let is_dot_file = entry.file_name().to_str().unwrap_or("").starts_with('.');
     let is_ignored_path = walk_data.ignore_directories.contains(&entry.path());
-    let follow_links =
-        walk_data.follow_links && entry.file_type().map_or(false, |ft| ft.is_symlink());
+    let follow_links = walk_data.follow_links && entry.file_type().is_ok_and(|ft| ft.is_symlink());
 
     if !walk_data.allowed_filesystems.is_empty() {
         let size_inode_device = get_metadata(entry.path(), false, follow_links);
