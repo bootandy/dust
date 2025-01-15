@@ -33,6 +33,7 @@ use sysinfo::{System, SystemExt};
 use self::display::draw_it;
 use config::get_config;
 use dir_walker::walk_it;
+use display_node::OUTPUT_TYPE;
 use filter::get_biggest;
 use filter_type::get_all_file_types;
 use regex::Regex;
@@ -327,20 +328,23 @@ fn main() {
     }
 
     if let Some(root_node) = tree {
-        let idd = InitialDisplayData {
-            short_paths: !config.get_full_paths(&options),
-            is_reversed: !config.get_reverse(&options),
-            colors_on: is_colors,
-            by_filecount,
-            by_filetime,
-            is_screen_reader: config.get_screen_reader(&options),
-            output_format,
-            bars_on_right: config.get_bars_on_right(&options),
-        };
-
         if config.get_output_json(&options) {
+            OUTPUT_TYPE.with(|wrapped| {
+                wrapped.replace(output_format);
+            });
             println!("{}", serde_json::to_string(&root_node).unwrap());
         } else {
+            let idd = InitialDisplayData {
+                short_paths: !config.get_full_paths(&options),
+                is_reversed: !config.get_reverse(&options),
+                colors_on: is_colors,
+                by_filecount,
+                by_filetime,
+                is_screen_reader: config.get_screen_reader(&options),
+                output_format,
+                bars_on_right: config.get_bars_on_right(&options),
+            };
+
             draw_it(
                 idd,
                 config.get_no_bars(&options),
