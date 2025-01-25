@@ -43,6 +43,7 @@ directories = "4"
 sysinfo = "0.27"
 ctrlc = "3.4"
 chrono = "0.4"
+procfs = { version = "0.17.0", default-features = false }
 
 [target.'cfg(not(target_has_atomic = "64"))'.dependencies]
 portable-atomic = "1.4"
