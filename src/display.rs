@@ -134,16 +134,8 @@ pub fn draw_it(
     root_node: &DisplayNode,
     skip_total: bool,
 ) {
-    let biggest = match skip_total {
-        false => root_node,
-        true => root_node
-            .get_children_from_node(false)
-            .next()
-            .unwrap_or(root_node),
-    };
-
     let num_chars_needed_on_left_most = if idd.by_filecount {
-        let max_size = biggest.size;
+        let max_size = root_node.size;
         max_size.separate_with_commas().chars().count()
     } else if idd.by_filetime.is_some() {
         FILETIME_SHOW_LENGTH
@@ -172,7 +164,7 @@ pub fn draw_it(
     let display_data = DisplayData {
         initial: idd,
         num_chars_needed_on_left_most,
-        base_size: biggest.size,
+        base_size: root_node.size,
         longest_string_length,
         ls_colors: LsColors::from_env().unwrap_or_default(),
     };
