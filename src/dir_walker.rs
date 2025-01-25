@@ -1,5 +1,6 @@
 use std::cmp::Ordering;
 use std::fs;
+use std::io::Error;
 use std::sync::Arc;
 use std::sync::Mutex;
 
@@ -14,6 +15,7 @@ use crate::utils::is_filtered_out_due_to_regex;
 use rayon::iter::ParallelBridge;
 use rayon::prelude::ParallelIterator;
 use regex::Regex;
+use std::path::Path;
 use std::path::PathBuf;
 
 use std::collections::HashSet;
@@ -229,8 +231,9 @@ fn walk(dir: PathBuf, walk_data: &WalkData, depth: usize) -> Option<Node> {
                                 }
                             }
                             Err(ref failed) => {
-                                let mut editable_error = errors.lock().unwrap();
-                                editable_error.no_permissions.insert(failed.to_string());
+                                if handle_error_and_retry(failed, &dir, walk_data) {
+                                    return walk(dir.clone(), walk_data, depth);
+                                }
                             }
                         }
                         None
@@ -238,21 +241,11 @@ fn walk(dir: PathBuf, walk_data: &WalkData, depth: usize) -> Option<Node> {
                     .collect()
             }
             Err(failed) => {
-                let mut editable_error = errors.lock().unwrap();
-                match failed.kind() {
-                    std::io::ErrorKind::PermissionDenied => {
-                        editable_error
-                            .no_permissions
-                            .insert(dir.to_string_lossy().into());
-                    }
-                    std::io::ErrorKind::NotFound => {
-                        editable_error.file_not_found.insert(failed.to_string());
-                    }
-                    _ => {
-                        editable_error.unknown_error.insert(failed.to_string());
-                    }
+                if handle_error_and_retry(&failed, &dir, walk_data) {
+                    return walk(dir, walk_data, depth);
+                } else {
+                    vec![]
                 }
-                vec![]
             }
         }
     } else {
@@ -272,6 +265,38 @@ fn walk(dir: PathBuf, walk_data: &WalkData, depth: usize) -> Option<Node> {
         false
     };
     build_node(dir, children, is_symlink, false, depth, walk_data)
+}
+
+fn handle_error_and_retry(failed: &Error, dir: &Path, walk_data: &WalkData) -> bool {
+    let mut editable_error = walk_data.errors.lock().unwrap();
+    match failed.kind() {
+        std::io::ErrorKind::PermissionDenied => {
+            editable_error
+                .no_permissions
+                .insert(dir.to_string_lossy().into());
+        }
+        std::io::ErrorKind::InvalidInput => {
+            editable_error
+                .no_permissions
+                .insert(dir.to_string_lossy().into());
+        }
+        std::io::ErrorKind::NotFound => {
+            editable_error.file_not_found.insert(failed.to_string());
+        }
+        std::io::ErrorKind::Interrupted => {
+            let mut editable_error = walk_data.errors.lock().unwrap();
+            editable_error.interrupted_error += 1;
+            if editable_error.interrupted_error > 3 {
+                panic!("Multiple Interrupted Errors occurred while scanning filesystem. Aborting");
+            } else {
+                return true;
+            }
+        }
+        _ => {
+            editable_error.unknown_error.insert(failed.to_string());
+        }
+    }
+    false
 }
 
 mod tests {
