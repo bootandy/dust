@@ -3,6 +3,7 @@ use crate::node::FileTime;
 use crate::node::Node;
 use std::collections::BinaryHeap;
 use std::collections::HashMap;
+use std::collections::HashSet;
 use std::path::Path;
 use std::path::PathBuf;
 
@@ -19,6 +20,7 @@ pub fn get_biggest(
     top_level_nodes: Vec<Node>,
     display_data: AggregateData,
     by_filetime: &Option<FileTime>,
+    keep_collapsed: HashSet<PathBuf>,
 ) -> Option<DisplayNode> {
     if top_level_nodes.is_empty() {
         // perhaps change this, bring back Error object?
@@ -52,13 +54,19 @@ pub fn get_biggest(
         heap = add_children(&display_data, &root, heap);
     }
 
-    Some(fill_remaining_lines(heap, &root, display_data))
+    Some(fill_remaining_lines(
+        heap,
+        &root,
+        display_data,
+        keep_collapsed,
+    ))
 }
 
 pub fn fill_remaining_lines<'a>(
     mut heap: BinaryHeap<&'a Node>,
     root: &'a Node,
     display_data: AggregateData,
+    keep_collapsed: HashSet<PathBuf>,
 ) -> DisplayNode {
     let mut allowed_nodes = HashMap::new();
 
@@ -69,7 +77,9 @@ pub fn fill_remaining_lines<'a>(
                 if !display_data.only_file || line.children.is_empty() {
                     allowed_nodes.insert(line.name.as_path(), line);
                 }
-                heap = add_children(&display_data, line, heap);
+                if !keep_collapsed.contains(&line.name) {
+                    heap = add_children(&display_data, line, heap);
+                }
             }
             None => break,
         }

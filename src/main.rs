@@ -244,6 +244,19 @@ fn main() {
         indicator.spawn(output_format.clone())
     }
 
+    let keep_collapsed: HashSet<PathBuf> = match options.get_many::<String>("collapse") {
+        Some(collapse) => {
+            let mut combined_dirs = HashSet::new();
+            for collapse_dir in collapse {
+                for target_dir in target_dirs.iter() {
+                    combined_dirs.insert(PathBuf::from(target_dir).join(collapse_dir));
+                }
+            }
+            combined_dirs
+        }
+        None => HashSet::new(),
+    };
+
     let filter_modified_time = config.get_modified_time_operator(&options);
     let filter_accessed_time = config.get_accessed_time_operator(&options);
     let filter_changed_time = config.get_changed_time_operator(&options);
@@ -281,7 +294,7 @@ fn main() {
                 depth,
                 using_a_filter: !filter_regexs.is_empty() || !invert_filter_regexs.is_empty(),
             };
-            get_biggest(top_level_nodes, agg_data, &by_filetime)
+            get_biggest(top_level_nodes, agg_data, &by_filetime, keep_collapsed)
         }
     };
 

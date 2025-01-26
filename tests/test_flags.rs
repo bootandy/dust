@@ -254,3 +254,10 @@ pub fn test_force_color() {
     assert!(output.contains("\x1B[31m"));
     assert!(output.contains("\x1B[0m"));
 }
+
+#[test]
+pub fn test_collapse() {
+    let output = build_command(vec!["--collapse", "many", "tests/test_dir/"]);
+    assert!(output.contains("many"));
+    assert!(!output.contains("hello_file"));
+}

@@ -51,6 +51,7 @@ Register-ArgumentCompleter -Native -CommandName 'dust' -ScriptBlock {
             [CompletionResult]::new('-y', 'y', [CompletionResultType]::ParameterName, 'just like -mtime, but based on file change time')
             [CompletionResult]::new('--ctime', 'ctime', [CompletionResultType]::ParameterName, 'just like -mtime, but based on file change time')
             [CompletionResult]::new('--files0-from', 'files0-from', [CompletionResultType]::ParameterName, 'run dust on NUL-terminated file names specified in file; if argument is -, then read names from standard input')
+            [CompletionResult]::new('--collapse', 'collapse', [CompletionResultType]::ParameterName, 'Keep these directories collapsed')
             [CompletionResult]::new('-m', 'm', [CompletionResultType]::ParameterName, 'Directory ''size'' is max filetime of child files instead of disk size. while a/c/m for last accessed/changed/modified time')
             [CompletionResult]::new('--filetime', 'filetime', [CompletionResultType]::ParameterName, 'Directory ''size'' is max filetime of child files instead of disk size. while a/c/m for last accessed/changed/modified time')
             [CompletionResult]::new('-p', 'p', [CompletionResultType]::ParameterName, 'Subdirectories will not have their path shortened')

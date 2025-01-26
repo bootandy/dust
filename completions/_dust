@@ -45,6 +45,7 @@ _dust() {
 '-y+[just like -mtime, but based on file change time]: : ' \
 '--ctime=[just like -mtime, but based on file change time]: : ' \
 '--files0-from=[run dust on NUL-terminated file names specified in file; if argument is -, then read names from standard input]: :_files' \
+'*--collapse=[Keep these directories collapsed]: :_files' \
 '-m+[Directory '\''size'\'' is max filetime of child files instead of disk size. while a/c/m for last accessed/changed/modified time]: :(a c m)' \
 '--filetime=[Directory '\''size'\'' is max filetime of child files instead of disk size. while a/c/m for last accessed/changed/modified time]: :(a c m)' \
 '-p[Subdirectories will not have their path shortened]' \

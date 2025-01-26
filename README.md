@@ -103,6 +103,7 @@ Usage: dust --skip-total (No total row will be displayed)
 Usage: dust -z 40000/30MB/20kib (Exclude output files/directories below size 40000 bytes / 30MB / 20KiB)
 Usage: dust -j (Prints JSON representation of directories, try: dust -j  | jq)
 Usage: dust --files0-from=FILE (Reads null-terminated file paths from FILE); If FILE is - then read from stdin
+Usage: dust --collapse=node-modules will keep the node-modules folder collapsed in display instead of recursively opening it
 ```
 
 ## Config file
