@@ -304,6 +304,14 @@ pub fn build_cli() -> Command {
                 .help("run dust on NUL-terminated file names specified in file; if argument is -, then read names from standard input"),
         )
         .arg(
+            Arg::new("collapse")
+                .long("collapse")
+                .value_hint(clap::ValueHint::AnyPath)
+                .value_parser(value_parser!(String))
+                .action(clap::ArgAction::Append)
+                .help("Keep these directories collapsed"),
+        )
+        .arg(
             Arg::new("filetime")
                 .short('m')
                 .long("filetime")
