@@ -11,6 +11,7 @@ use stfu8::encode_u8;
 use chrono::{DateTime, Local, TimeZone, Utc};
 use std::cmp::max;
 use std::cmp::min;
+use std::collections::HashSet;
 use std::fs;
 use std::iter::repeat;
 use std::path::Path;
@@ -148,6 +149,8 @@ pub fn draw_it(
         "Not enough terminal width"
     );
 
+    // let duplicate_dir_names = find_duplicate_names(root_node, idd.short_paths);
+
     let allowed_width = terminal_width - num_chars_needed_on_left_most - 2;
     let num_indent_chars = 3;
     let longest_string_length =
@@ -186,6 +189,33 @@ pub fn draw_it(
             display_node(c, &draw_data, is_biggest, was_i_last);
         }
     }
+}
+// fn find_duplicate_names(node: &DisplayNode, short_paths: bool) -> HashSet<DisplayNode> {
+//     if !short_paths {
+//         return HashSet::new()
+//     } else {
+//         get_printable_name(node.dir_name, short_paths)
+//         // or maybe if we find them from diff root nodes we can mark them.
+//     }
+// }
+
+
+pub fn get_printable_name<P: AsRef<Path>>(dir_name: &P, short_paths: bool) -> String {
+    let dir_name = dir_name.as_ref();
+    let printable_name = {
+        if short_paths {
+            match dir_name.parent() {
+                Some(prefix) => match dir_name.strip_prefix(prefix) {
+                    Ok(base) => base,
+                    Err(_) => dir_name,
+                },
+                None => dir_name,
+            }
+        } else {
+            dir_name
+        }
+    };
+    encode_u8(printable_name.display().to_string().as_bytes())
 }
 
 fn find_biggest_size_str(node: &DisplayNode, output_format: &str) -> usize {
@@ -271,24 +301,6 @@ fn clean_indentation_string(s: &str) -> String {
     // For both
     is = is.replace("├──", "│ ");
     is
-}
-
-fn get_printable_name<P: AsRef<Path>>(dir_name: &P, short_paths: bool) -> String {
-    let dir_name = dir_name.as_ref();
-    let printable_name = {
-        if short_paths {
-            match dir_name.parent() {
-                Some(prefix) => match dir_name.strip_prefix(prefix) {
-                    Ok(base) => base,
-                    Err(_) => dir_name,
-                },
-                None => dir_name,
-            }
-        } else {
-            dir_name
-        }
-    };
-    encode_u8(printable_name.display().to_string().as_bytes())
 }
 
 fn pad_or_trim_filename(node: &DisplayNode, indent: &str, display_data: &DisplayData) -> String {

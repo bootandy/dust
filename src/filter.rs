@@ -1,3 +1,6 @@
+use stfu8::encode_u8;
+
+use crate::display::get_printable_name;
 use crate::display_node::DisplayNode;
 use crate::node::FileTime;
 use crate::node::Node;
@@ -17,7 +20,7 @@ pub struct AggregateData {
 }
 
 pub fn get_biggest(
-    top_level_nodes: Vec<Node>,
+    mut top_level_nodes: Vec<Node>,
     display_data: AggregateData,
     by_filetime: &Option<FileTime>,
     keep_collapsed: HashSet<PathBuf>,
@@ -40,6 +43,24 @@ pub fn get_biggest(
         } else {
             top_level_nodes.iter().map(|node| node.size).sum()
         };
+
+        // If top level folders have same name -> change them.
+        let names = top_level_nodes.iter().map(|node| node.name.to_str());
+        // todo pass in short_paths flag
+        let print_nam = top_level_nodes.iter().map(|node| get_printable_name(&node.name, true)).collect::<String>();
+        // if has same name
+
+        for n in top_level_nodes.iter_mut(){
+            let tmp = n.name.parent().unwrap().components().last().unwrap().as_os_str().to_str().unwrap();
+            let orig = n.name.display().to_string();
+            n.name = PathBuf::from(format!("{orig}({tmp})"));
+            println!("{:?}", n.name);
+        }
+        // build up list of dup-names 
+
+        // Repeatedly add parent path until all are not dup
+
+
         root = Node {
             name: PathBuf::from("(total)"),
             size,
@@ -47,6 +68,7 @@ pub fn get_biggest(
             inode_device: None,
             depth: 0,
         };
+
         // Always include the base nodes if we add a 'parent' (total) node
         heap = always_add_children(&display_data, &root, heap);
     } else {
