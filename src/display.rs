@@ -11,9 +11,13 @@ use stfu8::encode_u8;
 use chrono::{DateTime, Local, TimeZone, Utc};
 use std::cmp::max;
 use std::cmp::min;
+use std::collections::HashMap;
 use std::collections::HashSet;
+use std::collections::VecDeque;
 use std::fs;
+use std::hash::Hash;
 use std::iter::repeat;
+use std::os::unix::ffi::OsStrExt;
 use std::path::Path;
 use thousands::Separable;
 
@@ -38,6 +42,7 @@ pub struct DisplayData {
     pub base_size: u64,
     pub longest_string_length: usize,
     pub ls_colors: LsColors,
+    pub duplicate_names: HashMap<String, u32>,
 }
 
 impl DisplayData {
@@ -135,6 +140,9 @@ pub fn draw_it(
     root_node: &DisplayNode,
     skip_total: bool,
 ) {
+
+    let duplicate_names = check_for_dup_names(&root_node);
+
     let num_chars_needed_on_left_most = if idd.by_filecount {
         let max_size = root_node.size;
         max_size.separate_with_commas().chars().count()
@@ -154,7 +162,7 @@ pub fn draw_it(
     let allowed_width = terminal_width - num_chars_needed_on_left_most - 2;
     let num_indent_chars = 3;
     let longest_string_length =
-        find_longest_dir_name(root_node, num_indent_chars, allowed_width, &idd);
+        find_longest_dir_name(root_node, num_indent_chars, allowed_width, &idd, &duplicate_names);
 
     let max_bar_length = if no_percent_bars || longest_string_length + 7 >= allowed_width {
         0
@@ -170,6 +178,7 @@ pub fn draw_it(
         base_size: root_node.size,
         longest_string_length,
         ls_colors: LsColors::from_env().unwrap_or_default(),
+        duplicate_names
     };
     let draw_data = DrawData {
         indent: "".to_string(),
@@ -190,18 +199,44 @@ pub fn draw_it(
         }
     }
 }
-// fn find_duplicate_names(node: &DisplayNode, short_paths: bool) -> HashSet<DisplayNode> {
-//     if !short_paths {
-//         return HashSet::new()
-//     } else {
-//         get_printable_name(node.dir_name, short_paths)
-//         // or maybe if we find them from diff root nodes we can mark them.
-//     }
-// }
+fn check_for_dup_names(result:&DisplayNode) -> HashMap<String, u32> {
+    let mut names = HashMap::new();
+    let mut dup_names = HashMap::new();
+    // let empty = HashSet::new();
+
+    let mut results = VecDeque::new();
+    results.push_back((result, 0));
+
+    while results.len() > 0 {
+        let (current, level) = results.pop_front().unwrap();
+
+        let mut folders = current.name.iter().rev(); 
+        let mut s = String::new();
+
+        // Look at parent folder names - if they differ and we are printing them
+        // we dont need the helper
+        for _ in  0..level {
+            s.push_str( &encode_u8(folders.next().unwrap().as_bytes()));
+        }
+
+        if names.contains_key(&s){
+            // TODO: compare s with names[s] 
+            // and walk back until you find a difference.
+            dup_names.insert(s, level);
+        } else {
+            names.insert(s, vec![&current.name]);
+        }
+
+        current.children.iter().for_each(|node| {results.push_back((&node, level+1));});
+    }
+    println!("{:?}", names);
+    println!("{:?}", dup_names);
+    dup_names
+}
 
 
-pub fn get_printable_name<P: AsRef<Path>>(dir_name: &P, short_paths: bool) -> String {
-    let dir_name = dir_name.as_ref();
+pub fn get_printable_name(node: &DisplayNode, short_paths: bool, dup_names: &HashMap<String, u32>) -> String {
+    let dir_name = &node.name;
     let printable_name = {
         if short_paths {
             match dir_name.parent() {
@@ -215,7 +250,30 @@ pub fn get_printable_name<P: AsRef<Path>>(dir_name: &P, short_paths: bool) -> St
             dir_name
         }
     };
-    encode_u8(printable_name.display().to_string().as_bytes())
+    let core = encode_u8(printable_name.display().to_string().as_bytes());
+
+    if dup_names.contains_key(&core) {
+        let level = dup_names[&core];
+
+        let mut folders = node.name.iter().rev(); 
+        folders.next();
+        let mut extra = VecDeque::new();
+        for _ in (0..level){
+            extra.push_back( encode_u8(folders.next().unwrap().as_bytes()) );
+        }
+        let h = extra.iter().fold(String::new(), |acc, entry| {
+            acc + entry
+        });
+        // let helper = extra.make_contiguous().iter().collect::<Vec<&String>>();
+        // let h = helper.join("/");
+
+        // let mut folders = dir_name.iter().rev(); //.next().next().unwrap();
+        // folders.next();
+        // let par = encode_u8(folders.next().unwrap().as_bytes());
+        format!("{core} ({h})")
+    } else {
+        core
+    }
 }
 
 fn find_biggest_size_str(node: &DisplayNode, output_format: &str) -> usize {
@@ -233,8 +291,9 @@ fn find_longest_dir_name(
     indent: usize,
     terminal: usize,
     idd: &InitialDisplayData,
+    dup_names: &HashMap<String, u32>,
 ) -> usize {
-    let printable_name = get_printable_name(&node.name, idd.short_paths);
+    let printable_name = get_printable_name(&node, idd.short_paths, dup_names);
 
     let longest = if idd.is_screen_reader {
         UnicodeWidthStr::width(&*printable_name) + 1
@@ -248,7 +307,7 @@ fn find_longest_dir_name(
     // each none root tree drawing is 2 more chars, hence we increment indent by 2
     node.children
         .iter()
-        .map(|c| find_longest_dir_name(c, indent + 2, terminal, idd))
+        .map(|c| find_longest_dir_name(c, indent + 2, terminal, idd, dup_names))
         .fold(longest, max)
 }
 
@@ -304,7 +363,7 @@ fn clean_indentation_string(s: &str) -> String {
 }
 
 fn pad_or_trim_filename(node: &DisplayNode, indent: &str, display_data: &DisplayData) -> String {
-    let name = get_printable_name(&node.name, display_data.initial.short_paths);
+    let name = get_printable_name(&node, display_data.initial.short_paths, &display_data.duplicate_names);
     let indent_and_name = format!("{indent} {name}");
     let width = UnicodeWidthStr::width(&*indent_and_name);
 
@@ -379,7 +438,7 @@ fn get_name_percent(
         let name_and_padding = pad_or_trim_filename(node, indent, display_data);
         (percents, name_and_padding)
     } else {
-        let n = get_printable_name(&node.name, display_data.initial.short_paths);
+        let n = get_printable_name(&node, display_data.initial.short_paths, &display_data.duplicate_names);
         let name = maybe_trim_filename(n, indent, display_data);
         ("".into(), name)
     }

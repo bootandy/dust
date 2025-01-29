@@ -1,6 +1,3 @@
-use stfu8::encode_u8;
-
-use crate::display::get_printable_name;
 use crate::display_node::DisplayNode;
 use crate::node::FileTime;
 use crate::node::Node;
@@ -44,23 +41,6 @@ pub fn get_biggest(
             top_level_nodes.iter().map(|node| node.size).sum()
         };
 
-        // If top level folders have same name -> change them.
-        let names = top_level_nodes.iter().map(|node| node.name.to_str());
-        // todo pass in short_paths flag
-        let print_nam = top_level_nodes.iter().map(|node| get_printable_name(&node.name, true)).collect::<String>();
-        // if has same name
-
-        for n in top_level_nodes.iter_mut(){
-            let tmp = n.name.parent().unwrap().components().last().unwrap().as_os_str().to_str().unwrap();
-            let orig = n.name.display().to_string();
-            n.name = PathBuf::from(format!("{orig}({tmp})"));
-            println!("{:?}", n.name);
-        }
-        // build up list of dup-names 
-
-        // Repeatedly add parent path until all are not dup
-
-
         root = Node {
             name: PathBuf::from("(total)"),
             size,
@@ -76,12 +56,13 @@ pub fn get_biggest(
         heap = add_children(&display_data, &root, heap);
     }
 
-    Some(fill_remaining_lines(
+    let result = fill_remaining_lines(
         heap,
         &root,
         display_data,
         keep_collapsed,
-    ))
+    );
+    Some(result)
 }
 
 pub fn fill_remaining_lines<'a>(
@@ -177,8 +158,9 @@ fn flat_rebuilder(allowed_nodes: HashMap<&Path, &Node>, current: &Node) -> Displ
 
 fn build_display_node(mut new_children: Vec<DisplayNode>, current: &Node) -> DisplayNode {
     new_children.sort_by(|lhs, rhs| lhs.cmp(rhs).reverse());
+    // println!("{:?}", current.name);
     DisplayNode {
-        name: current.name.clone(),
+        name: PathBuf::from(current.name.display().to_string()),
         size: current.size,
         children: new_children,
     }
