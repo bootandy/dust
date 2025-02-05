@@ -15,35 +15,35 @@ _dust() {
 
     local context curcontext="$curcontext" state line
     _arguments "${_arguments_options[@]}" : \
-'-d+[Depth to show]:DEPTH: ' \
-'--depth=[Depth to show]:DEPTH: ' \
-'-T+[Number of threads to use]: : ' \
-'--threads=[Number of threads to use]: : ' \
+'-d+[Depth to show]:DEPTH:_default' \
+'--depth=[Depth to show]:DEPTH:_default' \
+'-T+[Number of threads to use]: :_default' \
+'--threads=[Number of threads to use]: :_default' \
 '--config=[Specify a config file to use]:FILE:_files' \
-'-n+[Number of lines of output to show. (Default is terminal_height - 10)]:NUMBER: ' \
-'--number-of-lines=[Number of lines of output to show. (Default is terminal_height - 10)]:NUMBER: ' \
+'-n+[Number of lines of output to show. (Default is terminal_height - 10)]:NUMBER:_default' \
+'--number-of-lines=[Number of lines of output to show. (Default is terminal_height - 10)]:NUMBER:_default' \
 '*-X+[Exclude any file or directory with this path]:PATH:_files' \
 '*--ignore-directory=[Exclude any file or directory with this path]:PATH:_files' \
 '-I+[Exclude any file or directory with a regex matching that listed in this file, the file entries will be added to the ignore regexs provided by --invert_filter]:FILE:_files' \
 '--ignore-all-in-file=[Exclude any file or directory with a regex matching that listed in this file, the file entries will be added to the ignore regexs provided by --invert_filter]:FILE:_files' \
-'-z+[Minimum size file to include in output]:MIN_SIZE: ' \
-'--min-size=[Minimum size file to include in output]:MIN_SIZE: ' \
-'(-e --filter -t --file_types)*-v+[Exclude filepaths matching this regex. To ignore png files type\: -v "\\.png\$" ]:REGEX: ' \
-'(-e --filter -t --file_types)*--invert-filter=[Exclude filepaths matching this regex. To ignore png files type\: -v "\\.png\$" ]:REGEX: ' \
-'(-t --file_types)*-e+[Only include filepaths matching this regex. For png files type\: -e "\\.png\$" ]:REGEX: ' \
-'(-t --file_types)*--filter=[Only include filepaths matching this regex. For png files type\: -e "\\.png\$" ]:REGEX: ' \
-'-w+[Specify width of output overriding the auto detection of terminal width]:WIDTH: ' \
-'--terminal_width=[Specify width of output overriding the auto detection of terminal width]:WIDTH: ' \
+'-z+[Minimum size file to include in output]:MIN_SIZE:_default' \
+'--min-size=[Minimum size file to include in output]:MIN_SIZE:_default' \
+'(-e --filter -t --file_types)*-v+[Exclude filepaths matching this regex. To ignore png files type\: -v "\\.png\$" ]:REGEX:_default' \
+'(-e --filter -t --file_types)*--invert-filter=[Exclude filepaths matching this regex. To ignore png files type\: -v "\\.png\$" ]:REGEX:_default' \
+'(-t --file_types)*-e+[Only include filepaths matching this regex. For png files type\: -e "\\.png\$" ]:REGEX:_default' \
+'(-t --file_types)*--filter=[Only include filepaths matching this regex. For png files type\: -e "\\.png\$" ]:REGEX:_default' \
+'-w+[Specify width of output overriding the auto detection of terminal width]:WIDTH:_default' \
+'--terminal_width=[Specify width of output overriding the auto detection of terminal width]:WIDTH:_default' \
 '-o+[Changes output display size. si will print sizes in powers of 1000. b k m g t kb mb gb tb will print the whole tree in that size.]:FORMAT:(si b k m g t kb mb gb tb)' \
 '--output-format=[Changes output display size. si will print sizes in powers of 1000. b k m g t kb mb gb tb will print the whole tree in that size.]:FORMAT:(si b k m g t kb mb gb tb)' \
-'-S+[Specify memory to use as stack size - use if you see\: '\''fatal runtime error\: stack overflow'\'' (default low memory=1048576, high memory=1073741824)]:STACK_SIZE: ' \
-'--stack-size=[Specify memory to use as stack size - use if you see\: '\''fatal runtime error\: stack overflow'\'' (default low memory=1048576, high memory=1073741824)]:STACK_SIZE: ' \
-'-M+[+/-n matches files modified more/less than n days ago , and n matches files modified exactly n days ago, days are rounded down.That is +n => (−∞, curr−(n+1)), n => \[curr−(n+1), curr−n), and -n => (𝑐𝑢𝑟𝑟−𝑛, +∞)]: : ' \
-'--mtime=[+/-n matches files modified more/less than n days ago , and n matches files modified exactly n days ago, days are rounded down.That is +n => (−∞, curr−(n+1)), n => \[curr−(n+1), curr−n), and -n => (𝑐𝑢𝑟𝑟−𝑛, +∞)]: : ' \
-'-A+[just like -mtime, but based on file access time]: : ' \
-'--atime=[just like -mtime, but based on file access time]: : ' \
-'-y+[just like -mtime, but based on file change time]: : ' \
-'--ctime=[just like -mtime, but based on file change time]: : ' \
+'-S+[Specify memory to use as stack size - use if you see\: '\''fatal runtime error\: stack overflow'\'' (default low memory=1048576, high memory=1073741824)]:STACK_SIZE:_default' \
+'--stack-size=[Specify memory to use as stack size - use if you see\: '\''fatal runtime error\: stack overflow'\'' (default low memory=1048576, high memory=1073741824)]:STACK_SIZE:_default' \
+'-M+[+/-n matches files modified more/less than n days ago , and n matches files modified exactly n days ago, days are rounded down.That is +n => (−∞, curr−(n+1)), n => \[curr−(n+1), curr−n), and -n => (𝑐𝑢𝑟𝑟−𝑛, +∞)]: :_default' \
+'--mtime=[+/-n matches files modified more/less than n days ago , and n matches files modified exactly n days ago, days are rounded down.That is +n => (−∞, curr−(n+1)), n => \[curr−(n+1), curr−n), and -n => (𝑐𝑢𝑟𝑟−𝑛, +∞)]: :_default' \
+'-A+[just like -mtime, but based on file access time]: :_default' \
+'--atime=[just like -mtime, but based on file access time]: :_default' \
+'-y+[just like -mtime, but based on file change time]: :_default' \
+'--ctime=[just like -mtime, but based on file change time]: :_default' \
 '--files0-from=[run dust on NUL-terminated file names specified in file; if argument is -, then read names from standard input]: :_files' \
 '*--collapse=[Keep these directories collapsed]: :_files' \
 '-m+[Directory '\''size'\'' is max filetime of child files instead of disk size. while a/c/m for last accessed/changed/modified time]: :(a c m)' \
