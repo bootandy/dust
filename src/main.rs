@@ -293,6 +293,7 @@ fn main() {
                 number_of_lines,
                 depth,
                 using_a_filter: !filter_regexs.is_empty() || !invert_filter_regexs.is_empty(),
+                short_paths: !config.get_full_paths(&options),
             };
             get_biggest(top_level_nodes, agg_data, &by_filetime, keep_collapsed)
         }

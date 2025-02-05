@@ -261,3 +261,19 @@ pub fn test_collapse() {
     assert!(output.contains("many"));
     assert!(!output.contains("hello_file"));
 }
+
+#[test]
+pub fn test_handle_duplicate_names() {
+    // Check that even if we run on a multiple directories with the same name
+    // we still show the distinct parent dir in the output
+    let output = build_command(vec![
+        "tests/test_dir_matching/dave/dup_name",
+        "tests/test_dir_matching/andy/dup_name",
+        "ci",
+    ]);
+    assert!(output.contains("andy"));
+    assert!(output.contains("dave"));
+    assert!(output.contains("ci"));
+    assert!(output.contains("dup_name"));
+    assert!(!output.contains("test_dir_matching"));
+}

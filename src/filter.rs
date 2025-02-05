@@ -1,3 +1,6 @@
+use stfu8::encode_u8;
+
+use crate::display::get_printable_name;
 use crate::display_node::DisplayNode;
 use crate::node::FileTime;
 use crate::node::Node;
@@ -14,6 +17,7 @@ pub struct AggregateData {
     pub number_of_lines: usize,
     pub depth: usize,
     pub using_a_filter: bool,
+    pub short_paths: bool,
 }
 
 pub fn get_biggest(
@@ -40,13 +44,17 @@ pub fn get_biggest(
         } else {
             top_level_nodes.iter().map(|node| node.size).sum()
         };
+
+        let nodes = handle_duplicate_top_level_names(top_level_nodes, display_data.short_paths);
+
         root = Node {
             name: PathBuf::from("(total)"),
             size,
-            children: top_level_nodes,
+            children: nodes,
             inode_device: None,
             depth: 0,
         };
+
         // Always include the base nodes if we add a 'parent' (total) node
         heap = always_add_children(&display_data, &root, heap);
     } else {
@@ -74,6 +82,8 @@ pub fn fill_remaining_lines<'a>(
         let line = heap.pop();
         match line {
             Some(line) => {
+                // If we are not doing only_file OR if we are doing
+                // only_file and it has no children (ie is a file not a dir)
                 if !display_data.only_file || line.children.is_empty() {
                     allowed_nodes.insert(line.name.as_path(), line);
                 }
@@ -159,5 +169,59 @@ fn build_display_node(mut new_children: Vec<DisplayNode>, current: &Node) -> Dis
         name: current.name.clone(),
         size: current.size,
         children: new_children,
+    }
+}
+
+fn names_have_dup(top_level_nodes: &Vec<Node>) -> bool {
+    let mut stored = HashSet::new();
+    for node in top_level_nodes {
+        let name = get_printable_name(&node.name, true);
+        if stored.contains(&name) {
+            return true;
+        }
+        stored.insert(name);
+    }
+    false
+}
+
+fn handle_duplicate_top_level_names(top_level_nodes: Vec<Node>, short_paths: bool) -> Vec<Node> {
+    // If we have top level names that are the same - we need to tweak them:
+    if short_paths && names_have_dup(&top_level_nodes) {
+        let mut new_top_nodes = top_level_nodes.clone();
+        let mut dir_walk_up_count = 0;
+
+        while names_have_dup(&new_top_nodes) && dir_walk_up_count < 10 {
+            dir_walk_up_count += 1;
+            let mut newer = vec![];
+
+            for node in new_top_nodes.iter() {
+                let mut folders = node.name.iter().rev();
+                // Get parent folder (if second time round get grandparent and so on)
+                for _ in 0..dir_walk_up_count {
+                    folders.next();
+                }
+                match folders.next() {
+                    // Add (parent_name) to path of Node
+                    Some(data) => {
+                        let parent = encode_u8(data.as_encoded_bytes());
+                        let current_node = node.name.display();
+                        let n = Node {
+                            name: PathBuf::from(format!("{current_node}({parent})")),
+                            size: node.size,
+                            children: node.children.clone(),
+                            inode_device: node.inode_device,
+                            depth: node.depth,
+                        };
+                        newer.push(n)
+                    }
+                    // Node does not have a parent
+                    None => newer.push(node.clone()),
+                }
+            }
+            new_top_nodes = newer;
+        }
+        new_top_nodes
+    } else {
+        top_level_nodes
     }
 }

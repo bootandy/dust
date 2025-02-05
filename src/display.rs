@@ -273,7 +273,7 @@ fn clean_indentation_string(s: &str) -> String {
     is
 }
 
-fn get_printable_name<P: AsRef<Path>>(dir_name: &P, short_paths: bool) -> String {
+pub fn get_printable_name<P: AsRef<Path>>(dir_name: &P, short_paths: bool) -> String {
     let dir_name = dir_name.as_ref();
     let printable_name = {
         if short_paths {
