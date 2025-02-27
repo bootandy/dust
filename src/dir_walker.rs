@@ -5,10 +5,10 @@ use std::sync::Arc;
 use std::sync::Mutex;
 
 use crate::node::Node;
+use crate::progress::ORDERING;
 use crate::progress::Operation;
 use crate::progress::PAtomicInfo;
 use crate::progress::RuntimeErrors;
-use crate::progress::ORDERING;
 use crate::utils::is_filtered_out_due_to_file_time;
 use crate::utils::is_filtered_out_due_to_invert_regex;
 use crate::utils::is_filtered_out_due_to_regex;

@@ -291,7 +291,7 @@ mod tests {
     use super::*;
     use chrono::{Datelike, Timelike};
     use clap::builder::PossibleValue;
-    use clap::{value_parser, Arg, ArgMatches, Command};
+    use clap::{Arg, ArgMatches, Command, value_parser};
 
     #[test]
     fn test_get_current_date_epoch_seconds() {

@@ -3,9 +3,9 @@ use std::{
     io::Write,
     path::Path,
     sync::{
+        Arc, RwLock,
         atomic::{AtomicU8, AtomicUsize, Ordering},
         mpsc::{self, RecvTimeoutError, Sender},
-        Arc, RwLock,
     },
     thread::JoinHandle,
     time::Duration,

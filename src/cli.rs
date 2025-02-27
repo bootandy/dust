@@ -1,4 +1,4 @@
-use clap::{builder::PossibleValue, value_parser, Arg, Command};
+use clap::{Arg, Command, builder::PossibleValue, value_parser};
 
 // For single thread mode set this variable on your command line:
 // export RAYON_NUM_THREADS=1
