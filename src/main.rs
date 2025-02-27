@@ -24,10 +24,10 @@ use std::fs::read_to_string;
 use std::io;
 use std::panic;
 use std::process;
-use std::sync::atomic::AtomicBool;
-use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use std::sync::Mutex;
+use std::sync::atomic::AtomicBool;
+use std::sync::atomic::Ordering;
 use sysinfo::{System, SystemExt};
 use utils::canonicalize_absolute_path;
 
@@ -40,7 +40,7 @@ use filter_type::get_all_file_types;
 use regex::Regex;
 use std::cmp::max;
 use std::path::PathBuf;
-use terminal_size::{terminal_size, Height, Width};
+use terminal_size::{Height, Width, terminal_size};
 use utils::get_filesystem_devices;
 use utils::simplify_dir_names;
 
