@@ -177,6 +177,9 @@ fn ignore_file(entry: &DirEntry, walk_data: &WalkData) -> bool {
 
     // Entry is inside an ignored absolute path
     for ignored_path in walk_data.ignore_directories.iter() {
+        if !ignored_path.is_absolute() {
+            continue;
+        }
         match std::fs::canonicalize(ignored_path) {
             Ok(absolute_ignored_path) => {
                 let absolute_entry_path =
