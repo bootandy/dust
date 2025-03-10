@@ -29,6 +29,7 @@ use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use std::sync::Mutex;
 use sysinfo::{System, SystemExt};
+use utils::canonicalize_absolute_path;
 
 use self::display::draw_it;
 use config::get_config;
@@ -198,6 +199,7 @@ fn main() {
         Some(values) => values
             .map(|v| v.as_str())
             .map(PathBuf::from)
+            .map(canonicalize_absolute_path)
             .collect::<Vec<PathBuf>>(),
         None => vec![],
     };
