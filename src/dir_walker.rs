@@ -125,9 +125,38 @@ fn sort_by_inode(a: &Node, b: &Node) -> std::cmp::Ordering {
     }
 }
 
+// Check if `path` is inside ignored directory
+fn is_ignored_path(path: &Path, walk_data: &WalkData) -> bool {
+    if walk_data.ignore_directories.contains(path) {
+        return true;
+    }
+
+    // Entry is inside an ignored absolute path
+    for ignored_path in walk_data.ignore_directories.iter() {
+        if !ignored_path.is_absolute() {
+            continue;
+        }
+        match std::fs::canonicalize(ignored_path) {
+            Ok(absolute_ignored_path) => {
+                let absolute_entry_path =
+                    std::fs::canonicalize(path).unwrap_or_default();
+                if absolute_entry_path.starts_with(absolute_ignored_path) {
+                    return true;
+                }
+            }
+            Err(_) => continue,
+        }
+    }
+
+    false
+}
+
 fn ignore_file(entry: &DirEntry, walk_data: &WalkData) -> bool {
+    if is_ignored_path(&entry.path(), walk_data) {
+        return true;
+    }
+
     let is_dot_file = entry.file_name().to_str().unwrap_or("").starts_with('.');
-    let is_ignored_path = walk_data.ignore_directories.contains(&entry.path());
     let follow_links = walk_data.follow_links && entry.file_type().is_ok_and(|ft| ft.is_symlink());
 
     if !walk_data.allowed_filesystems.is_empty() {
@@ -175,24 +204,7 @@ fn ignore_file(entry: &DirEntry, walk_data: &WalkData) -> bool {
         return true;
     }
 
-    // Entry is inside an ignored absolute path
-    for ignored_path in walk_data.ignore_directories.iter() {
-        if !ignored_path.is_absolute() {
-            continue;
-        }
-        match std::fs::canonicalize(ignored_path) {
-            Ok(absolute_ignored_path) => {
-                let absolute_entry_path =
-                    std::fs::canonicalize(&entry.path()).unwrap_or(PathBuf::new());
-                if absolute_entry_path.starts_with(absolute_ignored_path) {
-                    return true;
-                }
-            }
-            Err(_) => continue,
-        }
-    }
-
-    (is_dot_file && walk_data.ignore_hidden) || is_ignored_path
+    is_dot_file && walk_data.ignore_hidden
 }
 
 fn walk(dir: PathBuf, walk_data: &WalkData, depth: usize) -> Option<Node> {
