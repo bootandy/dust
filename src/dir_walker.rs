@@ -132,19 +132,14 @@ fn is_ignored_path(path: &Path, walk_data: &WalkData) -> bool {
     }
 
     // Entry is inside an ignored absolute path
+    // Absolute paths should be canonicalized before being added to `WalkData.ignore_directories`
     for ignored_path in walk_data.ignore_directories.iter() {
         if !ignored_path.is_absolute() {
             continue;
         }
-        match std::fs::canonicalize(ignored_path) {
-            Ok(absolute_ignored_path) => {
-                let absolute_entry_path =
-                    std::fs::canonicalize(path).unwrap_or_default();
-                if absolute_entry_path.starts_with(absolute_ignored_path) {
-                    return true;
-                }
-            }
-            Err(_) => continue,
+        let absolute_entry_path = std::fs::canonicalize(path).unwrap_or_default();
+        if absolute_entry_path.starts_with(ignored_path) {
+            return true;
         }
     }
 

@@ -67,6 +67,18 @@ pub fn normalize_path<P: AsRef<Path>>(path: P) -> PathBuf {
     path.as_ref().components().collect()
 }
 
+// Canonicalize the path only if it is an absolute path
+pub fn canonicalize_absolute_path(path: PathBuf) -> PathBuf {
+    if path.is_absolute() {
+        match std::fs::canonicalize(&path) {
+            Ok(canonicalized_path) => canonicalized_path,
+            Err(_) => path,
+        }
+    } else {
+        path
+    }
+}
+
 pub fn is_filtered_out_due_to_regex(filter_regex: &[Regex], dir: &Path) -> bool {
     if filter_regex.is_empty() {
         false
