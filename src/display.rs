@@ -71,11 +71,7 @@ impl DisplayData {
 
     fn percent_size(&self, node: &DisplayNode) -> f32 {
         let result = node.size as f32 / self.base_size as f32;
-        if result.is_normal() {
-            result
-        } else {
-            0.0
-        }
+        if result.is_normal() { result } else { 0.0 }
     }
 }
 
