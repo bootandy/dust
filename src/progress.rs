@@ -79,7 +79,6 @@ pub struct RuntimeErrors {
     pub file_not_found: HashSet<String>,
     pub unknown_error: HashSet<String>,
     pub interrupted_error: i32,
-    pub abort: bool,
 }
 
 /* -------------------------------------------------------------------------- */
