@@ -118,7 +118,7 @@ impl PIndicator {
 
         let time_info_thread = std::thread::spawn(move || {
             let mut progress_char_i: usize = 0;
-            let mut stdout = std::io::stdout();
+            let mut stderr = std::io::stderr();
             let mut msg = "".to_string();
 
             // While the timeout triggers we go round the loop
@@ -127,7 +127,8 @@ impl PIndicator {
                 receiver.recv_timeout(Duration::from_millis(SPINNER_SLEEP_TIME))
             {
                 // Clear the text written by 'write!'& Return at the start of line
-                print!("\r{:width$}", " ", width = msg.len());
+                let clear = format!("\r{:width$}", " ", width = msg.len());
+                write!(stderr, "{clear}").unwrap();
                 let prog_char = PROGRESS_CHARS[progress_char_i];
 
                 msg = match data.state.load(ORDERING) {
@@ -136,15 +137,17 @@ impl PIndicator {
                     _ => panic!("Unknown State"),
                 };
 
-                write!(stdout, "\r{msg}").unwrap();
-                stdout.flush().unwrap();
+                write!(stderr, "\r{msg}").unwrap();
+                stderr.flush().unwrap();
 
                 progress_char_i += 1;
                 progress_char_i %= PROGRESS_CHARS_LEN;
             }
-            print!("\r{:width$}", " ", width = msg.len());
-            print!("\r");
-            stdout.flush().unwrap();
+
+            let clear = format!("\r{:width$}", " ", width = msg.len());
+            write!(stderr, "{clear}").unwrap();
+            write!(stderr, "\r").unwrap();
+            stderr.flush().unwrap();
         });
         self.thread = Some((stop_handler, time_info_thread))
     }

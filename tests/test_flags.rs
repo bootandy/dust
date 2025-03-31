@@ -10,6 +10,9 @@ use std::str;
 
 fn build_command<T: AsRef<OsStr>>(command_args: Vec<T>) -> String {
     let mut cmd = &mut Command::cargo_bin("dust").unwrap();
+    // Hide progress bar
+    cmd = cmd.arg("-P");
+
     for p in command_args {
         cmd = cmd.arg(p);
     }
