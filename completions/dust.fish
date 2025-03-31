@@ -7,7 +7,7 @@ complete -c dust -s I -l ignore-all-in-file -d 'Exclude any file or directory wi
 complete -c dust -s z -l min-size -d 'Minimum size file to include in output' -r
 complete -c dust -s v -l invert-filter -d 'Exclude filepaths matching this regex. To ignore png files type: -v "\\.png$" ' -r
 complete -c dust -s e -l filter -d 'Only include filepaths matching this regex. For png files type: -e "\\.png$" ' -r
-complete -c dust -s w -l terminal_width -d 'Specify width of output overriding the auto detection of terminal width' -r
+complete -c dust -s w -l terminal-width -d 'Specify width of output overriding the auto detection of terminal width' -r
 complete -c dust -s o -l output-format -d 'Changes output display size. si will print sizes in powers of 1000. b k m g t kb mb gb tb will print the whole tree in that size.' -r -f -a "si\t''
 b\t''
 k\t''
@@ -39,8 +39,8 @@ complete -c dust -s B -l bars-on-right -d 'percent bars moved to right side of s
 complete -c dust -s R -l screen-reader -d 'For screen readers. Removes bars. Adds new column: depth level (May want to use -p too for full path)'
 complete -c dust -l skip-total -d 'No total row will be displayed'
 complete -c dust -s f -l filecount -d 'Directory \'size\' is number of child files instead of disk size'
-complete -c dust -s i -l ignore_hidden -d 'Do not display hidden files'
-complete -c dust -s t -l file_types -d 'show only these file types'
+complete -c dust -s i -l ignore-hidden -d 'Do not display hidden files'
+complete -c dust -s t -l file-types -d 'show only these file types'
 complete -c dust -s P -l no-progress -d 'Disable the progress indication.'
 complete -c dust -l print-errors -d 'Print path with errors.'
 complete -c dust -s D -l only-dir -d 'Only directories will be displayed.'
