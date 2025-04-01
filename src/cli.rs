@@ -154,7 +154,7 @@ pub fn build_cli() -> Command {
         .arg(
             Arg::new("ignore_hidden")
                 .short('i') // Do not use 'h' this is used by 'help'
-                .long("ignore_hidden")
+                .long("ignore-hidden")
                 .action(clap::ArgAction::SetTrue)
                 .help("Do not display hidden files"),
         )
@@ -180,7 +180,7 @@ pub fn build_cli() -> Command {
         .arg(
             Arg::new("types")
                 .short('t')
-                .long("file_types")
+                .long("file-types")
                 .conflicts_with("depth")
                 .conflicts_with("only_dir")
                 .action(clap::ArgAction::SetTrue)
@@ -189,7 +189,7 @@ pub fn build_cli() -> Command {
         .arg(
             Arg::new("width")
                 .short('w')
-                .long("terminal_width")
+                .long("terminal-width")
                 .value_name("WIDTH")
                 .value_parser(value_parser!(usize))
                 .num_args(1)
