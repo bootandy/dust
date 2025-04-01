@@ -4,7 +4,6 @@ use clap::ArgMatches;
 use config_file::FromConfigFile;
 use regex::Regex;
 use serde::Deserialize;
-use std::io::IsTerminal;
 use std::path::Path;
 use std::path::PathBuf;
 
@@ -54,9 +53,7 @@ impl Config {
         Some(true) == self.force_colors || options.get_flag("force_colors")
     }
     pub fn get_disable_progress(&self, options: &ArgMatches) -> bool {
-        Some(true) == self.disable_progress
-            || options.get_flag("disable_progress")
-            || !std::io::stdout().is_terminal()
+        Some(true) == self.disable_progress || options.get_flag("disable_progress")
     }
     pub fn get_apparent_size(&self, options: &ArgMatches) -> bool {
         Some(true) == self.display_apparent_size || options.get_flag("display_apparent_size")
