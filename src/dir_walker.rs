@@ -205,8 +205,12 @@ fn ignore_file(entry: &DirEntry, walk_data: &WalkData) -> bool {
 fn walk(dir: PathBuf, walk_data: &WalkData, depth: usize) -> Option<Node> {
     let prog_data = &walk_data.progress_data;
     let errors = &walk_data.errors;
+    let (is_dir, is_file) = fs::metadata(&dir)
+        .map(|x| x.file_type())
+        .map(|x| (x.is_dir(), x.is_file()))
+        .unwrap_or_default();
 
-    let children = if dir.is_dir() {
+    let children = if is_dir {
         let read_dir = fs::read_dir(&dir);
         match read_dir {
             Ok(entries) => {
@@ -269,7 +273,7 @@ fn walk(dir: PathBuf, walk_data: &WalkData, depth: usize) -> Option<Node> {
             }
         }
     } else {
-        if !dir.is_file() {
+        if !is_file {
             let mut editable_error = errors.lock().unwrap();
             let bad_file = dir.as_os_str().to_string_lossy().into();
             editable_error.file_not_found.insert(bad_file);
