@@ -41,7 +41,7 @@ pub fn get_metadata<P: AsRef<Path>>(
             // file should occupy based on the file system I/O block size (blksize).
             // Related: https://github.com/bootandy/dust/issues/295
             let blksize = md.blksize();
-            let target_size = ((file_size + blksize - 1) / blksize) * blksize;
+            let target_size = file_size.div_ceil(blksize) * blksize;
             // At least EXT4 can pre-allocate an extra block for a file
             let max_size = target_size + blksize;
             let reported_size = md.blocks() * get_block_size();
