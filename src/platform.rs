@@ -45,7 +45,11 @@ pub fn get_metadata<P: AsRef<Path>>(
             // At least EXT4 can pre-allocate an extra block for a file
             let max_size = target_size + blksize;
             let reported_size = md.blocks() * get_block_size();
-            let allocated_size = reported_size.min(max_size);
+            let allocated_size = if reported_size > max_size {
+                target_size
+            } else {
+                reported_size
+            };
             Some((
                 allocated_size,
                 Some((md.ino(), md.dev())),
