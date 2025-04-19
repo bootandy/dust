@@ -42,9 +42,11 @@ pub fn get_metadata<P: AsRef<Path>>(
             // Related: https://github.com/bootandy/dust/issues/295
             let blksize = md.blksize();
             let target_size = file_size.div_ceil(blksize) * blksize;
-            // At least EXT4 can pre-allocate an extra block for a file
-            let max_size = target_size + blksize;
             let reported_size = md.blocks() * get_block_size();
+
+            // File systems can pre-allocate more space for a file than what would be necessary
+            let pre_allocation_buffer = blksize * 65536;
+            let max_size = target_size + pre_allocation_buffer;
             let allocated_size = if reported_size > max_size {
                 target_size
             } else {
