@@ -29,28 +29,28 @@ pub fn get_metadata<P: AsRef<Path>>(
         Ok(md) => {
             let file_size = md.len();
             if use_apparent_size {
-                Some((
+                return Some((
                     file_size,
                     Some((md.ino(), md.dev())),
                     (md.mtime(), md.atime(), md.ctime()),
-                ))
-            } else {
-                // On NTFS mounts, the reported block count can be unexpectedly large.
-                // To avoid overestimating disk usage, cap the allocated size to what the
-                // file should occupy based on the file system I/O block size (blksize).
-                // Related: https://github.com/bootandy/dust/issues/295
-                let blksize = md.blksize();
-                let target_size = ((file_size + blksize - 1) / blksize) * blksize;
-                // At least EXT4 can pre-allocate an extra block for a file
-                let max_size = target_size + blksize;
-                let reported_size = md.blocks() * get_block_size();
-                let allocated_size = reported_size.min(max_size);
-                Some((
-                    allocated_size,
-                    Some((md.ino(), md.dev())),
-                    (md.mtime(), md.atime(), md.ctime()),
-                ))
+                ));
             }
+
+            // On NTFS mounts, the reported block count can be unexpectedly large.
+            // To avoid overestimating disk usage, cap the allocated size to what the
+            // file should occupy based on the file system I/O block size (blksize).
+            // Related: https://github.com/bootandy/dust/issues/295
+            let blksize = md.blksize();
+            let target_size = ((file_size + blksize - 1) / blksize) * blksize;
+            // At least EXT4 can pre-allocate an extra block for a file
+            let max_size = target_size + blksize;
+            let reported_size = md.blocks() * get_block_size();
+            let allocated_size = reported_size.min(max_size);
+            Some((
+                allocated_size,
+                Some((md.ino(), md.dev())),
+                (md.mtime(), md.atime(), md.ctime()),
+            ))
         }
         Err(_e) => None,
     }
