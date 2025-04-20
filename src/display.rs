@@ -12,7 +12,7 @@ use chrono::{DateTime, Local, TimeZone, Utc};
 use std::cmp::max;
 use std::cmp::min;
 use std::fs;
-use std::iter::repeat;
+use std::iter::repeat_n;
 use std::path::Path;
 use thousands::Separable;
 
@@ -155,7 +155,7 @@ pub fn draw_it(
         allowed_width - longest_string_length - 7
     };
 
-    let first_size_bar = repeat(BLOCKS[0]).take(max_bar_length).collect();
+    let first_size_bar = repeat_n(BLOCKS[0], max_bar_length).collect();
 
     let display_data = DisplayData {
         initial: idd,
@@ -594,7 +594,7 @@ mod tests {
             size: 2_u64.pow(size),
             children: vec![],
         };
-        let first_size_bar = repeat(BLOCKS[0]).take(13).collect();
+        let first_size_bar = repeat_n(BLOCKS[0], 13).collect();
         let dd = DrawData {
             indent: "".into(),
             percent_bar: first_size_bar,
