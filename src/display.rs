@@ -298,12 +298,9 @@ fn pad_or_trim_filename(node: &DisplayNode, indent: &str, display_data: &Display
     );
 
     // Add spaces after the filename so we can draw the % used bar chart.
-    let name_and_padding = name
-        + " "
-            .repeat(display_data.longest_string_length - width)
-            .as_str();
-
-    name_and_padding
+    name + " "
+        .repeat(display_data.longest_string_length - width)
+        .as_str()
 }
 
 fn maybe_trim_filename(name_in: String, indent: &str, display_data: &DisplayData) -> String {
