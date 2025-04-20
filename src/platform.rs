@@ -27,19 +27,36 @@ pub fn get_metadata<P: AsRef<Path>>(
     };
     match metadata {
         Ok(md) => {
+            let file_size = md.len();
             if use_apparent_size {
-                Some((
-                    md.len(),
+                return Some((
+                    file_size,
                     Some((md.ino(), md.dev())),
                     (md.mtime(), md.atime(), md.ctime()),
-                ))
-            } else {
-                Some((
-                    md.blocks() * get_block_size(),
-                    Some((md.ino(), md.dev())),
-                    (md.mtime(), md.atime(), md.ctime()),
-                ))
+                ));
             }
+
+            // On NTFS mounts, the reported block count can be unexpectedly large.
+            // To avoid overestimating disk usage, cap the allocated size to what the
+            // file should occupy based on the file system I/O block size (blksize).
+            // Related: https://github.com/bootandy/dust/issues/295
+            let blksize = md.blksize();
+            let target_size = file_size.div_ceil(blksize) * blksize;
+            let reported_size = md.blocks() * get_block_size();
+
+            // File systems can pre-allocate more space for a file than what would be necessary
+            let pre_allocation_buffer = blksize * 65536;
+            let max_size = target_size + pre_allocation_buffer;
+            let allocated_size = if reported_size > max_size {
+                target_size
+            } else {
+                reported_size
+            };
+            Some((
+                allocated_size,
+                Some((md.ino(), md.dev())),
+                (md.mtime(), md.atime(), md.ctime()),
+            ))
         }
         Err(_e) => None,
     }
