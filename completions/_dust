@@ -17,8 +17,8 @@ _dust() {
     _arguments "${_arguments_options[@]}" : \
 '-d+[Depth to show]:DEPTH:_default' \
 '--depth=[Depth to show]:DEPTH:_default' \
-'-T+[Number of threads to use]: :_default' \
-'--threads=[Number of threads to use]: :_default' \
+'-T+[Number of threads to use]:THREADS:_default' \
+'--threads=[Number of threads to use]:THREADS:_default' \
 '--config=[Specify a config file to use]:FILE:_files' \
 '-n+[Number of lines of output to show. (Default is terminal_height - 10)]:NUMBER:_default' \
 '--number-of-lines=[Number of lines of output to show. (Default is terminal_height - 10)]:NUMBER:_default' \
@@ -28,26 +28,48 @@ _dust() {
 '--ignore-all-in-file=[Exclude any file or directory with a regex matching that listed in this file, the file entries will be added to the ignore regexs provided by --invert_filter]:FILE:_files' \
 '-z+[Minimum size file to include in output]:MIN_SIZE:_default' \
 '--min-size=[Minimum size file to include in output]:MIN_SIZE:_default' \
-'(-e --filter -t --file-types)*-v+[Exclude filepaths matching this regex. To ignore png files type\: -v "\\.png\$" ]:REGEX:_default' \
-'(-e --filter -t --file-types)*--invert-filter=[Exclude filepaths matching this regex. To ignore png files type\: -v "\\.png\$" ]:REGEX:_default' \
-'(-t --file-types)*-e+[Only include filepaths matching this regex. For png files type\: -e "\\.png\$" ]:REGEX:_default' \
-'(-t --file-types)*--filter=[Only include filepaths matching this regex. For png files type\: -e "\\.png\$" ]:REGEX:_default' \
+'(-e --filter -t --file-types)*-v+[Exclude filepaths matching this regex. To ignore png files type\: -v "\\.png\$"]:REGEX:_default' \
+'(-e --filter -t --file-types)*--invert-filter=[Exclude filepaths matching this regex. To ignore png files type\: -v "\\.png\$"]:REGEX:_default' \
+'(-t --file-types)*-e+[Only include filepaths matching this regex. For png files type\: -e "\\.png\$"]:REGEX:_default' \
+'(-t --file-types)*--filter=[Only include filepaths matching this regex. For png files type\: -e "\\.png\$"]:REGEX:_default' \
 '-w+[Specify width of output overriding the auto detection of terminal width]:WIDTH:_default' \
 '--terminal-width=[Specify width of output overriding the auto detection of terminal width]:WIDTH:_default' \
-'-o+[Changes output display size. si will print sizes in powers of 1000. b k m g t kb mb gb tb will print the whole tree in that size.]:FORMAT:(si b k m g t kb mb gb tb)' \
-'--output-format=[Changes output display size. si will print sizes in powers of 1000. b k m g t kb mb gb tb will print the whole tree in that size.]:FORMAT:(si b k m g t kb mb gb tb)' \
+'-o+[Changes output display size. si will print sizes in powers of 1000. b k m g t kb mb gb tb will print the whole tree in that size]:FORMAT:((si\:"SI prefix (powers of 1000)"
+b\:"byte (B)"
+k\:"kibibyte (KiB)"
+m\:"mebibyte (MiB)"
+g\:"gibibyte (GiB)"
+t\:"tebibyte (TiB)"
+kb\:"kilobyte (kB)"
+mb\:"megabyte (MB)"
+gb\:"gigabyte (GB)"
+tb\:"terabyte (TB)"))' \
+'--output-format=[Changes output display size. si will print sizes in powers of 1000. b k m g t kb mb gb tb will print the whole tree in that size]:FORMAT:((si\:"SI prefix (powers of 1000)"
+b\:"byte (B)"
+k\:"kibibyte (KiB)"
+m\:"mebibyte (MiB)"
+g\:"gibibyte (GiB)"
+t\:"tebibyte (TiB)"
+kb\:"kilobyte (kB)"
+mb\:"megabyte (MB)"
+gb\:"gigabyte (GB)"
+tb\:"terabyte (TB)"))' \
 '-S+[Specify memory to use as stack size - use if you see\: '\''fatal runtime error\: stack overflow'\'' (default low memory=1048576, high memory=1073741824)]:STACK_SIZE:_default' \
 '--stack-size=[Specify memory to use as stack size - use if you see\: '\''fatal runtime error\: stack overflow'\'' (default low memory=1048576, high memory=1073741824)]:STACK_SIZE:_default' \
-'-M+[+/-n matches files modified more/less than n days ago , and n matches files modified exactly n days ago, days are rounded down.That is +n => (−∞, curr−(n+1)), n => \[curr−(n+1), curr−n), and -n => (𝑐𝑢𝑟𝑟−𝑛, +∞)]: :_default' \
-'--mtime=[+/-n matches files modified more/less than n days ago , and n matches files modified exactly n days ago, days are rounded down.That is +n => (−∞, curr−(n+1)), n => \[curr−(n+1), curr−n), and -n => (𝑐𝑢𝑟𝑟−𝑛, +∞)]: :_default' \
-'-A+[just like -mtime, but based on file access time]: :_default' \
-'--atime=[just like -mtime, but based on file access time]: :_default' \
-'-y+[just like -mtime, but based on file change time]: :_default' \
-'--ctime=[just like -mtime, but based on file change time]: :_default' \
-'--files0-from=[run dust on NUL-terminated file names specified in file; if argument is -, then read names from standard input]: :_files' \
-'*--collapse=[Keep these directories collapsed]: :_files' \
-'-m+[Directory '\''size'\'' is max filetime of child files instead of disk size. while a/c/m for last accessed/changed/modified time]: :(a c m)' \
-'--filetime=[Directory '\''size'\'' is max filetime of child files instead of disk size. while a/c/m for last accessed/changed/modified time]: :(a c m)' \
+'-M+[+/-n matches files modified more/less than n days ago , and n matches files modified exactly n days ago, days are rounded down.That is +n => (−∞, curr−(n+1)), n => \[curr−(n+1), curr−n), and -n => (𝑐𝑢𝑟𝑟−𝑛, +∞)]:MTIME:_default' \
+'--mtime=[+/-n matches files modified more/less than n days ago , and n matches files modified exactly n days ago, days are rounded down.That is +n => (−∞, curr−(n+1)), n => \[curr−(n+1), curr−n), and -n => (𝑐𝑢𝑟𝑟−𝑛, +∞)]:MTIME:_default' \
+'-A+[just like -mtime, but based on file access time]:ATIME:_default' \
+'--atime=[just like -mtime, but based on file access time]:ATIME:_default' \
+'-y+[just like -mtime, but based on file change time]:CTIME:_default' \
+'--ctime=[just like -mtime, but based on file change time]:CTIME:_default' \
+'--files0-from=[run dust on NUL-terminated file names specified in file; if argument is -, then read names from standard input]:FILES0_FROM:_files' \
+'*--collapse=[Keep these directories collapsed]:COLLAPSE:_files' \
+'-m+[Directory '\''size'\'' is max filetime of child files instead of disk size. while a/c/m for last accessed/changed/modified time]:FILETIME:((a\:"last accessed time"
+c\:"last changed time"
+m\:"last modified time"))' \
+'--filetime=[Directory '\''size'\'' is max filetime of child files instead of disk size. while a/c/m for last accessed/changed/modified time]:FILETIME:((a\:"last accessed time"
+c\:"last changed time"
+m\:"last modified time"))' \
 '-p[Subdirectories will not have their path shortened]' \
 '--full-paths[Subdirectories will not have their path shortened]' \
 '-L[dereference sym links - Treat sym links as directories and go into them]' \
@@ -75,20 +97,20 @@ _dust() {
 '--ignore-hidden[Do not display hidden files]' \
 '(-d --depth -D --only-dir)-t[show only these file types]' \
 '(-d --depth -D --only-dir)--file-types[show only these file types]' \
-'-P[Disable the progress indication.]' \
-'--no-progress[Disable the progress indication.]' \
-'--print-errors[Print path with errors.]' \
-'(-F --only-file -t --file-types)-D[Only directories will be displayed.]' \
-'(-F --only-file -t --file-types)--only-dir[Only directories will be displayed.]' \
+'-P[Disable the progress indication]' \
+'--no-progress[Disable the progress indication]' \
+'--print-errors[Print path with errors]' \
+'(-F --only-file -t --file-types)-D[Only directories will be displayed]' \
+'(-F --only-file -t --file-types)--only-dir[Only directories will be displayed]' \
 '(-D --only-dir)-F[Only files will be displayed. (Finds your largest files)]' \
 '(-D --only-dir)--only-file[Only files will be displayed. (Finds your largest files)]' \
 '-j[Output the directory tree as json to the current directory]' \
 '--output-json[Output the directory tree as json to the current directory]' \
-'-h[Print help]' \
-'--help[Print help]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
 '-V[Print version]' \
 '--version[Print version]' \
-'*::params:_files' \
+'*::params -- Input files or directories:_files' \
 && ret=0
 }
 

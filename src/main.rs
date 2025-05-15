@@ -10,9 +10,9 @@ mod platform;
 mod progress;
 mod utils;
 
-use crate::cli::build_cli;
+use crate::cli::Cli;
 use crate::progress::RuntimeErrors;
-use clap::parser::ValuesRef;
+use clap::Parser;
 use dir_walker::WalkData;
 use display::InitialDisplayData;
 use filter::AggregateData;
@@ -98,9 +98,10 @@ fn get_width_of_terminal() -> usize {
         .unwrap_or(DEFAULT_TERMINAL_WIDTH)
 }
 
-fn get_regex_value(maybe_value: Option<ValuesRef<String>>) -> Vec<Regex> {
+fn get_regex_value(maybe_value: Option<&Vec<String>>) -> Vec<Regex> {
     maybe_value
-        .unwrap_or_default()
+        .unwrap_or(&Vec::new())
+        .iter()
         .map(|reg| {
             Regex::new(reg).unwrap_or_else(|err| {
                 eprintln!("Ignoring bad value for regex {err:?}");
@@ -111,8 +112,8 @@ fn get_regex_value(maybe_value: Option<ValuesRef<String>>) -> Vec<Regex> {
 }
 
 fn main() {
-    let options = build_cli().get_matches();
-    let config = get_config(options.get_one::<String>("config").cloned());
+    let options = Cli::parse();
+    let config = get_config(options.config.as_ref());
 
     let errors = RuntimeErrors::default();
     let error_listen_for_ctrlc = Arc::new(Mutex::new(errors));
@@ -148,19 +149,19 @@ fn main() {
                 }
             }
         }
-        None => match options.get_many::<String>("params") {
-            Some(values) => values.cloned().collect(),
+        None => match options.params {
+            Some(ref values) => values.clone(),
             None => vec![".".to_owned()],
         },
     };
 
-    let summarize_file_types = options.get_flag("types");
+    let summarize_file_types = options.file_types;
 
-    let filter_regexs = get_regex_value(options.get_many("filter"));
-    let invert_filter_regexs = get_regex_value(options.get_many("invert_filter"));
+    let filter_regexs = get_regex_value(options.filter.as_ref());
+    let invert_filter_regexs = get_regex_value(options.invert_filter.as_ref());
 
-    let terminal_width: usize = match options.get_one::<usize>("width") {
-        Some(&val) => val,
+    let terminal_width: usize = match options.terminal_width {
+        Some(val) => val,
         None => get_width_of_terminal(),
     };
 
@@ -169,8 +170,8 @@ fn main() {
     // If depth is set, then we set the default number_of_lines to be max
     // instead of screen height
 
-    let number_of_lines = match options.get_one::<usize>("number_of_lines") {
-        Some(&val) => val,
+    let number_of_lines = match options.number_of_lines {
+        Some(val) => val,
         None => {
             if depth != usize::MAX {
                 usize::MAX
@@ -185,17 +186,17 @@ fn main() {
         config.get_force_colors(&options),
     );
 
-    let ignore_directories = match options.get_many::<String>("ignore_directory") {
-        Some(values) => values
-            .map(|v| v.as_str())
+    let ignore_directories = match options.ignore_directory {
+        Some(ref values) => values
+            .iter()
             .map(PathBuf::from)
             .map(canonicalize_absolute_path)
             .collect::<Vec<PathBuf>>(),
         None => vec![],
     };
 
-    let ignore_from_file_result = match options.get_one::<String>("ignore_all_in_file") {
-        Some(val) => read_to_string(val)
+    let ignore_from_file_result = match options.ignore_all_in_file {
+        Some(ref val) => read_to_string(val)
             .unwrap()
             .lines()
             .map(Regex::new)
@@ -212,10 +213,10 @@ fn main() {
         .chain(ignore_from_file)
         .collect::<Vec<Regex>>();
 
-    let by_filecount = options.get_flag("by_filecount");
+    let by_filecount = options.filecount;
     let by_filetime = config.get_filetime(&options);
-    let limit_filesystem = options.get_flag("limit_filesystem");
-    let follow_links = options.get_flag("dereference_links");
+    let limit_filesystem = options.limit_filesystem;
+    let follow_links = options.dereference_links;
 
     let allowed_filesystems = limit_filesystem
         .then(|| get_filesystem_devices(&target_dirs, follow_links))
@@ -236,8 +237,8 @@ fn main() {
         indicator.spawn(output_format.clone())
     }
 
-    let keep_collapsed: HashSet<PathBuf> = match options.get_many::<String>("collapse") {
-        Some(collapse) => {
+    let keep_collapsed: HashSet<PathBuf> = match options.collapse {
+        Some(ref collapse) => {
             let mut combined_dirs = HashSet::new();
             for collapse_dir in collapse {
                 for target_dir in target_dirs.iter() {

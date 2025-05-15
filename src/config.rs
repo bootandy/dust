@@ -1,12 +1,12 @@
 use crate::node::FileTime;
 use chrono::{Local, TimeZone};
-use clap::ArgMatches;
 use config_file::FromConfigFile;
 use regex::Regex;
 use serde::Deserialize;
 use std::path::Path;
 use std::path::PathBuf;
 
+use crate::cli::Cli;
 use crate::dir_walker::Operator;
 use crate::display::get_number_format;
 
@@ -39,77 +39,68 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn get_files_from(&self, options: &ArgMatches) -> Option<String> {
-        let from_file = options.get_one::<String>("files0_from");
+    pub fn get_files_from(&self, options: &Cli) -> Option<String> {
+        let from_file = &options.files0_from;
         match from_file {
             None => self.files0_from.as_ref().map(|x| x.to_string()),
             Some(x) => Some(x.to_string()),
         }
     }
-    pub fn get_no_colors(&self, options: &ArgMatches) -> bool {
-        Some(true) == self.no_colors || options.get_flag("no_colors")
+    pub fn get_no_colors(&self, options: &Cli) -> bool {
+        Some(true) == self.no_colors || options.no_colors
     }
-    pub fn get_force_colors(&self, options: &ArgMatches) -> bool {
-        Some(true) == self.force_colors || options.get_flag("force_colors")
+    pub fn get_force_colors(&self, options: &Cli) -> bool {
+        Some(true) == self.force_colors || options.force_colors
     }
-    pub fn get_disable_progress(&self, options: &ArgMatches) -> bool {
-        Some(true) == self.disable_progress || options.get_flag("disable_progress")
+    pub fn get_disable_progress(&self, options: &Cli) -> bool {
+        Some(true) == self.disable_progress || options.no_progress
     }
-    pub fn get_apparent_size(&self, options: &ArgMatches) -> bool {
-        Some(true) == self.display_apparent_size || options.get_flag("display_apparent_size")
+    pub fn get_apparent_size(&self, options: &Cli) -> bool {
+        Some(true) == self.display_apparent_size || options.apparent_size
     }
-    pub fn get_ignore_hidden(&self, options: &ArgMatches) -> bool {
-        Some(true) == self.ignore_hidden || options.get_flag("ignore_hidden")
+    pub fn get_ignore_hidden(&self, options: &Cli) -> bool {
+        Some(true) == self.ignore_hidden || options.ignore_hidden
     }
-    pub fn get_full_paths(&self, options: &ArgMatches) -> bool {
-        Some(true) == self.display_full_paths || options.get_flag("display_full_paths")
+    pub fn get_full_paths(&self, options: &Cli) -> bool {
+        Some(true) == self.display_full_paths || options.full_paths
     }
-    pub fn get_reverse(&self, options: &ArgMatches) -> bool {
-        Some(true) == self.reverse || options.get_flag("reverse")
+    pub fn get_reverse(&self, options: &Cli) -> bool {
+        Some(true) == self.reverse || options.reverse
     }
-    pub fn get_no_bars(&self, options: &ArgMatches) -> bool {
-        Some(true) == self.no_bars || options.get_flag("no_bars")
+    pub fn get_no_bars(&self, options: &Cli) -> bool {
+        Some(true) == self.no_bars || options.no_percent_bars
     }
-    pub fn get_output_format(&self, options: &ArgMatches) -> String {
-        let out_fmt = options.get_one::<String>("output_format");
+    pub fn get_output_format(&self, options: &Cli) -> String {
+        let out_fmt = options.output_format;
         (match out_fmt {
             None => match &self.output_format {
                 None => "".to_string(),
                 Some(x) => x.to_string(),
             },
-            Some(x) => x.into(),
+            Some(x) => x.to_string(),
         })
         .to_lowercase()
     }
 
-    pub fn get_filetime(&self, options: &ArgMatches) -> Option<FileTime> {
-        let out_fmt = options.get_one::<String>("filetime");
-        match out_fmt {
-            None => None,
-            Some(x) => match x.as_str() {
-                "m" | "modified" => Some(FileTime::Modified),
-                "a" | "accessed" => Some(FileTime::Accessed),
-                "c" | "changed" => Some(FileTime::Changed),
-                _ => unreachable!(),
-            },
-        }
+    pub fn get_filetime(&self, options: &Cli) -> Option<FileTime> {
+        options.filetime.map(FileTime::from)
     }
 
-    pub fn get_skip_total(&self, options: &ArgMatches) -> bool {
-        Some(true) == self.skip_total || options.get_flag("skip_total")
+    pub fn get_skip_total(&self, options: &Cli) -> bool {
+        Some(true) == self.skip_total || options.skip_total
     }
-    pub fn get_screen_reader(&self, options: &ArgMatches) -> bool {
-        Some(true) == self.screen_reader || options.get_flag("screen_reader")
+    pub fn get_screen_reader(&self, options: &Cli) -> bool {
+        Some(true) == self.screen_reader || options.screen_reader
     }
-    pub fn get_depth(&self, options: &ArgMatches) -> usize {
-        if let Some(v) = options.get_one::<usize>("depth") {
-            return *v;
+    pub fn get_depth(&self, options: &Cli) -> usize {
+        if let Some(v) = options.depth {
+            return v;
         }
 
         self.depth.unwrap_or(usize::MAX)
     }
-    pub fn get_min_size(&self, options: &ArgMatches) -> Option<usize> {
-        let size_from_param = options.get_one::<String>("min_size");
+    pub fn get_min_size(&self, options: &Cli) -> Option<usize> {
+        let size_from_param = options.min_size.as_ref();
         self._get_min_size(size_from_param)
     }
     fn _get_min_size(&self, min_size: Option<&String>) -> Option<usize> {
@@ -123,58 +114,49 @@ impl Config {
             size_from_param
         }
     }
-    pub fn get_only_dir(&self, options: &ArgMatches) -> bool {
-        Some(true) == self.only_dir || options.get_flag("only_dir")
+    pub fn get_only_dir(&self, options: &Cli) -> bool {
+        Some(true) == self.only_dir || options.only_dir
     }
 
-    pub fn get_print_errors(&self, options: &ArgMatches) -> bool {
-        Some(true) == self.print_errors || options.get_flag("print_errors")
+    pub fn get_print_errors(&self, options: &Cli) -> bool {
+        Some(true) == self.print_errors || options.print_errors
     }
-    pub fn get_only_file(&self, options: &ArgMatches) -> bool {
-        Some(true) == self.only_file || options.get_flag("only_file")
+    pub fn get_only_file(&self, options: &Cli) -> bool {
+        Some(true) == self.only_file || options.only_file
     }
-    pub fn get_bars_on_right(&self, options: &ArgMatches) -> bool {
-        Some(true) == self.bars_on_right || options.get_flag("bars_on_right")
+    pub fn get_bars_on_right(&self, options: &Cli) -> bool {
+        Some(true) == self.bars_on_right || options.bars_on_right
     }
-    pub fn get_custom_stack_size(&self, options: &ArgMatches) -> Option<usize> {
-        let from_cmd_line = options.get_one::<usize>("stack_size");
+    pub fn get_custom_stack_size(&self, options: &Cli) -> Option<usize> {
+        let from_cmd_line = options.stack_size;
         if from_cmd_line.is_none() {
             self.stack_size
         } else {
-            from_cmd_line.copied()
+            from_cmd_line
         }
     }
-    pub fn get_threads(&self, options: &ArgMatches) -> Option<usize> {
-        let from_cmd_line = options.get_one::<usize>("threads");
+    pub fn get_threads(&self, options: &Cli) -> Option<usize> {
+        let from_cmd_line = options.threads;
         if from_cmd_line.is_none() {
             self.threads
         } else {
-            from_cmd_line.copied()
+            from_cmd_line
         }
     }
-    pub fn get_output_json(&self, options: &ArgMatches) -> bool {
-        Some(true) == self.output_json || options.get_flag("output_json")
+    pub fn get_output_json(&self, options: &Cli) -> bool {
+        Some(true) == self.output_json || options.output_json
     }
 
-    pub fn get_modified_time_operator(&self, options: &ArgMatches) -> Option<(Operator, i64)> {
-        get_filter_time_operator(
-            options.get_one::<String>("mtime"),
-            get_current_date_epoch_seconds(),
-        )
+    pub fn get_modified_time_operator(&self, options: &Cli) -> Option<(Operator, i64)> {
+        get_filter_time_operator(options.mtime.as_ref(), get_current_date_epoch_seconds())
     }
 
-    pub fn get_accessed_time_operator(&self, options: &ArgMatches) -> Option<(Operator, i64)> {
-        get_filter_time_operator(
-            options.get_one::<String>("atime"),
-            get_current_date_epoch_seconds(),
-        )
+    pub fn get_accessed_time_operator(&self, options: &Cli) -> Option<(Operator, i64)> {
+        get_filter_time_operator(options.atime.as_ref(), get_current_date_epoch_seconds())
     }
 
-    pub fn get_changed_time_operator(&self, options: &ArgMatches) -> Option<(Operator, i64)> {
-        get_filter_time_operator(
-            options.get_one::<String>("ctime"),
-            get_current_date_epoch_seconds(),
-        )
+    pub fn get_changed_time_operator(&self, options: &Cli) -> Option<(Operator, i64)> {
+        get_filter_time_operator(options.ctime.as_ref(), get_current_date_epoch_seconds())
     }
 }
 
@@ -250,10 +232,10 @@ fn get_config_locations(base: &Path) -> Vec<PathBuf> {
     ]
 }
 
-pub fn get_config(conf_path: Option<String>) -> Config {
+pub fn get_config(conf_path: Option<&String>) -> Config {
     match conf_path {
         Some(path_str) => {
-            let path = Path::new(&path_str);
+            let path = Path::new(path_str);
             if path.exists() {
                 match Config::from_config_file(path) {
                     Ok(config) => return config,
@@ -287,8 +269,7 @@ mod tests {
     #[allow(unused_imports)]
     use super::*;
     use chrono::{Datelike, Timelike};
-    use clap::builder::PossibleValue;
-    use clap::{Arg, ArgMatches, Command, value_parser};
+    use clap::Parser;
 
     #[test]
     fn test_get_current_date_epoch_seconds() {
@@ -357,15 +338,8 @@ mod tests {
         assert_eq!(c.get_depth(&args), 5);
     }
 
-    fn get_args(args: Vec<&str>) -> ArgMatches {
-        Command::new("Dust")
-            .arg(
-                Arg::new("depth")
-                    .long("depth")
-                    .num_args(1)
-                    .value_parser(value_parser!(usize)),
-            )
-            .get_matches_from(args)
+    fn get_args(args: Vec<&str>) -> Cli {
+        Cli::parse_from(args)
     }
 
     #[test]
@@ -403,20 +377,7 @@ mod tests {
         assert_eq!(c.get_filetime(&args), Some(FileTime::Changed));
     }
 
-    fn get_filetime_args(args: Vec<&str>) -> ArgMatches {
-        Command::new("Dust")
-        .arg(
-            Arg::new("filetime")
-                .short('m')
-                .long("filetime")
-                .num_args(1)
-                .value_parser([
-                    PossibleValue::new("a").alias("accessed"),
-                    PossibleValue::new("c").alias("changed"),
-                    PossibleValue::new("m").alias("modified"),
-                ])
-                .help("Directory 'size' is max filetime of child files instead of disk size. while a/c/m for accessed/changed/modified time"),
-        )
-            .get_matches_from(args)
+    fn get_filetime_args(args: Vec<&str>) -> Cli {
+        Cli::parse_from(args)
     }
 }

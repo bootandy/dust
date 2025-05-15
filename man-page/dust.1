@@ -12,7 +12,7 @@ Like du but more intuitive
 \fB\-d\fR, \fB\-\-depth\fR=\fIDEPTH\fR
 Depth to show
 .TP
-\fB\-T\fR, \fB\-\-threads\fR
+\fB\-T\fR, \fB\-\-threads\fR=\fITHREADS\fR
 Number of threads to use
 .TP
 \fB\-\-config\fR=\fIFILE\fR
@@ -70,10 +70,10 @@ Directory \*(Aqsize\*(Aq is number of child files instead of disk size
 Do not display hidden files
 .TP
 \fB\-v\fR, \fB\-\-invert\-filter\fR=\fIREGEX\fR
-Exclude filepaths matching this regex. To ignore png files type: \-v "\\.png$" 
+Exclude filepaths matching this regex. To ignore png files type: \-v "\\.png$"
 .TP
 \fB\-e\fR, \fB\-\-filter\fR=\fIREGEX\fR
-Only include filepaths matching this regex. For png files type: \-e "\\.png$" 
+Only include filepaths matching this regex. For png files type: \-e "\\.png$"
 .TP
 \fB\-t\fR, \fB\-\-file\-types\fR
 show only these file types
@@ -82,23 +82,45 @@ show only these file types
 Specify width of output overriding the auto detection of terminal width
 .TP
 \fB\-P\fR, \fB\-\-no\-progress\fR
-Disable the progress indication.
+Disable the progress indication
 .TP
 \fB\-\-print\-errors\fR
-Print path with errors.
+Print path with errors
 .TP
 \fB\-D\fR, \fB\-\-only\-dir\fR
-Only directories will be displayed.
+Only directories will be displayed
 .TP
 \fB\-F\fR, \fB\-\-only\-file\fR
 Only files will be displayed. (Finds your largest files)
 .TP
 \fB\-o\fR, \fB\-\-output\-format\fR=\fIFORMAT\fR
-Changes output display size. si will print sizes in powers of 1000. b k m g t kb mb gb tb will print the whole tree in that size.
+Changes output display size. si will print sizes in powers of 1000. b k m g t kb mb gb tb will print the whole tree in that size
 .br
 
 .br
-[\fIpossible values: \fRsi, b, k, m, g, t, kb, mb, gb, tb]
+\fIPossible values:\fR
+.RS 14
+.IP \(bu 2
+si: SI prefix (powers of 1000)
+.IP \(bu 2
+b: byte (B)
+.IP \(bu 2
+k: kibibyte (KiB)
+.IP \(bu 2
+m: mebibyte (MiB)
+.IP \(bu 2
+g: gibibyte (GiB)
+.IP \(bu 2
+t: tebibyte (TiB)
+.IP \(bu 2
+kb: kilobyte (kB)
+.IP \(bu 2
+mb: megabyte (MB)
+.IP \(bu 2
+gb: gigabyte (GB)
+.IP \(bu 2
+tb: terabyte (TB)
+.RE
 .TP
 \fB\-S\fR, \fB\-\-stack\-size\fR=\fISTACK_SIZE\fR
 Specify memory to use as stack size \- use if you see: \*(Aqfatal runtime error: stack overflow\*(Aq (default low memory=1048576, high memory=1073741824)
@@ -106,35 +128,43 @@ Specify memory to use as stack size \- use if you see: \*(Aqfatal runtime error:
 \fB\-j\fR, \fB\-\-output\-json\fR
 Output the directory tree as json to the current directory
 .TP
-\fB\-M\fR, \fB\-\-mtime\fR
+\fB\-M\fR, \fB\-\-mtime\fR=\fIMTIME\fR
 +/\-n matches files modified more/less than n days ago , and n matches files modified exactly n days ago, days are rounded down.That is +n => (−∞, curr−(n+1)), n => [curr−(n+1), curr−n), and \-n => (𝑐𝑢𝑟𝑟−𝑛, +∞)
 .TP
-\fB\-A\fR, \fB\-\-atime\fR
+\fB\-A\fR, \fB\-\-atime\fR=\fIATIME\fR
 just like \-mtime, but based on file access time
 .TP
-\fB\-y\fR, \fB\-\-ctime\fR
+\fB\-y\fR, \fB\-\-ctime\fR=\fICTIME\fR
 just like \-mtime, but based on file change time
 .TP
-\fB\-\-files0\-from\fR
+\fB\-\-files0\-from\fR=\fIFILES0_FROM\fR
 run dust on NUL\-terminated file names specified in file; if argument is \-, then read names from standard input
 .TP
-\fB\-\-collapse\fR
+\fB\-\-collapse\fR=\fICOLLAPSE\fR
 Keep these directories collapsed
 .TP
-\fB\-m\fR, \fB\-\-filetime\fR
+\fB\-m\fR, \fB\-\-filetime\fR=\fIFILETIME\fR
 Directory \*(Aqsize\*(Aq is max filetime of child files instead of disk size. while a/c/m for last accessed/changed/modified time
 .br
 
 .br
-[\fIpossible values: \fRa, c, m]
+\fIPossible values:\fR
+.RS 14
+.IP \(bu 2
+a: last accessed time
+.IP \(bu 2
+c: last changed time
+.IP \(bu 2
+m: last modified time
+.RE
 .TP
 \fB\-h\fR, \fB\-\-help\fR
-Print help
+Print help (see a summary with \*(Aq\-h\*(Aq)
 .TP
 \fB\-V\fR, \fB\-\-version\fR
 Print version
 .TP
 [\fIPATH\fR]
-
+Input files or directories
 .SH VERSION
 v1.2.0
