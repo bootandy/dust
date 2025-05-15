@@ -23,6 +23,16 @@ pub enum FileTime {
     Changed,
 }
 
+impl From<crate::cli::FileTime> for FileTime {
+    fn from(time: crate::cli::FileTime) -> Self {
+        match time {
+            crate::cli::FileTime::Modified => Self::Modified,
+            crate::cli::FileTime::Accessed => Self::Accessed,
+            crate::cli::FileTime::Changed => Self::Changed,
+        }
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 pub fn build_node(
     dir: PathBuf,
