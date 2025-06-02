@@ -304,7 +304,6 @@ fn handle_error_and_retry(failed: &Error, dir: &Path, walk_data: &WalkData) -> b
             editable_error.file_not_found.insert(failed.to_string());
         }
         std::io::ErrorKind::Interrupted => {
-            let mut editable_error = walk_data.errors.lock().unwrap();
             editable_error.interrupted_error += 1;
             if editable_error.interrupted_error > 3 {
                 panic!("Multiple Interrupted Errors occurred while scanning filesystem. Aborting");
