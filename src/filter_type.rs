@@ -15,7 +15,7 @@ pub fn get_all_file_types(
     top_level_nodes: &[Node],
     n: usize,
     by_filetime: &Option<FileTime>,
-) -> Option<DisplayNode> {
+) -> DisplayNode {
     let ext_nodes = {
         let mut extension_cumulative_sizes = HashMap::new();
         build_by_all_file_types(top_level_nodes, &mut extension_cumulative_sizes);
@@ -67,13 +67,11 @@ pub fn get_all_file_types(
         displayed.iter().map(|node| node.size).sum()
     };
 
-    let result = DisplayNode {
+    DisplayNode {
         name: PathBuf::from("(total)"),
         size: actual_size,
         children: displayed,
-    };
-
-    Some(result)
+    }
 }
 
 fn build_by_all_file_types<'a>(

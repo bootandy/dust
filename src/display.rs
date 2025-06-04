@@ -125,9 +125,9 @@ impl DrawData<'_> {
 
 pub fn draw_it(
     idd: InitialDisplayData,
+    root_node: &DisplayNode,
     no_percent_bars: bool,
     terminal_width: usize,
-    root_node: &DisplayNode,
     skip_total: bool,
 ) {
     let num_chars_needed_on_left_most = if idd.by_filecount {
