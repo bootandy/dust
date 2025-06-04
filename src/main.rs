@@ -295,40 +295,8 @@ fn main() {
     // Must have stopped indicator before we print to stderr
     indicator.stop();
 
-    let final_errors = walk_data.errors.lock().unwrap();
-    if !final_errors.file_not_found.is_empty() {
-        let err = final_errors
-            .file_not_found
-            .iter()
-            .map(|a| a.as_ref())
-            .collect::<Vec<&str>>()
-            .join(", ");
-        eprintln!("No such file or directory: {}", err);
-    }
-    if !final_errors.no_permissions.is_empty() {
-        if config.get_print_errors(&options) {
-            let err = final_errors
-                .no_permissions
-                .iter()
-                .map(|a| a.as_ref())
-                .collect::<Vec<&str>>()
-                .join(", ");
-            eprintln!("Did not have permissions for directories: {}", err);
-        } else {
-            eprintln!(
-                "Did not have permissions for all directories (add --print-errors to see errors)"
-            );
-        }
-    }
-    if !final_errors.unknown_error.is_empty() {
-        let err = final_errors
-            .unknown_error
-            .iter()
-            .map(|a| a.as_ref())
-            .collect::<Vec<&str>>()
-            .join(", ");
-        eprintln!("Unknown Error: {}", err);
-    }
+    let print_errors = config.get_print_errors(&options);
+    print_any_errors(print_errors, walk_data.errors);
 
     if let Some(root_node) = tree {
         if config.get_output_json(&options) {
@@ -356,6 +324,43 @@ fn main() {
                 config.get_skip_total(&options),
             )
         }
+    }
+}
+
+fn print_any_errors(print_errors: bool, errors: Arc<Mutex<RuntimeErrors>>) {
+    let final_errors = errors.lock().unwrap();
+    if !final_errors.file_not_found.is_empty() {
+        let err = final_errors
+            .file_not_found
+            .iter()
+            .map(|a| a.as_ref())
+            .collect::<Vec<&str>>()
+            .join(", ");
+        eprintln!("No such file or directory: {}", err);
+    }
+    if !final_errors.no_permissions.is_empty() {
+        if print_errors {
+            let err = final_errors
+                .no_permissions
+                .iter()
+                .map(|a| a.as_ref())
+                .collect::<Vec<&str>>()
+                .join(", ");
+            eprintln!("Did not have permissions for directories: {}", err);
+        } else {
+            eprintln!(
+                "Did not have permissions for all directories (add --print-errors to see errors)"
+            );
+        }
+    }
+    if !final_errors.unknown_error.is_empty() {
+        let err = final_errors
+            .unknown_error
+            .iter()
+            .map(|a| a.as_ref())
+            .collect::<Vec<&str>>()
+            .join(", ");
+        eprintln!("Unknown Error: {}", err);
     }
 }
 
