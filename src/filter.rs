@@ -25,49 +25,44 @@ pub fn get_biggest(
     display_data: AggregateData,
     by_filetime: &Option<FileTime>,
     keep_collapsed: HashSet<PathBuf>,
-) -> Option<DisplayNode> {
-    if top_level_nodes.is_empty() {
-        // perhaps change this, bring back Error object?
-        return None;
-    }
+) -> DisplayNode {
     let mut heap = BinaryHeap::new();
     let number_top_level_nodes = top_level_nodes.len();
     let root;
 
-    if number_top_level_nodes > 1 {
-        let size = if by_filetime.is_some() {
-            top_level_nodes
-                .iter()
-                .map(|node| node.size)
-                .max()
-                .unwrap_or(0)
-        } else {
-            top_level_nodes.iter().map(|node| node.size).sum()
-        };
-
-        let nodes = handle_duplicate_top_level_names(top_level_nodes, display_data.short_paths);
-
-        root = Node {
-            name: PathBuf::from("(total)"),
-            size,
-            children: nodes,
-            inode_device: None,
-            depth: 0,
-        };
-
-        // Always include the base nodes if we add a 'parent' (total) node
-        heap = always_add_children(&display_data, &root, heap);
+    if number_top_level_nodes == 0 {
+        root = total_node_builder(0, vec![])
     } else {
-        root = top_level_nodes.into_iter().next().unwrap();
+        if number_top_level_nodes > 1 {
+            let size = if by_filetime.is_some() {
+                top_level_nodes
+                    .iter()
+                    .map(|node| node.size)
+                    .max()
+                    .unwrap_or(0)
+            } else {
+                top_level_nodes.iter().map(|node| node.size).sum()
+            };
+
+            let nodes = handle_duplicate_top_level_names(top_level_nodes, display_data.short_paths);
+            root = total_node_builder(size, nodes);
+        } else {
+            root = top_level_nodes.into_iter().next().unwrap();
+        }
         heap = add_children(&display_data, &root, heap);
     }
 
-    Some(fill_remaining_lines(
-        heap,
-        &root,
-        display_data,
-        keep_collapsed,
-    ))
+    fill_remaining_lines(heap, &root, display_data, keep_collapsed)
+}
+
+fn total_node_builder(size: u64, children: Vec<Node>) -> Node {
+    Node {
+        name: PathBuf::from("(total)"),
+        size,
+        children,
+        inode_device: None,
+        depth: 0,
+    }
 }
 
 pub fn fill_remaining_lines<'a>(
