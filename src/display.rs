@@ -4,14 +4,17 @@ use crate::node::FileTime;
 use ansi_term::Colour::Red;
 use lscolors::{LsColors, Style};
 
+use termion::raw::RawTerminal;
 use unicode_width::UnicodeWidthStr;
 
 use stfu8::encode_u8;
 
+use std::io::{Write};
 use chrono::{DateTime, Local, TimeZone, Utc};
 use std::cmp::max;
 use std::cmp::min;
 use std::fs;
+use std::io::Stdout;
 use std::iter::repeat_n;
 use std::path::Path;
 use thousands::Separable;
@@ -129,6 +132,7 @@ pub fn draw_it(
     no_percent_bars: bool,
     terminal_width: usize,
     skip_total: bool,
+    stdout: &mut RawTerminal<Stdout>,
 ) {
     let num_chars_needed_on_left_most = if idd.by_filecount {
         let max_size = root_node.size;
@@ -143,6 +147,8 @@ pub fn draw_it(
         terminal_width > num_chars_needed_on_left_most + 2,
         "Not enough terminal width"
     );
+    // write!(stdout, "{}{}Hello!", termion::clear::All, termion::cursor::Goto(1, 1)).unwrap();
+    // write!(stdout, "{}", termion::cursor::Goto(2, 1)).unwrap();
 
     let allowed_width = terminal_width - num_chars_needed_on_left_most - 2;
     let num_indent_chars = 3;
@@ -171,7 +177,7 @@ pub fn draw_it(
     };
 
     if !skip_total {
-        display_node(root_node, &draw_data, true, true);
+        display_node(root_node, stdout, &draw_data, true, true);
     } else {
         for (count, c) in root_node
             .get_children_from_node(draw_data.display_data.initial.is_reversed)
@@ -179,7 +185,7 @@ pub fn draw_it(
         {
             let is_biggest = display_data.is_biggest(count, root_node.num_siblings());
             let was_i_last = display_data.is_last(count, root_node.num_siblings());
-            display_node(c, &draw_data, is_biggest, was_i_last);
+            display_node(c, stdout, &draw_data, is_biggest, was_i_last);
         }
     }
 }
@@ -218,22 +224,24 @@ fn find_longest_dir_name(
         .fold(longest, max)
 }
 
-fn display_node(node: &DisplayNode, draw_data: &DrawData, is_biggest: bool, is_last: bool) {
+fn display_node(node: &DisplayNode, 
+    stdout: &mut RawTerminal<Stdout>,
+    draw_data: &DrawData, is_biggest: bool, is_last: bool) {
     // hacky way of working out how deep we are in the tree
     let indent = draw_data.get_new_indent(!node.children.is_empty(), is_last);
     let level = ((indent.chars().count() - 1) / 2) - 1;
     let bar_text = draw_data.generate_bar(node, level);
 
-    let to_print = format_string(node, &indent, &bar_text, is_biggest, draw_data.display_data);
+    let to_print = format_string(node, &indent, &bar_text, is_biggest, &draw_data.display_data);
 
     if !draw_data.display_data.initial.is_reversed {
-        println!("{to_print}")
+        write!(stdout, "{to_print}").unwrap()
     }
 
     let dd = DrawData {
         indent: clean_indentation_string(&indent),
         percent_bar: bar_text,
-        display_data: draw_data.display_data,
+        display_data:draw_data.display_data,
     };
 
     let num_siblings = node.num_siblings();
@@ -244,11 +252,11 @@ fn display_node(node: &DisplayNode, draw_data: &DrawData, is_biggest: bool, is_l
     {
         let is_biggest = dd.display_data.is_biggest(count, num_siblings);
         let was_i_last = dd.display_data.is_last(count, num_siblings);
-        display_node(c, &dd, is_biggest, was_i_last);
+        display_node( c, stdout, &dd, is_biggest, was_i_last);
     }
 
     if draw_data.display_data.initial.is_reversed {
-        println!("{to_print}")
+        write!(stdout, "{to_print}").unwrap()
     }
 }
 
