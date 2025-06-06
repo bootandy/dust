@@ -20,16 +20,25 @@ use display::InitialDisplayData;
 use filter::AggregateData;
 use progress::PIndicator;
 use regex::Error;
+use termion::raw::RawTerminal;
 use std::collections::HashSet;
 use std::env;
 use std::fs::read_to_string;
 use std::io;
+use std::io::stdin;
+use std::io::stdout;
+use std::io::Stdout;
 use std::panic;
 use std::process;
 use std::sync::Arc;
 use std::sync::Mutex;
 use sysinfo::{System, SystemExt};
 use utils::canonicalize_absolute_path;
+
+use termion::event::{Key, Event};
+use termion::input::{TermRead};
+use termion::raw::IntoRawMode;
+use std::io::{Write};
 
 use self::display::draw_it;
 use config::get_config;
@@ -309,24 +318,60 @@ fn main() {
         let print_errors = config.get_print_errors(&options);
         print_any_errors(print_errors, walk_data.errors);
 
-        print_output(
-            config,
-            options,
-            tree,
-            walk_data.by_filecount,
+    let stdin = stdin();
+    let mut out = stdout().into_raw_mode().unwrap();
+
+        write!(out, "{}{}Dust interactive (q to quit)", termion::clear::All, termion::cursor::Goto(1, 1)).unwrap();
+        write!(out, "{}", termion::cursor::Goto(1, 2)).unwrap();
+            print_output(
+            &config,
+            &options,
+            &tree,
             is_colors,
             terminal_width,
-        )
-    });
+            &mut out,
+        );
+        out.flush().unwrap();
+
+    for c in stdin.events() {
+        write!(out, "{}{}Dust interactive (q to quit)", termion::clear::All, termion::cursor::Goto(1, 1)).unwrap();
+        write!(out, "{}", termion::cursor::Goto(1, 2)).unwrap();
+        let evt = c.unwrap();
+        match evt {
+            Event::Key(Key::Char('q')) => break,
+            Event::Key(Key::Char(x)) => {
+                // println!("{}key ", x);
+            },
+            Event::Key(Key::Left) =>{
+                // println!("left ");
+            }
+            Event::Key(Key::Right) =>{
+                // println!("right ");
+            },
+            _ => {}
+        }
+        print_output(
+            &config,
+            &options,
+            &tree,
+            is_colors,
+            terminal_width,
+            &mut out,
+        );
+        out.flush().unwrap();
+
+    }
+  
+
 }
 
 fn print_output(
-    config: Config,
-    options: Cli,
-    tree: DisplayNode,
-    by_filecount: bool,
+    config: &Config,
+    options: &Cli,
+    tree: &DisplayNode,
     is_colors: bool,
     terminal_width: usize,
+    stdout: &mut RawTerminal<Stdout>
 ) {
     let output_format = config.get_output_format(&options);
 
@@ -353,6 +398,7 @@ fn print_output(
             config.get_no_bars(&options),
             terminal_width,
             config.get_skip_total(&options),
+            stdout,
         )
     }
 }
