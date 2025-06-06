@@ -9,12 +9,12 @@ use unicode_width::UnicodeWidthStr;
 
 use stfu8::encode_u8;
 
-use std::io::{Write};
 use chrono::{DateTime, Local, TimeZone, Utc};
 use std::cmp::max;
 use std::cmp::min;
 use std::fs;
 use std::io::Stdout;
+use std::io::Write;
 use std::iter::repeat_n;
 use std::path::Path;
 use thousands::Separable;
@@ -224,15 +224,25 @@ fn find_longest_dir_name(
         .fold(longest, max)
 }
 
-fn display_node(node: &DisplayNode, 
+fn display_node(
+    node: &DisplayNode,
     stdout: &mut RawTerminal<Stdout>,
-    draw_data: &DrawData, is_biggest: bool, is_last: bool) {
+    draw_data: &DrawData,
+    is_biggest: bool,
+    is_last: bool,
+) {
     // hacky way of working out how deep we are in the tree
     let indent = draw_data.get_new_indent(!node.children.is_empty(), is_last);
     let level = ((indent.chars().count() - 1) / 2) - 1;
     let bar_text = draw_data.generate_bar(node, level);
 
-    let to_print = format_string(node, &indent, &bar_text, is_biggest, &draw_data.display_data);
+    let to_print = format_string(
+        node,
+        &indent,
+        &bar_text,
+        is_biggest,
+        &draw_data.display_data,
+    );
 
     if !draw_data.display_data.initial.is_reversed {
         write!(stdout, "{to_print}").unwrap()
@@ -241,7 +251,7 @@ fn display_node(node: &DisplayNode,
     let dd = DrawData {
         indent: clean_indentation_string(&indent),
         percent_bar: bar_text,
-        display_data:draw_data.display_data,
+        display_data: draw_data.display_data,
     };
 
     let num_siblings = node.num_siblings();
@@ -252,7 +262,7 @@ fn display_node(node: &DisplayNode,
     {
         let is_biggest = dd.display_data.is_biggest(count, num_siblings);
         let was_i_last = dd.display_data.is_last(count, num_siblings);
-        display_node( c, stdout, &dd, is_biggest, was_i_last);
+        display_node(c, stdout, &dd, is_biggest, was_i_last);
     }
 
     if draw_data.display_data.initial.is_reversed {
