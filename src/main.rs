@@ -403,7 +403,7 @@ fn print_output(
 
         draw_it(
             idd,
-            &tree,
+            tree,
             config.get_no_bars(&options),
             terminal_width,
             config.get_skip_total(&options),
