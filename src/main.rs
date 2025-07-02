@@ -221,9 +221,12 @@ fn main() {
     let limit_filesystem = options.limit_filesystem;
     let follow_links = options.dereference_links;
 
-    let allowed_filesystems = limit_filesystem
-        .then(|| get_filesystem_devices(&target_dirs, follow_links))
-        .unwrap_or_default();
+    let allowed_filesystems = if limit_filesystem {
+        get_filesystem_devices(&target_dirs, follow_links)
+    } else {
+        Default::default()
+    };
+
     let simplified_dirs = simplify_dir_names(&target_dirs);
 
     let ignored_full_path: HashSet<PathBuf> = ignore_directories
@@ -359,7 +362,7 @@ fn print_any_errors(print_errors: bool, errors: Arc<Mutex<RuntimeErrors>>) {
             .map(|a| a.as_ref())
             .collect::<Vec<&str>>()
             .join(", ");
-        eprintln!("No such file or directory: {}", err);
+        eprintln!("No such file or directory: {err}");
     }
     if !final_errors.no_permissions.is_empty() {
         if print_errors {
@@ -369,7 +372,7 @@ fn print_any_errors(print_errors: bool, errors: Arc<Mutex<RuntimeErrors>>) {
                 .map(|a| a.as_ref())
                 .collect::<Vec<&str>>()
                 .join(", ");
-            eprintln!("Did not have permissions for directories: {}", err);
+            eprintln!("Did not have permissions for directories: {err}");
         } else {
             eprintln!(
                 "Did not have permissions for all directories (add --print-errors to see errors)"
@@ -383,7 +386,7 @@ fn print_any_errors(print_errors: bool, errors: Arc<Mutex<RuntimeErrors>>) {
             .map(|a| a.as_ref())
             .collect::<Vec<&str>>()
             .join(", ");
-        eprintln!("Unknown Error: {}", err);
+        eprintln!("Unknown Error: {err}");
     }
 }
 
