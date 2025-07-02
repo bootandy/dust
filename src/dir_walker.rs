@@ -305,11 +305,7 @@ fn handle_error_and_retry(failed: &Error, dir: &Path, walk_data: &WalkData) -> b
         }
         std::io::ErrorKind::Interrupted => {
             editable_error.interrupted_error += 1;
-            if editable_error.interrupted_error > 3 {
-                panic!("Multiple Interrupted Errors occurred while scanning filesystem. Aborting");
-            } else {
-                return true;
-            }
+            return true;
         }
         _ => {
             editable_error.unknown_error.insert(failed.to_string());
