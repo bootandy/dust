@@ -25,7 +25,6 @@ use std::collections::HashSet;
 use std::env;
 use std::fs::read_to_string;
 use std::io;
-use std::panic;
 use std::process;
 use std::sync::Arc;
 use std::sync::Mutex;
@@ -390,29 +389,9 @@ fn print_any_errors(print_errors: bool, errors: Arc<Mutex<RuntimeErrors>>) {
     }
 }
 
-fn init_rayon(stack_size: &Option<usize>, threads: &Option<usize>) {
-    // Rayon seems to raise this error on 32-bit builds
-    // The global thread pool has not been initialized.: ThreadPoolBuildError { kind: GlobalPoolAlreadyInitialized }
-    if cfg!(target_pointer_width = "64") {
-        let result = panic::catch_unwind(|| build_thread_pool(*stack_size, *threads));
-        if result.is_err() {
-            eprintln!("Problem initializing rayon, try: export RAYON_NUM_THREADS=1")
-        }
-    }
-}
-
-fn build_thread_pool(
-    stack: Option<usize>,
-    threads: Option<usize>,
-) -> Result<(), rayon::ThreadPoolBuildError> {
-    let mut pool = rayon::ThreadPoolBuilder::new();
-
-    if let Some(thread_count) = threads {
-        pool = pool.num_threads(thread_count);
-    }
-
+fn init_rayon(stack: &Option<usize>, threads: &Option<usize>) {
     let stack_size = match stack {
-        Some(s) => Some(s),
+        Some(s) => Some(*s),
         None => {
             let large_stack = usize::pow(1024, 3);
             let mut s = System::new();
@@ -426,8 +405,16 @@ fn build_thread_pool(
             }
         }
     };
-    if let Some(stack_size_param) = stack_size {
-        pool = pool.stack_size(stack_size_param);
+    if stack_size.is_some() || threads.is_some() {
+        let mut pool = rayon::ThreadPoolBuilder::new();
+        if let Some(stack_size_param) = stack_size {
+            pool = pool.stack_size(stack_size_param);
+        }
+        if let Some(thread_count) = threads {
+            pool = pool.num_threads(*thread_count);
+        }
+        if pool.build_global().is_err() {
+            eprintln!("Problem initializing rayon, try: export RAYON_NUM_THREADS=1")
+        }
     }
-    pool.build_global()
 }
