@@ -395,24 +395,20 @@ fn init_rayon(stack_size: &Option<usize>, threads: &Option<usize>) {
     // The global thread pool has not been initialized.: ThreadPoolBuildError { kind: GlobalPoolAlreadyInitialized }
     if cfg!(target_pointer_width = "64") {
         let result = panic::catch_unwind(|| build_thread_pool(*stack_size, *threads));
-        println!("{:?}", result);
         if result.is_err() {
             eprintln!("Problem initializing rayon, try: export RAYON_NUM_THREADS=1")
         }
-        let result2 = panic::catch_unwind(|| build_thread_pool(*stack_size, *threads));
-        println!("{:?}", result2);
     }
 }
 
 fn build_thread_pool(
     stack: Option<usize>,
     threads: Option<usize>,
-) -> Result<rayon::ThreadPool, rayon::ThreadPoolBuildError> {
+) -> Result<(), rayon::ThreadPoolBuildError> {
     let mut pool = rayon::ThreadPoolBuilder::new();
 
     if let Some(thread_count) = threads {
         pool = pool.num_threads(thread_count);
-        println!("change threads");
     }
 
     let stack_size = match stack {
@@ -421,7 +417,6 @@ fn build_thread_pool(
             let large_stack = usize::pow(1024, 3);
             let mut s = System::new();
             s.refresh_memory();
-            println!("mem increase");
             // Larger stack size if possible to handle cases with lots of nested directories
             let available = s.available_memory();
             if available > large_stack.try_into().unwrap() {
@@ -434,6 +429,5 @@ fn build_thread_pool(
     if let Some(stack_size_param) = stack_size {
         pool = pool.stack_size(stack_size_param);
     }
-    println!("call build global");
-    pool.build()
+    pool.build_global()
 }

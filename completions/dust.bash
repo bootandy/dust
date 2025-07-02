@@ -1,16 +1,12 @@
 _dust() {
     local i cur prev opts cmd
     COMPREPLY=()
-    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-        cur="$2"
-    else
-        cur="${COMP_WORDS[COMP_CWORD]}"
-    fi
-    prev="$3"
+    cur="${COMP_WORDS[COMP_CWORD]}"
+    prev="${COMP_WORDS[COMP_CWORD-1]}"
     cmd=""
     opts=""
 
-    for i in "${COMP_WORDS[@]:0:COMP_CWORD}"
+    for i in ${COMP_WORDS[@]}
     do
         case "${cmd},${i}" in
             ",$1")
