@@ -413,7 +413,7 @@ fn init_rayon(stack: &Option<usize>, threads: &Option<usize>) {
         if let Some(thread_count) = threads {
             pool = pool.num_threads(*thread_count);
         }
-        if pool.build_global().is_err() {
+        if pool.build().is_err() {
             eprintln!("Problem initializing rayon, try: export RAYON_NUM_THREADS=1")
         }
     }
