@@ -395,7 +395,7 @@ fn print_any_errors(print_errors: bool, errors: Arc<Mutex<RuntimeErrors>>) {
 }
 
 fn init_rayon(stack: &Option<usize>, threads: &Option<usize>) -> rayon::ThreadPool {
-    let _stack_size = match stack {
+    let stack_size = match stack {
         Some(s) => Some(*s),
         None => {
             let large_stack = usize::pow(1024, 3);
@@ -403,6 +403,8 @@ fn init_rayon(stack: &Option<usize>, threads: &Option<usize>) -> rayon::ThreadPo
             s.refresh_memory();
             // Larger stack size if possible to handle cases with lots of nested directories
             let available = s.available_memory();
+            println!("{large_stack}");
+            println!("{available}");
             if available > large_stack.try_into().unwrap() {
                 Some(large_stack)
             } else {
@@ -412,9 +414,9 @@ fn init_rayon(stack: &Option<usize>, threads: &Option<usize>) -> rayon::ThreadPo
     };
 
     let mut pool_builder = rayon::ThreadPoolBuilder::new();
-    // if let Some(stack_size_param) = stack_size {
-    //     pool_builder = pool_builder.stack_size(stack_size_param);
-    // }
+    if let Some(stack_size_param) = stack_size {
+        pool_builder = pool_builder.stack_size(stack_size_param);
+    }
     if let Some(thread_count) = threads {
         pool_builder = pool_builder.num_threads(*thread_count);
     }
