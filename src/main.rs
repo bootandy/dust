@@ -405,14 +405,16 @@ fn init_rayon(stack: &Option<usize>, threads: &Option<usize>) {
             }
         }
     };
-    let mut pool = rayon::ThreadPoolBuilder::new();
-    if let Some(stack_size_param) = stack_size {
-        pool = pool.stack_size(stack_size_param);
-    }
-    if let Some(thread_count) = threads {
-        pool = pool.num_threads(*thread_count);
-    }
-    if pool.build().is_err() {
-        eprintln!("Problem initializing rayon, try: export RAYON_NUM_THREADS=1")
+    if stack.is_some() || threads.is_some() {
+        let mut pool = rayon::ThreadPoolBuilder::new();
+        if let Some(stack_size_param) = stack_size {
+            pool = pool.stack_size(stack_size_param);
+        }
+        if let Some(thread_count) = threads {
+            pool = pool.num_threads(*thread_count);
+        }
+        if pool.build().is_err() {
+            eprintln!("Problem initializing rayon, try: export RAYON_NUM_THREADS=1")
+        }
     }
 }
