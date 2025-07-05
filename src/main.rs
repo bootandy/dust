@@ -275,9 +275,9 @@ fn main() {
         progress_data: indicator.data.clone(),
         errors: errors_for_rayon,
     };
-    // let threads_to_use = config.get_threads(&options);
-    // let stack_size = config.get_custom_stack_size(&options);
-    // init_rayon(&stack_size, &threads_to_use);
+    let threads_to_use = config.get_threads(&options);
+    let stack_size = config.get_custom_stack_size(&options);
+    init_rayon(&stack_size, &threads_to_use);
 
     let top_level_nodes = walk_it(simplified_dirs, &walk_data);
 
