@@ -13,7 +13,6 @@ mod utils;
 use crate::cli::Cli;
 use crate::config::Config;
 use crate::display_node::DisplayNode;
-use crate::node::FileTime;
 use crate::progress::RuntimeErrors;
 use clap::Parser;
 use dir_walker::WalkData;
@@ -25,6 +24,7 @@ use std::collections::HashSet;
 use std::env;
 use std::fs::read_to_string;
 use std::io;
+use std::panic;
 use std::process;
 use std::sync::Arc;
 use std::sync::Mutex;
@@ -275,43 +275,49 @@ fn main() {
         progress_data: indicator.data.clone(),
         errors: errors_for_rayon,
     };
+
     let threads_to_use = config.get_threads(&options);
     let stack_size = config.get_custom_stack_size(&options);
-    init_rayon(&stack_size, &threads_to_use);
 
-    let top_level_nodes = walk_it(simplified_dirs, &walk_data);
+    init_rayon(&stack_size, &threads_to_use).install(|| {
+        let top_level_nodes = walk_it(simplified_dirs, &walk_data);
 
-    let tree = match summarize_file_types {
-        true => get_all_file_types(&top_level_nodes, number_of_lines, &by_filetime),
-        false => {
-            let agg_data = AggregateData {
-                min_size: config.get_min_size(&options),
-                only_dir: config.get_only_dir(&options),
-                only_file: config.get_only_file(&options),
-                number_of_lines,
-                depth,
-                using_a_filter: !filter_regexs.is_empty() || !invert_filter_regexs.is_empty(),
-                short_paths: !config.get_full_paths(&options),
-            };
-            get_biggest(top_level_nodes, agg_data, &by_filetime, keep_collapsed)
-        }
-    };
+        let tree = match summarize_file_types {
+            true => get_all_file_types(&top_level_nodes, number_of_lines, walk_data.by_filetime),
+            false => {
+                let agg_data = AggregateData {
+                    min_size: config.get_min_size(&options),
+                    only_dir: config.get_only_dir(&options),
+                    only_file: config.get_only_file(&options),
+                    number_of_lines,
+                    depth,
+                    using_a_filter: !filter_regexs.is_empty() || !invert_filter_regexs.is_empty(),
+                    short_paths: !config.get_full_paths(&options),
+                };
+                get_biggest(
+                    top_level_nodes,
+                    agg_data,
+                    walk_data.by_filetime,
+                    keep_collapsed,
+                )
+            }
+        };
 
-    // Must have stopped indicator before we print to stderr
-    indicator.stop();
+        // Must have stopped indicator before we print to stderr
+        indicator.stop();
 
-    let print_errors = config.get_print_errors(&options);
-    print_any_errors(print_errors, walk_data.errors);
+        let print_errors = config.get_print_errors(&options);
+        print_any_errors(print_errors, walk_data.errors);
 
-    print_output(
-        config,
-        options,
-        tree,
-        walk_data.by_filecount,
-        by_filetime,
-        is_colors,
-        terminal_width,
-    )
+        print_output(
+            config,
+            options,
+            tree,
+            walk_data.by_filecount,
+            is_colors,
+            terminal_width,
+        )
+    });
 }
 
 fn print_output(
@@ -319,7 +325,6 @@ fn print_output(
     options: Cli,
     tree: DisplayNode,
     by_filecount: bool,
-    by_filetime: Option<FileTime>,
     is_colors: bool,
     terminal_width: usize,
 ) {
@@ -336,7 +341,7 @@ fn print_output(
             is_reversed: !config.get_reverse(&options),
             colors_on: is_colors,
             by_filecount,
-            by_filetime,
+            by_filetime: config.get_filetime(&options),
             is_screen_reader: config.get_screen_reader(&options),
             output_format,
             bars_on_right: config.get_bars_on_right(&options),
@@ -389,8 +394,8 @@ fn print_any_errors(print_errors: bool, errors: Arc<Mutex<RuntimeErrors>>) {
     }
 }
 
-fn init_rayon(stack: &Option<usize>, threads: &Option<usize>) {
-    let stack_size = match stack {
+fn init_rayon(stack: &Option<usize>, threads: &Option<usize>) -> rayon::ThreadPool {
+    let _stack_size = match stack {
         Some(s) => Some(*s),
         None => {
             let large_stack = usize::pow(1024, 3);
@@ -405,16 +410,18 @@ fn init_rayon(stack: &Option<usize>, threads: &Option<usize>) {
             }
         }
     };
-    if stack.is_some() || threads.is_some() {
-        let mut pool = rayon::ThreadPoolBuilder::new();
-        if let Some(stack_size_param) = stack_size {
-            pool = pool.stack_size(stack_size_param);
-        }
-        if let Some(thread_count) = threads {
-            pool = pool.num_threads(*thread_count);
-        }
-        if pool.build().is_err() {
-            eprintln!("Problem initializing rayon, try: export RAYON_NUM_THREADS=1")
+
+    let mut pool_builder = rayon::ThreadPoolBuilder::new();
+    // if let Some(stack_size_param) = stack_size {
+    //     pool_builder = pool_builder.stack_size(stack_size_param);
+    // }
+    if let Some(thread_count) = threads {
+        pool_builder = pool_builder.num_threads(*thread_count);
+    }
+    match pool_builder.build() {
+        Ok(pool) => pool,
+        Err(err) => {
+            panic!("Problem initializing rayon, try: export RAYON_NUM_THREADS=1\n{err}");
         }
     }
 }
