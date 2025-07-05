@@ -275,8 +275,8 @@ fn main() {
         progress_data: indicator.data.clone(),
         errors: errors_for_rayon,
     };
-    // let threads_to_use = config.get_threads(&options);
-    // let stack_size = config.get_custom_stack_size(&options);
+    let _threads_to_use = config.get_threads(&options);
+    let _stack_size = config.get_custom_stack_size(&options);
     // init_rayon(&stack_size, &threads_to_use);
 
     let top_level_nodes = walk_it(simplified_dirs, &walk_data);
@@ -389,7 +389,7 @@ fn print_any_errors(print_errors: bool, errors: Arc<Mutex<RuntimeErrors>>) {
     }
 }
 
-fn init_rayon(stack: &Option<usize>, threads: &Option<usize>) {
+fn _init_rayon(stack: &Option<usize>, threads: &Option<usize>) {
     let stack_size = match stack {
         Some(s) => Some(*s),
         None => {
