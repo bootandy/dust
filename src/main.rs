@@ -407,7 +407,7 @@ fn init_rayon(stack: &Option<usize>, threads: &Option<usize>) -> rayon::ThreadPo
                 s.refresh_memory();
                 // Larger stack size if possible to handle cases with lots of nested directories
                 let available = s.available_memory();
-                if available > large_stack.try_into().unwrap() {
+                if available > (large_stack * threads.unwrap_or(1)).try_into().unwrap() {
                     Some(large_stack)
                 } else {
                     None
@@ -416,6 +416,26 @@ fn init_rayon(stack: &Option<usize>, threads: &Option<usize>) -> rayon::ThreadPo
         }
     };
 
+    match build_thread_pool(stack_size, threads) {
+        Ok(pool) => pool,
+        Err(err) => {
+            eprintln!("Problem initializing rayon, try: export RAYON_NUM_THREADS=1");
+            if stack.is_none() && stack_size.is_some() {
+                // stack parameter was none, try with default stack size
+                if let Ok(pool) = build_thread_pool(None, threads) {
+                    eprintln!("WARNING: not using large stack size, got error: {err}");
+                    return pool;
+                }
+            }
+            panic!("{err}");
+        }
+    }
+}
+
+fn build_thread_pool(
+    stack_size: Option<usize>,
+    threads: &Option<usize>,
+) -> Result<rayon::ThreadPool, rayon::ThreadPoolBuildError> {
     let mut pool_builder = rayon::ThreadPoolBuilder::new();
     if let Some(stack_size_param) = stack_size {
         pool_builder = pool_builder.stack_size(stack_size_param);
@@ -423,10 +443,5 @@ fn init_rayon(stack: &Option<usize>, threads: &Option<usize>) -> rayon::ThreadPo
     if let Some(thread_count) = threads {
         pool_builder = pool_builder.num_threads(*thread_count);
     }
-    match pool_builder.build() {
-        Ok(pool) => pool,
-        Err(err) => {
-            panic!("Problem initializing rayon, try: export RAYON_NUM_THREADS=1\n{err}");
-        }
-    }
+    pool_builder.build()
 }
