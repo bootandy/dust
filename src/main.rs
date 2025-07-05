@@ -398,17 +398,20 @@ fn init_rayon(stack: &Option<usize>, threads: &Option<usize>) -> rayon::ThreadPo
     let stack_size = match stack {
         Some(s) => Some(*s),
         None => {
-            let large_stack = usize::pow(1024, 3);
-            let mut s = System::new();
-            s.refresh_memory();
-            // Larger stack size if possible to handle cases with lots of nested directories
-            let available = s.available_memory();
-            println!("{large_stack}");
-            println!("{available}");
-            if available > large_stack.try_into().unwrap() {
-                Some(large_stack)
-            } else {
+            // Do not increase the stack size on a 32 bit system, it will fail
+            if cfg!(target_pointer_width = "32") {
                 None
+            } else {
+                let large_stack = usize::pow(1024, 3);
+                let mut s = System::new();
+                s.refresh_memory();
+                // Larger stack size if possible to handle cases with lots of nested directories
+                let available = s.available_memory();
+                if available > large_stack.try_into().unwrap() {
+                    Some(large_stack)
+                } else {
+                    None
+                }
             }
         }
     };
