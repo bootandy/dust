@@ -1,7 +1,7 @@
 [package]
 name = "du-dust"
 description = "A more intuitive version of du"
-version = "1.2.1"
+version = "1.2.2"
 authors = ["bootandy <bootandy@gmail.com>", "nebkor <code@ardent.nebcorp.com>"]
 edition = "2024"
 readme = "README.md"
