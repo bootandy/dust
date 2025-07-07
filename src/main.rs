@@ -336,13 +336,15 @@ fn main() {
             is_colors,
             terminal_width,
             &mut out,
+            -1,
         );
         out.flush().unwrap();
 
+        let mut state = 0;
         for c in stdin.events() {
             write!(
                 out,
-                "{}{}Dust interactive (q to quit)",
+                "{}{}Dust interactive (q to quit) {state}",
                 termion::clear::All,
                 termion::cursor::Goto(1, 1)
             )
@@ -351,14 +353,22 @@ fn main() {
             let evt = c.unwrap();
             match evt {
                 Event::Key(Key::Char('q')) => break,
+                Event::Key(Key::Up | Key::Char('k')) => {
+                    write!(out, "up\n").unwrap();
+                    state -= 1;
+                }
+                Event::Key(Key::Down | Key::Char('j')) => {
+                    write!(out, "down\n").unwrap();
+                    state += 1;
+                }
+                Event::Key(Key::Left | Key::Char('h')) => {
+                    write!(out, "left\n").unwrap();
+                }
+                Event::Key(Key::Right | Key::Char('l')) => {
+                    write!(out, "right\n").unwrap();
+                }
                 Event::Key(Key::Char(x)) => {
-                    write!(out,"{x} key\n" );
-                }
-                Event::Key(Key::Left) => {
-                    write!(out,"left\n");
-                }
-                Event::Key(Key::Right) => {
-                    write!(out,"right\n");
+                    write!(out, "{x} key\n").unwrap();
                 }
                 _ => {}
             }
@@ -370,6 +380,7 @@ fn main() {
                 is_colors,
                 terminal_width,
                 &mut out,
+                state,
             );
             out.flush().unwrap();
         }
@@ -383,6 +394,7 @@ fn print_output(
     is_colors: bool,
     terminal_width: usize,
     stdout: &mut RawTerminal<Stdout>,
+    selected_index: i32,
 ) {
     let output_format = config.get_output_format(&options);
 
@@ -401,6 +413,7 @@ fn print_output(
             is_screen_reader: config.get_screen_reader(&options),
             output_format,
             bars_on_right: config.get_bars_on_right(&options),
+            selected_index: selected_index,
         };
 
         draw_it(
