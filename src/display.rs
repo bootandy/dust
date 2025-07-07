@@ -4,6 +4,7 @@ use crate::node::FileTime;
 use ansi_term::Colour::Red;
 use lscolors::{LsColors, Style};
 
+use termion::raw::RawTerminal;
 use unicode_width::UnicodeWidthStr;
 
 use stfu8::encode_u8;
@@ -12,6 +13,8 @@ use chrono::{DateTime, Local, TimeZone, Utc};
 use std::cmp::max;
 use std::cmp::min;
 use std::fs;
+use std::io::Stdout;
+use std::io::Write;
 use std::iter::repeat_n;
 use std::path::Path;
 use thousands::Separable;
@@ -29,6 +32,7 @@ pub struct InitialDisplayData {
     pub is_screen_reader: bool,
     pub output_format: String,
     pub bars_on_right: bool,
+    pub selected_index: i32,
 }
 
 pub struct DisplayData {
@@ -81,6 +85,7 @@ struct DrawData<'a> {
     display_data: &'a DisplayData,
 }
 
+
 impl DrawData<'_> {
     fn get_new_indent(&self, has_children: bool, was_i_last: bool) -> String {
         let chars = self.display_data.get_tree_chars(was_i_last, has_children);
@@ -129,6 +134,7 @@ pub fn draw_it(
     no_percent_bars: bool,
     terminal_width: usize,
     skip_total: bool,
+    stdout: &mut RawTerminal<Stdout>,
 ) {
     let num_chars_needed_on_left_most = if idd.by_filecount {
         let max_size = root_node.size;
@@ -170,8 +176,14 @@ pub fn draw_it(
         display_data: &display_data,
     };
 
+    let mut test = if display_data.initial.is_reversed {
+        recursive_child_count(root_node)
+    } else {
+        0
+    };
+
     if !skip_total {
-        display_node(root_node, &draw_data, true, true);
+        display_node(root_node, stdout, &draw_data, true, true, test);
     } else {
         for (count, c) in root_node
             .get_children_from_node(draw_data.display_data.initial.is_reversed)
@@ -179,7 +191,13 @@ pub fn draw_it(
         {
             let is_biggest = display_data.is_biggest(count, root_node.num_siblings());
             let was_i_last = display_data.is_last(count, root_node.num_siblings());
-            display_node(c, &draw_data, is_biggest, was_i_last);
+            display_node(c, stdout, &draw_data, is_biggest, was_i_last, test);
+            // not yet tested:
+            if display_data.initial.is_reversed {
+                test += recursive_child_count(c);
+            } else {
+                test += recursive_child_count(c);
+            }
         }
     }
 }
@@ -218,16 +236,46 @@ fn find_longest_dir_name(
         .fold(longest, max)
 }
 
-fn display_node(node: &DisplayNode, draw_data: &DrawData, is_biggest: bool, is_last: bool) {
+pub fn recursive_child_count(node: &DisplayNode) -> i32 {
+    let mut total = 1;
+    for n in node.children.iter() {
+        total += recursive_child_count(&n);
+    }
+    return total;
+}
+
+fn display_node(
+    node: &DisplayNode,
+    stdout: &mut RawTerminal<Stdout>,
+    draw_data: &DrawData,
+    is_biggest: bool,
+    is_last: bool,
+    test: i32,
+) {
     // hacky way of working out how deep we are in the tree
     let indent = draw_data.get_new_indent(!node.children.is_empty(), is_last);
     let level = ((indent.chars().count() - 1) / 2) - 1;
     let bar_text = draw_data.generate_bar(node, level);
 
-    let to_print = format_string(node, &indent, &bar_text, is_biggest, draw_data.display_data);
+    let cnt = if draw_data.display_data.initial.is_reversed {
+        recursive_child_count(node)
+    } else {
+        0
+    };
 
+    let to_print = format_string(
+        node,
+        &indent,
+        &bar_text,
+        is_biggest,
+        &draw_data.display_data,
+        test - cnt,
+    );
+
+    let mut tt = test;
     if !draw_data.display_data.initial.is_reversed {
-        println!("{to_print}")
+        tt += 1;
+        write!(stdout, "{to_print}").unwrap()
     }
 
     let dd = DrawData {
@@ -244,11 +292,17 @@ fn display_node(node: &DisplayNode, draw_data: &DrawData, is_biggest: bool, is_l
     {
         let is_biggest = dd.display_data.is_biggest(count, num_siblings);
         let was_i_last = dd.display_data.is_last(count, num_siblings);
-        display_node(c, &dd, is_biggest, was_i_last);
+
+        display_node(c, stdout, &dd, is_biggest, was_i_last, tt);
+        if draw_data.display_data.initial.is_reversed {
+            tt -= recursive_child_count(c)
+        } else {
+            tt += recursive_child_count(c)
+        }
     }
 
     if draw_data.display_data.initial.is_reversed {
-        println!("{to_print}")
+        write!(stdout, "{to_print}").unwrap()
     }
 }
 
@@ -325,18 +379,22 @@ pub fn format_string(
     bars: &str,
     is_biggest: bool,
     display_data: &DisplayData,
+    test: i32,
 ) -> String {
     let (percent, name_and_padding) = get_name_percent(node, indent, bars, display_data);
-    let pretty_size = get_pretty_size(node, is_biggest, display_data);
+    let pretty_size = get_pretty_size(node, is_biggest, display_data, test);
     let pretty_name = get_pretty_name(node, name_and_padding, display_data);
+    let marked = get_name_if_marked(test==display_data.initial.selected_index, pretty_name);
+    let indent = get_indent_if_marked(test==display_data.initial.selected_index, indent);
+
     // we can clean this and the method below somehow, not sure yet
     if display_data.initial.is_screen_reader {
         // if screen_reader then bars is 'depth'
-        format!("{pretty_name} {bars} {pretty_size}{percent}")
+        format!("{marked} {bars} {pretty_size}{percent}")
     } else if display_data.initial.by_filetime.is_some() {
-        format!("{pretty_size} {indent}{pretty_name}")
+        format!("{pretty_size} {indent}{marked}")
     } else {
-        format!("{pretty_size} {indent} {pretty_name}{percent}")
+        format!("{pretty_size} {indent} {marked}{percent}")
     }
 }
 
@@ -366,13 +424,19 @@ fn get_name_percent(
     }
 }
 
-fn get_pretty_size(node: &DisplayNode, is_biggest: bool, display_data: &DisplayData) -> String {
+fn get_pretty_size(
+    node: &DisplayNode,
+    is_biggest: bool,
+    display_data: &DisplayData,
+    n: i32,
+) -> String {
     let output = if display_data.initial.by_filecount {
         node.size.separate_with_commas()
     } else if display_data.initial.by_filetime.is_some() {
         get_pretty_file_modified_time(node.size as i64)
     } else {
-        human_readable_number(node.size, &display_data.initial.output_format)
+        // human_readable_number(n, &display_data.initial.output_format)
+        format!("{n}")
     };
     let spaces_to_add = display_data.num_chars_needed_on_left_most - output.chars().count();
     let output = " ".repeat(spaces_to_add) + output.as_str();
@@ -390,6 +454,33 @@ fn get_pretty_file_modified_time(timestamp: i64) -> String {
     let local_datetime = datetime.with_timezone(&Local);
 
     local_datetime.format("%Y-%m-%dT%H:%M:%S").to_string()
+}
+
+fn get_indent_if_marked(test: bool, indent: &str) -> String {
+    if test {
+        let mut new_name = String::new();
+        for _ in indent.chars() {
+            new_name.push(BLOCKS[0])
+        }
+        new_name
+    } else {
+        indent.into()
+    }
+}
+fn get_name_if_marked(test: bool, name: String) -> String {
+    if test {
+        let mut new_name = String::new();
+        for c in name.chars() {
+            if c == ' ' {
+                new_name.push(BLOCKS[0])
+            } else {
+                new_name.push(c)
+            }
+        }
+        new_name
+    } else {
+        name.into()
+    }
 }
 
 fn get_pretty_name(

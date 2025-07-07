@@ -12,6 +12,7 @@ mod utils;
 
 use crate::cli::Cli;
 use crate::config::Config;
+use crate::display::recursive_child_count;
 use crate::display_node::DisplayNode;
 use crate::progress::RuntimeErrors;
 use clap::Parser;
@@ -20,16 +21,26 @@ use display::InitialDisplayData;
 use filter::AggregateData;
 use progress::PIndicator;
 use regex::Error;
+use std::cmp::min;
 use std::collections::HashSet;
 use std::env;
 use std::fs::read_to_string;
 use std::io;
+use std::io::Stdout;
+use std::io::stdin;
+use std::io::stdout;
 use std::panic;
 use std::process;
 use std::sync::Arc;
 use std::sync::Mutex;
 use sysinfo::{System, SystemExt};
+use termion::raw::RawTerminal;
 use utils::canonicalize_absolute_path;
+
+use std::io::Write;
+use termion::event::{Event, Key};
+use termion::input::TermRead;
+use termion::raw::IntoRawMode;
 
 use self::display::draw_it;
 use config::get_config;
@@ -309,24 +320,93 @@ fn main() {
         let print_errors = config.get_print_errors(&options);
         print_any_errors(print_errors, walk_data.errors);
 
+        let stdin = stdin();
+        let mut out = stdout().into_raw_mode().unwrap();
+
+        write!(
+            out,
+            "{}{}Dust interactive (q to quit)",
+            termion::clear::All,
+            termion::cursor::Goto(1, 1)
+        )
+        .unwrap();
+        write!(out, "{}", termion::cursor::Goto(1, 2)).unwrap();
         print_output(
-            config,
-            options,
-            tree,
-            walk_data.by_filecount,
+            &config,
+            &options,
+            &tree,
             is_colors,
             terminal_width,
-        )
-    });
+            &mut out,
+            0,
+        );
+        out.flush().unwrap();
+
+        let mut state = 0;
+        for c in stdin.events() {
+            write!(
+                out,
+                "{}{}Dust interactive (q to quit) {state}",
+                termion::clear::All,
+                termion::cursor::Goto(1, 1)
+            )
+            .unwrap();
+            write!(out, "{}", termion::cursor::Goto(1, 2)).unwrap();
+            let evt = c.unwrap();
+            match evt {
+                Event::Key(Key::Char('q')) => break,
+                Event::Key(Key::Up | Key::Char('k')) => {
+                    write!(out, "up\n").unwrap();
+                    if !config.get_reverse(&options){
+                        state += 1;
+                    } else {
+                        state -= 1;
+                    }
+                }
+                Event::Key(Key::Down | Key::Char('j')) => {
+                    write!(out, "down\n").unwrap();
+                    if !config.get_reverse(&options){
+                        state -= 1;
+                    } else {
+                        state += 1;
+                    }
+                }
+                Event::Key(Key::Left | Key::Char('h')) => {
+                    write!(out, "left\n").unwrap();
+                }
+                Event::Key(Key::Right | Key::Char('l')) => {
+                    write!(out, "right\n").unwrap();
+                }
+                Event::Key(Key::Char(x)) => {
+                    write!(out, "{x} key\n").unwrap();
+                }
+                _ => {}
+            }
+            state = max(0, state);
+            state = min(recursive_child_count(&tree)-1, state);
+            write!(out, "{}", termion::cursor::Goto(1, 3)).unwrap();
+            print_output(
+                &config,
+                &options,
+                &tree,
+                is_colors,
+                terminal_width,
+                &mut out,
+                state,
+            );
+            out.flush().unwrap();
+        }
+    })
 }
 
 fn print_output(
-    config: Config,
-    options: Cli,
-    tree: DisplayNode,
-    by_filecount: bool,
+    config: &Config,
+    options: &Cli,
+    tree: &DisplayNode,
     is_colors: bool,
     terminal_width: usize,
+    stdout: &mut RawTerminal<Stdout>,
+    selected_index: i32,
 ) {
     let output_format = config.get_output_format(&options);
 
@@ -340,19 +420,21 @@ fn print_output(
             short_paths: !config.get_full_paths(&options),
             is_reversed: !config.get_reverse(&options),
             colors_on: is_colors,
-            by_filecount,
+            by_filecount: options.filecount,
             by_filetime: config.get_filetime(&options),
             is_screen_reader: config.get_screen_reader(&options),
             output_format,
             bars_on_right: config.get_bars_on_right(&options),
+            selected_index: selected_index,
         };
 
         draw_it(
             idd,
-            &tree,
+            tree,
             config.get_no_bars(&options),
             terminal_width,
             config.get_skip_total(&options),
+            stdout,
         )
     }
 }
