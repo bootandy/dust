@@ -12,6 +12,7 @@ mod utils;
 
 use crate::cli::Cli;
 use crate::config::Config;
+use crate::display::recursive_child_count;
 use crate::display_node::DisplayNode;
 use crate::progress::RuntimeErrors;
 use clap::Parser;
@@ -20,6 +21,7 @@ use display::InitialDisplayData;
 use filter::AggregateData;
 use progress::PIndicator;
 use regex::Error;
+use std::cmp::min;
 use std::collections::HashSet;
 use std::env;
 use std::fs::read_to_string;
@@ -336,7 +338,7 @@ fn main() {
             is_colors,
             terminal_width,
             &mut out,
-            -1,
+            0,
         );
         out.flush().unwrap();
 
@@ -355,11 +357,19 @@ fn main() {
                 Event::Key(Key::Char('q')) => break,
                 Event::Key(Key::Up | Key::Char('k')) => {
                     write!(out, "up\n").unwrap();
-                    state -= 1;
+                    if !config.get_reverse(&options){
+                        state += 1;
+                    } else {
+                        state -= 1;
+                    }
                 }
                 Event::Key(Key::Down | Key::Char('j')) => {
                     write!(out, "down\n").unwrap();
-                    state += 1;
+                    if !config.get_reverse(&options){
+                        state -= 1;
+                    } else {
+                        state += 1;
+                    }
                 }
                 Event::Key(Key::Left | Key::Char('h')) => {
                     write!(out, "left\n").unwrap();
@@ -372,6 +382,8 @@ fn main() {
                 }
                 _ => {}
             }
+            state = max(0, state);
+            state = min(recursive_child_count(&tree)-1, state);
             write!(out, "{}", termion::cursor::Goto(1, 3)).unwrap();
             print_output(
                 &config,
