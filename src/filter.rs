@@ -46,10 +46,11 @@ pub fn get_biggest(
 
             let nodes = handle_duplicate_top_level_names(top_level_nodes, display_data.short_paths);
             root = total_node_builder(size, nodes);
+            heap = always_add_children(&display_data, &root, heap);
         } else {
             root = top_level_nodes.into_iter().next().unwrap();
+            heap = add_children(&display_data, &root, heap);
         }
-        heap = add_children(&display_data, &root, heap);
     }
 
     fill_remaining_lines(heap, &root, display_data, keep_collapsed)
