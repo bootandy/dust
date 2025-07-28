@@ -63,6 +63,14 @@ pub fn test_d_flag_works() {
 }
 
 #[test]
+pub fn test_d0_works_on_multiple() {
+    // We should see the top level directory but not the sub dirs / files:
+    let output = build_command(vec!["-d", "0", "tests/test_dir/", "tests/test_dir2"]);
+    assert!(output.contains("test_dir "));
+    assert!(output.contains("test_dir2"));
+}
+
+#[test]
 pub fn test_threads_flag_works() {
     let output = build_command(vec!["-T", "1", "tests/test_dir/"]);
     assert!(output.contains("hello_file"));
