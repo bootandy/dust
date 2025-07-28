@@ -32,25 +32,23 @@ pub fn get_biggest(
 
     if number_top_level_nodes == 0 {
         root = total_node_builder(0, vec![])
-    } else {
-        if number_top_level_nodes > 1 {
-            let size = if by_filetime.is_some() {
-                top_level_nodes
-                    .iter()
-                    .map(|node| node.size)
-                    .max()
-                    .unwrap_or(0)
-            } else {
-                top_level_nodes.iter().map(|node| node.size).sum()
-            };
-
-            let nodes = handle_duplicate_top_level_names(top_level_nodes, display_data.short_paths);
-            root = total_node_builder(size, nodes);
-            heap = always_add_children(&display_data, &root, heap);
+    } else if number_top_level_nodes > 1 {
+        let size = if by_filetime.is_some() {
+            top_level_nodes
+                .iter()
+                .map(|node| node.size)
+                .max()
+                .unwrap_or(0)
         } else {
-            root = top_level_nodes.into_iter().next().unwrap();
-            heap = add_children(&display_data, &root, heap);
-        }
+            top_level_nodes.iter().map(|node| node.size).sum()
+        };
+
+        let nodes = handle_duplicate_top_level_names(top_level_nodes, display_data.short_paths);
+        root = total_node_builder(size, nodes);
+        heap = always_add_children(&display_data, &root, heap);
+    } else {
+        root = top_level_nodes.into_iter().next().unwrap();
+        heap = add_children(&display_data, &root, heap);
     }
 
     fill_remaining_lines(heap, &root, display_data, keep_collapsed)
