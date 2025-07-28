@@ -107,7 +107,9 @@ pub fn test_ignore_all_in_file() {
 #[test]
 pub fn test_with_bad_param() {
     let mut cmd = Command::cargo_bin("dust").unwrap();
-    let result = cmd.arg("bad_place").unwrap();
+    cmd.arg("-P").arg("bad_place");
+    let output_error = cmd.unwrap_err();
+    let result = output_error.as_output().unwrap();
     let stderr = str::from_utf8(&result.stderr).unwrap();
     assert!(stderr.contains("No such file or directory"));
 }
