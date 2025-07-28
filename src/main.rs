@@ -307,16 +307,21 @@ fn main() {
         indicator.stop();
 
         let print_errors = config.get_print_errors(&options);
-        print_any_errors(print_errors, walk_data.errors);
+        let final_errors = walk_data.errors.lock().unwrap();
+        print_any_errors(print_errors, &final_errors);
 
-        print_output(
-            config,
-            options,
-            tree,
-            walk_data.by_filecount,
-            is_colors,
-            terminal_width,
-        )
+        if tree.children.is_empty() && !final_errors.file_not_found.is_empty() {
+            std::process::exit(1)
+        } else {
+            print_output(
+                config,
+                options,
+                tree,
+                walk_data.by_filecount,
+                is_colors,
+                terminal_width,
+            )
+        }
     });
 }
 
@@ -357,8 +362,7 @@ fn print_output(
     }
 }
 
-fn print_any_errors(print_errors: bool, errors: Arc<Mutex<RuntimeErrors>>) {
-    let final_errors = errors.lock().unwrap();
+fn print_any_errors(print_errors: bool, final_errors: &RuntimeErrors) {
     if !final_errors.file_not_found.is_empty() {
         let err = final_errors
             .file_not_found
