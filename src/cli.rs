@@ -172,10 +172,13 @@ pub struct Cli {
     #[arg(short('y'), long, allow_hyphen_values(true))]
     pub ctime: Option<String>,
 
-    /// run dust on NUL-terminated file names specified in file; if argument is
-    /// -, then read names from standard input
-    #[arg(long, value_hint(ValueHint::AnyPath))]
+    /// Read NUL-terminated paths from FILE (use `-` for stdin).
+    #[arg(long, value_hint(ValueHint::AnyPath), conflicts_with("files_from"))]
     pub files0_from: Option<String>,
+
+    /// Read newline-terminated paths from FILE (use `-` for stdin).
+    #[arg(long, value_hint(ValueHint::AnyPath), conflicts_with("files0_from"))]
+    pub files_from: Option<String>,
 
     /// Keep these directories collapsed
     #[arg(long, value_hint(ValueHint::AnyPath))]

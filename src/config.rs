@@ -36,13 +36,22 @@ pub struct Config {
     pub output_json: Option<bool>,
     pub print_errors: Option<bool>,
     pub files0_from: Option<String>,
+    pub files_from: Option<String>,
 }
 
 impl Config {
-    pub fn get_files_from(&self, options: &Cli) -> Option<String> {
+    pub fn get_files0_from(&self, options: &Cli) -> Option<String> {
         let from_file = &options.files0_from;
         match from_file {
             None => self.files0_from.as_ref().map(|x| x.to_string()),
+            Some(x) => Some(x.to_string()),
+        }
+    }
+
+    pub fn get_files_from(&self, options: &Cli) -> Option<String> {
+        let from_file = &options.files_from;
+        match from_file {
+            None => self.files_from.as_ref().map(|x| x.to_string()),
             Some(x) => Some(x.to_string()),
         }
     }
