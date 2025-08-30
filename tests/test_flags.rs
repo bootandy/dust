@@ -105,6 +105,48 @@ pub fn test_ignore_all_in_file() {
 }
 
 #[test]
+pub fn test_files_from_flag_file() {
+    let output = build_command(vec!["--files-from", "tests/test_dir_files_from/files_from.txt"]);
+    assert!(output.contains("a_file"));
+    assert!(output.contains("hello_file"));
+}
+
+#[test]
+pub fn test_files0_from_flag_file() {
+    let output = build_command(vec!["--files0-from", "tests/test_dir_files_from/files0_from.txt"]);
+    assert!(output.contains("a_file"));
+    assert!(output.contains("hello_file"));
+}
+
+#[test]
+pub fn test_files_from_flag_stdin() {
+    let mut cmd = Command::cargo_bin("dust").unwrap();
+    cmd.arg("-P").arg("--files-from").arg("-");
+    let input = b"tests/test_dir_files_from/a_file\ntests/test_dir_files_from/hello_file\n";
+    cmd.write_stdin(input.as_ref());
+    let finished = &cmd.unwrap();
+    let stderr = std::str::from_utf8(&finished.stderr).unwrap();
+    assert_eq!(stderr, "");
+    let output = std::str::from_utf8(&finished.stdout).unwrap();
+    assert!(output.contains("a_file"));
+    assert!(output.contains("hello_file"));
+}
+
+#[test]
+pub fn test_files0_from_flag_stdin() {
+    let mut cmd = Command::cargo_bin("dust").unwrap();
+    cmd.arg("-P").arg("--files0-from").arg("-");
+    let input = b"tests/test_dir_files_from/a_file\0tests/test_dir_files_from/hello_file\0";
+    cmd.write_stdin(input.as_ref());
+    let finished = &cmd.unwrap();
+    let stderr = std::str::from_utf8(&finished.stderr).unwrap();
+    assert_eq!(stderr, "");
+    let output = std::str::from_utf8(&finished.stdout).unwrap();
+    assert!(output.contains("a_file"));
+    assert!(output.contains("hello_file"));
+}
+
+#[test]
 pub fn test_with_bad_param() {
     let mut cmd = Command::cargo_bin("dust").unwrap();
     cmd.arg("-P").arg("bad_place");

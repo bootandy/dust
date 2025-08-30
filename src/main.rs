@@ -22,8 +22,9 @@ use progress::PIndicator;
 use regex::Error;
 use std::collections::HashSet;
 use std::env;
-use std::fs::read_to_string;
+use std::fs::{read, read_to_string};
 use std::io;
+use std::io::Read;
 use std::panic;
 use std::process;
 use std::sync::Arc;
@@ -127,34 +128,15 @@ fn main() {
     })
     .expect("Error setting Ctrl-C handler");
 
-    let target_dirs = match config.get_files_from(&options) {
-        Some(path) => {
-            if path == "-" {
-                let mut targets_to_add = io::stdin()
-                    .lines()
-                    .map_while(Result::ok)
-                    .collect::<Vec<String>>();
-
-                if targets_to_add.is_empty() {
-                    eprintln!("No input provided, defaulting to current directory");
-                    targets_to_add.push(".".to_owned());
-                }
-                targets_to_add
-            } else {
-                // read file
-                match read_to_string(path) {
-                    Ok(file_content) => file_content.lines().map(|x| x.to_string()).collect(),
-                    Err(e) => {
-                        eprintln!("Error reading file: {e}");
-                        vec![".".to_owned()]
-                    }
-                }
-            }
-        }
-        None => match options.params {
+    let target_dirs = if let Some(path) = config.get_files0_from(&options) {
+        read_paths_from_source(&path, true)
+    } else if let Some(path) = config.get_files_from(&options) {
+        read_paths_from_source(&path, false)
+    } else {
+        match options.params {
             Some(ref values) => values.clone(),
             None => vec![".".to_owned()],
-        },
+        }
     };
 
     let summarize_file_types = options.file_types;
@@ -395,6 +377,53 @@ fn print_any_errors(print_errors: bool, final_errors: &RuntimeErrors) {
             .collect::<Vec<&str>>()
             .join(", ");
         eprintln!("Unknown Error: {err}");
+    }
+}
+
+fn read_paths_from_source(path: &str, null_terminated: bool) -> Vec<String> {
+    let from_stdin = path == "-";
+
+    let result: Result<Vec<String>, Option<String>> = (|| {
+        // 1) read bytes
+        let bytes = if from_stdin {
+            let mut b = Vec::new();
+            io::stdin().lock().read_to_end(&mut b).map_err(|_| None)?;
+            b
+        } else {
+            read(path).map_err(|e| Some(e.to_string()))?
+        };
+
+        let text = std::str::from_utf8(&bytes).map_err(|e| {
+            if from_stdin {
+                None
+            } else {
+                Some(e.to_string())
+            }
+        })?;
+        let items: Vec<String> = if null_terminated {
+            text.split('\0')
+                .filter(|s| !s.is_empty())
+                .map(str::to_owned)
+                .collect()
+        } else {
+            text.lines().map(str::to_owned).collect()
+        };
+        if from_stdin && items.is_empty() {
+            return Err(None);
+        }
+        Ok(items)
+    })();
+
+    match result {
+        Ok(v) => v,
+        Err(None) => {
+            eprintln!("No files provided, defaulting to current directory");
+            vec![".".to_owned()]
+        }
+        Err(Some(msg)) => {
+            eprintln!("Failed to read file: {msg}");
+            vec![".".to_owned()]
+        }
     }
 }
 

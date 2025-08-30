@@ -22,7 +22,8 @@ complete -c dust -s S -l stack-size -d 'Specify memory to use as stack size - us
 complete -c dust -s M -l mtime -d '+/-n matches files modified more/less than n days ago , and n matches files modified exactly n days ago, days are rounded down.That is +n => (−∞, curr−(n+1)), n => [curr−(n+1), curr−n), and -n => (𝑐𝑢𝑟𝑟−𝑛, +∞)' -r
 complete -c dust -s A -l atime -d 'just like -mtime, but based on file access time' -r
 complete -c dust -s y -l ctime -d 'just like -mtime, but based on file change time' -r
-complete -c dust -l files0-from -d 'run dust on NUL-terminated file names specified in file; if argument is -, then read names from standard input' -r -F
+complete -c dust -l files0-from -d 'Read NUL-terminated paths from FILE (use `-` for stdin)' -r -F
+complete -c dust -l files-from -d 'Read newline-terminated paths from FILE (use `-` for stdin)' -r -F
 complete -c dust -l collapse -d 'Keep these directories collapsed' -r -F
 complete -c dust -s m -l filetime -d 'Directory \'size\' is max filetime of child files instead of disk size. while a/c/m for last accessed/changed/modified time' -r -f -a "a\t'last accessed time'
 c\t'last changed time'
