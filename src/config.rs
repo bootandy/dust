@@ -36,6 +36,7 @@ pub struct Config {
     pub output_json: Option<bool>,
     pub print_errors: Option<bool>,
     pub files0_from: Option<String>,
+    pub number_of_lines: Option<usize>,
 }
 
 impl Config {
@@ -145,6 +146,15 @@ impl Config {
     }
     pub fn get_output_json(&self, options: &Cli) -> bool {
         Some(true) == self.output_json || options.output_json
+    }
+
+    pub fn get_number_of_lines(&self, options: &Cli) -> Option<usize> {
+        let from_cmd_line = options.number_of_lines;
+        if from_cmd_line.is_none() {
+            self.number_of_lines
+        } else {
+            from_cmd_line
+        }
     }
 
     pub fn get_modified_time_operator(&self, options: &Cli) -> Option<(Operator, i64)> {
@@ -379,5 +389,34 @@ mod tests {
 
     fn get_filetime_args(args: Vec<&str>) -> Cli {
         Cli::parse_from(args)
+    }
+
+    #[test]
+    fn test_get_number_of_lines() {
+        // No config and no flag.
+        let c = Config::default();
+        let args = get_args(vec![]);
+        assert_eq!(c.get_number_of_lines(&args), None);
+
+        // Config is not defined and flag is defined.
+        let c = Config::default();
+        let args = get_args(vec!["dust", "--number-of-lines", "5"]);
+        assert_eq!(c.get_number_of_lines(&args), Some(5));
+
+        // Config is defined and flag is not defined.
+        let c = Config {
+            number_of_lines: Some(3),
+            ..Default::default()
+        };
+        let args = get_args(vec![]);
+        assert_eq!(c.get_number_of_lines(&args), Some(3));
+
+        // Both config and flag are defined.
+        let c = Config {
+            number_of_lines: Some(3),
+            ..Default::default()
+        };
+        let args = get_args(vec!["dust", "--number-of-lines", "5"]);
+        assert_eq!(c.get_number_of_lines(&args), Some(5));
     }
 }
