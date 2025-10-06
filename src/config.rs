@@ -269,10 +269,10 @@ pub fn get_config(conf_path: Option<&String>) -> Config {
         None => {
             if let Some(home) = directories::BaseDirs::new() {
                 for path in get_config_locations(home.home_dir()) {
-                    if path.exists() {
-                        if let Ok(config) = Config::from_config_file(&path) {
-                            return config;
-                        }
+                    if path.exists()
+                        && let Ok(config) = Config::from_config_file(&path)
+                    {
+                        return config;
                     }
                 }
             }
