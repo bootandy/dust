@@ -154,7 +154,7 @@ fn main() {
     // If depth is set, then we set the default number_of_lines to be max
     // instead of screen height
 
-    let number_of_lines = match options.number_of_lines {
+    let number_of_lines = match config.get_number_of_lines(&options) {
         Some(val) => val,
         None => {
             if depth != usize::MAX {
