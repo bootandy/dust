@@ -69,12 +69,11 @@ pub fn walk_it(dirs: HashSet<PathBuf>, walk_data: &WalkData) -> Vec<Node> {
 
 // Remove files which have the same inode, we don't want to double count them.
 fn clean_inodes(x: Node, inodes: &mut HashSet<(u64, u64)>, walk_data: &WalkData) -> Option<Node> {
-    if !walk_data.use_apparent_size {
-        if let Some(id) = x.inode_device {
-            if !inodes.insert(id) {
-                return None;
-            }
-        }
+    if !walk_data.use_apparent_size
+        && let Some(id) = x.inode_device
+        && !inodes.insert(id)
+    {
+        return None;
     }
 
     // Sort Nodes so iteration order is predictable
@@ -156,10 +155,10 @@ fn ignore_file(entry: &DirEntry, walk_data: &WalkData) -> bool {
 
     if !walk_data.allowed_filesystems.is_empty() {
         let size_inode_device = get_metadata(entry.path(), false, follow_links);
-        if let Some((_size, Some((_id, dev)), _gunk)) = size_inode_device {
-            if !walk_data.allowed_filesystems.contains(&dev) {
-                return true;
-            }
+        if let Some((_size, Some((_id, dev)), _gunk)) = size_inode_device
+            && !walk_data.allowed_filesystems.contains(&dev)
+        {
+            return true;
         }
     }
     if walk_data.filter_accessed_time.is_some()
@@ -167,20 +166,19 @@ fn ignore_file(entry: &DirEntry, walk_data: &WalkData) -> bool {
         || walk_data.filter_changed_time.is_some()
     {
         let size_inode_device = get_metadata(entry.path(), false, follow_links);
-        if let Some((_, _, (modified_time, accessed_time, changed_time))) = size_inode_device {
-            if entry.path().is_file()
-                && [
-                    (&walk_data.filter_modified_time, modified_time),
-                    (&walk_data.filter_accessed_time, accessed_time),
-                    (&walk_data.filter_changed_time, changed_time),
-                ]
-                .iter()
-                .any(|(filter_time, actual_time)| {
-                    is_filtered_out_due_to_file_time(filter_time, *actual_time)
-                })
-            {
-                return true;
-            }
+        if let Some((_, _, (modified_time, accessed_time, changed_time))) = size_inode_device
+            && entry.path().is_file()
+            && [
+                (&walk_data.filter_modified_time, modified_time),
+                (&walk_data.filter_accessed_time, accessed_time),
+                (&walk_data.filter_changed_time, changed_time),
+            ]
+            .iter()
+            .any(|(filter_time, actual_time)| {
+                is_filtered_out_due_to_file_time(filter_time, *actual_time)
+            })
+        {
+            return true;
         }
     }
 
@@ -222,32 +220,30 @@ fn walk(dir: PathBuf, walk_data: &WalkData, depth: usize) -> Option<Node> {
 
                                 // return walk(entry.path(), walk_data, depth)
 
-                                if !ignore_file(entry, walk_data) {
-                                    if let Ok(data) = entry.file_type() {
-                                        if data.is_dir()
-                                            || (walk_data.follow_links && data.is_symlink())
-                                        {
-                                            return walk(entry.path(), walk_data, depth + 1);
-                                        }
-
-                                        let node = build_node(
-                                            entry.path(),
-                                            vec![],
-                                            data.is_symlink(),
-                                            data.is_file(),
-                                            depth,
-                                            walk_data,
-                                        );
-
-                                        prog_data.num_files.fetch_add(1, ORDERING);
-                                        if let Some(ref file) = node {
-                                            prog_data
-                                                .total_file_size
-                                                .fetch_add(file.size, ORDERING);
-                                        }
-
-                                        return node;
+                                if !ignore_file(entry, walk_data)
+                                    && let Ok(data) = entry.file_type()
+                                {
+                                    if data.is_dir()
+                                        || (walk_data.follow_links && data.is_symlink())
+                                    {
+                                        return walk(entry.path(), walk_data, depth + 1);
                                     }
+
+                                    let node = build_node(
+                                        entry.path(),
+                                        vec![],
+                                        data.is_symlink(),
+                                        data.is_file(),
+                                        depth,
+                                        walk_data,
+                                    );
+
+                                    prog_data.num_files.fetch_add(1, ORDERING);
+                                    if let Some(ref file) = node {
+                                        prog_data.total_file_size.fetch_add(file.size, ORDERING);
+                                    }
+
+                                    return node;
                                 }
                             }
                             Err(ref failed) => {
