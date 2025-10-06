@@ -9,25 +9,25 @@ Dust \- Like du but more intuitive
 Like du but more intuitive
 .SH OPTIONS
 .TP
-\fB\-d\fR, \fB\-\-depth\fR=\fIDEPTH\fR
+\fB\-d\fR, \fB\-\-depth\fR \fI<DEPTH>\fR
 Depth to show
 .TP
-\fB\-T\fR, \fB\-\-threads\fR=\fITHREADS\fR
+\fB\-T\fR, \fB\-\-threads\fR \fI<THREADS>\fR
 Number of threads to use
 .TP
-\fB\-\-config\fR=\fIFILE\fR
+\fB\-\-config\fR \fI<FILE>\fR
 Specify a config file to use
 .TP
-\fB\-n\fR, \fB\-\-number\-of\-lines\fR=\fINUMBER\fR
+\fB\-n\fR, \fB\-\-number\-of\-lines\fR \fI<NUMBER>\fR
 Number of lines of output to show. (Default is terminal_height \- 10)
 .TP
 \fB\-p\fR, \fB\-\-full\-paths\fR
 Subdirectories will not have their path shortened
 .TP
-\fB\-X\fR, \fB\-\-ignore\-directory\fR=\fIPATH\fR
+\fB\-X\fR, \fB\-\-ignore\-directory\fR \fI<PATH>\fR
 Exclude any file or directory with this path
 .TP
-\fB\-I\fR, \fB\-\-ignore\-all\-in\-file\fR=\fIFILE\fR
+\fB\-I\fR, \fB\-\-ignore\-all\-in\-file\fR \fI<FILE>\fR
 Exclude any file or directory with a regex matching that listed in this file, the file entries will be added to the ignore regexs provided by \-\-invert_filter
 .TP
 \fB\-L\fR, \fB\-\-dereference\-links\fR
@@ -54,7 +54,7 @@ No percent bars or percentages will be displayed
 \fB\-B\fR, \fB\-\-bars\-on\-right\fR
 percent bars moved to right side of screen
 .TP
-\fB\-z\fR, \fB\-\-min\-size\fR=\fIMIN_SIZE\fR
+\fB\-z\fR, \fB\-\-min\-size\fR \fI<MIN_SIZE>\fR
 Minimum size file to include in output
 .TP
 \fB\-R\fR, \fB\-\-screen\-reader\fR
@@ -69,16 +69,16 @@ Directory \*(Aqsize\*(Aq is number of child files instead of disk size
 \fB\-i\fR, \fB\-\-ignore\-hidden\fR
 Do not display hidden files
 .TP
-\fB\-v\fR, \fB\-\-invert\-filter\fR=\fIREGEX\fR
+\fB\-v\fR, \fB\-\-invert\-filter\fR \fI<REGEX>\fR
 Exclude filepaths matching this regex. To ignore png files type: \-v "\\.png$"
 .TP
-\fB\-e\fR, \fB\-\-filter\fR=\fIREGEX\fR
+\fB\-e\fR, \fB\-\-filter\fR \fI<REGEX>\fR
 Only include filepaths matching this regex. For png files type: \-e "\\.png$"
 .TP
 \fB\-t\fR, \fB\-\-file\-types\fR
 show only these file types
 .TP
-\fB\-w\fR, \fB\-\-terminal\-width\fR=\fIWIDTH\fR
+\fB\-w\fR, \fB\-\-terminal\-width\fR \fI<WIDTH>\fR
 Specify width of output overriding the auto detection of terminal width
 .TP
 \fB\-P\fR, \fB\-\-no\-progress\fR
@@ -93,7 +93,7 @@ Only directories will be displayed
 \fB\-F\fR, \fB\-\-only\-file\fR
 Only files will be displayed. (Finds your largest files)
 .TP
-\fB\-o\fR, \fB\-\-output\-format\fR=\fIFORMAT\fR
+\fB\-o\fR, \fB\-\-output\-format\fR \fI<FORMAT>\fR
 Changes output display size. si will print sizes in powers of 1000. b k m g t kb mb gb tb will print the whole tree in that size
 .br
 
@@ -122,31 +122,31 @@ gb: gigabyte (GB)
 tb: terabyte (TB)
 .RE
 .TP
-\fB\-S\fR, \fB\-\-stack\-size\fR=\fISTACK_SIZE\fR
+\fB\-S\fR, \fB\-\-stack\-size\fR \fI<STACK_SIZE>\fR
 Specify memory to use as stack size \- use if you see: \*(Aqfatal runtime error: stack overflow\*(Aq (default low memory=1048576, high memory=1073741824)
 .TP
 \fB\-j\fR, \fB\-\-output\-json\fR
 Output the directory tree as json to the current directory
 .TP
-\fB\-M\fR, \fB\-\-mtime\fR=\fIMTIME\fR
+\fB\-M\fR, \fB\-\-mtime\fR \fI<MTIME>\fR
 +/\-n matches files modified more/less than n days ago , and n matches files modified exactly n days ago, days are rounded down.That is +n => (−∞, curr−(n+1)), n => [curr−(n+1), curr−n), and \-n => (𝑐𝑢𝑟𝑟−𝑛, +∞)
 .TP
-\fB\-A\fR, \fB\-\-atime\fR=\fIATIME\fR
+\fB\-A\fR, \fB\-\-atime\fR \fI<ATIME>\fR
 just like \-mtime, but based on file access time
 .TP
-\fB\-y\fR, \fB\-\-ctime\fR=\fICTIME\fR
+\fB\-y\fR, \fB\-\-ctime\fR \fI<CTIME>\fR
 just like \-mtime, but based on file change time
 .TP
-\fB\-\-files0\-from\fR=\fIFILES0_FROM\fR
+\fB\-\-files0\-from\fR \fI<FILES0_FROM>\fR
 Read NUL\-terminated paths from FILE (use `\-` for stdin)
 .TP
-\fB\-\-files\-from\fR=\fIFILES_FROM\fR
+\fB\-\-files\-from\fR \fI<FILES_FROM>\fR
 Read newline\-terminated paths from FILE (use `\-` for stdin)
 .TP
-\fB\-\-collapse\fR=\fICOLLAPSE\fR
+\fB\-\-collapse\fR \fI<COLLAPSE>\fR
 Keep these directories collapsed
 .TP
-\fB\-m\fR, \fB\-\-filetime\fR=\fIFILETIME\fR
+\fB\-m\fR, \fB\-\-filetime\fR \fI<FILETIME>\fR
 Directory \*(Aqsize\*(Aq is max filetime of child files instead of disk size. while a/c/m for last accessed/changed/modified time
 .br
 
