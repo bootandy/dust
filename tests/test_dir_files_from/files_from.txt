@@ -1,0 +1,2 @@
+tests/test_dir_files_from/a_file
+tests/test_dir_files_from/hello_file

@@ -62,7 +62,8 @@ tb\:"terabyte (TB)"))' \
 '--atime=[just like -mtime, but based on file access time]:ATIME:_default' \
 '-y+[just like -mtime, but based on file change time]:CTIME:_default' \
 '--ctime=[just like -mtime, but based on file change time]:CTIME:_default' \
-'--files0-from=[run dust on NUL-terminated file names specified in file; if argument is -, then read names from standard input]:FILES0_FROM:_files' \
+'(--files-from)--files0-from=[Read NUL-terminated paths from FILE (use \`-\` for stdin)]:FILES0_FROM:_files' \
+'(--files0-from)--files-from=[Read newline-terminated paths from FILE (use \`-\` for stdin)]:FILES_FROM:_files' \
 '*--collapse=[Keep these directories collapsed]:COLLAPSE:_files' \
 '-m+[Directory '\''size'\'' is max filetime of child files instead of disk size. while a/c/m for last accessed/changed/modified time]:FILETIME:((a\:"last accessed time"
 c\:"last changed time"
