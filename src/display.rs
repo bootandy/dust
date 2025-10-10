@@ -439,6 +439,9 @@ pub fn get_number_format(output_str: &str) -> Option<(u64, char)> {
 }
 
 pub fn human_readable_number(size: u64, output_str: &str) -> String {
+    if output_str == "count" {
+        return size.to_string();
+    };
     match get_number_format(output_str) {
         Some((x, u)) => {
             format!("{}{}", (size / x), u)
@@ -537,6 +540,13 @@ mod tests {
 
         let s = format_string(&n, indent, percent_bar, is_biggest, &data);
         assert_eq!(s, "short               3  4.0K 100%");
+    }
+
+    #[test]
+    fn test_machine_readable_filecount() {
+        assert_eq!(human_readable_number(1, "count"), "1");
+        assert_eq!(human_readable_number(1000, "count"), "1000");
+        assert_eq!(human_readable_number(1024, "count"), "1024");
     }
 
     #[test]
