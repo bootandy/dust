@@ -319,7 +319,11 @@ fn print_output(
 
     if config.get_output_json(&options) {
         OUTPUT_TYPE.with(|wrapped| {
-            wrapped.replace(output_format);
+            if by_filecount {
+                wrapped.replace("count".to_string());
+            } else {
+                wrapped.replace(output_format);
+            }
         });
         println!("{}", serde_json::to_string(&tree).unwrap());
     } else {
