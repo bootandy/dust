@@ -62,6 +62,8 @@ fn initialize() {
 fn run_cmd<T: AsRef<OsStr>>(command_args: &[T]) -> Output {
     initialize();
     let mut to_run = &mut Command::cargo_bin("dust").unwrap();
+    // Hide progress bar
+    to_run.arg("-P");
     for p in command_args {
         to_run = to_run.arg(p);
     }

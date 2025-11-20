@@ -29,7 +29,7 @@ use std::panic;
 use std::process;
 use std::sync::Arc;
 use std::sync::Mutex;
-use sysinfo::{System, SystemExt};
+use sysinfo::System;
 use utils::canonicalize_absolute_path;
 
 use self::display::draw_it;
@@ -440,10 +440,10 @@ fn init_rayon(stack: &Option<usize>, threads: &Option<usize>) -> rayon::ThreadPo
                 None
             } else {
                 let large_stack = usize::pow(1024, 3);
-                let mut s = System::new();
-                s.refresh_memory();
+                let mut sys = System::new_all();
+                sys.refresh_memory();
                 // Larger stack size if possible to handle cases with lots of nested directories
-                let available = s.available_memory();
+                let available = sys.available_memory();
                 if available > (large_stack * threads.unwrap_or(1)).try_into().unwrap() {
                     Some(large_stack)
                 } else {

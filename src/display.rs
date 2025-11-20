@@ -403,7 +403,7 @@ fn get_pretty_name(
             .ls_colors
             .style_for_path_with_metadata(&node.name, meta_result.as_ref().ok());
         let ansi_style = directory_color
-            .map(Style::to_ansi_term_style)
+            .map(Style::to_nu_ansi_term_style)
             .unwrap_or_default();
         let out = ansi_style.paint(name_and_padding);
         format!("{out}")
