@@ -244,7 +244,7 @@ fn convert_min_size(input: &str) -> Option<usize> {
     }
 }
 
-fn get_config_locations(base: &Path) -> Vec<PathBuf> {
+fn get_config_locations(base: PathBuf) -> Vec<PathBuf> {
     vec![
         base.join(".dust.toml"),
         base.join(".config").join("dust").join("config.toml"),
@@ -267,8 +267,8 @@ pub fn get_config(conf_path: Option<&String>) -> Config {
             }
         }
         None => {
-            if let Some(home) = directories::BaseDirs::new() {
-                for path in get_config_locations(home.home_dir()) {
+            if let Some(home) = std::env::home_dir() {
+                for path in get_config_locations(home) {
                     if path.exists()
                         && let Ok(config) = Config::from_config_file(&path)
                     {
