@@ -1,4 +1,4 @@
-use assert_cmd::Command;
+use assert_cmd::cargo_bin_cmd;
 use std::ffi::OsStr;
 use std::str;
 
@@ -9,17 +9,16 @@ use std::str;
  */
 
 fn build_command<T: AsRef<OsStr>>(command_args: Vec<T>) -> String {
-    let mut cmd = &mut Command::cargo_bin("dust").unwrap();
+    let mut cmd = cargo_bin_cmd!("dust");
+
     // Hide progress bar
-    cmd = cmd.arg("-P");
+    cmd.arg("-P");
 
     for p in command_args {
-        cmd = cmd.arg(p);
+        cmd.arg(p);
     }
     let finished = &cmd.unwrap();
-    let stderr = str::from_utf8(&finished.stderr).unwrap();
-    assert_eq!(stderr, "");
-
+    assert_eq!(str::from_utf8(&finished.stderr).unwrap(), "");
     str::from_utf8(&finished.stdout).unwrap().into()
 }
 
@@ -126,7 +125,7 @@ pub fn test_files0_from_flag_file() {
 
 #[test]
 pub fn test_files_from_flag_stdin() {
-    let mut cmd = Command::cargo_bin("dust").unwrap();
+    let mut cmd = cargo_bin_cmd!("dust");
     cmd.arg("-P").arg("--files-from").arg("-");
     let input = b"tests/test_dir_files_from/a_file\ntests/test_dir_files_from/hello_file\n";
     cmd.write_stdin(input.as_ref());
@@ -140,7 +139,7 @@ pub fn test_files_from_flag_stdin() {
 
 #[test]
 pub fn test_files0_from_flag_stdin() {
-    let mut cmd = Command::cargo_bin("dust").unwrap();
+    let mut cmd = cargo_bin_cmd!("dust");
     cmd.arg("-P").arg("--files0-from").arg("-");
     let input = b"tests/test_dir_files_from/a_file\0tests/test_dir_files_from/hello_file\0";
     cmd.write_stdin(input.as_ref());
@@ -154,7 +153,7 @@ pub fn test_files0_from_flag_stdin() {
 
 #[test]
 pub fn test_with_bad_param() {
-    let mut cmd = Command::cargo_bin("dust").unwrap();
+    let mut cmd = cargo_bin_cmd!("dust");
     cmd.arg("-P").arg("bad_place");
     let output_error = cmd.unwrap_err();
     let result = output_error.as_output().unwrap();

@@ -1,4 +1,4 @@
-use assert_cmd::Command;
+use assert_cmd::{Command, cargo_bin_cmd};
 use std::ffi::OsStr;
 use std::process::Output;
 use std::sync::Once;
@@ -61,11 +61,11 @@ fn initialize() {
 
 fn run_cmd<T: AsRef<OsStr>>(command_args: &[T]) -> Output {
     initialize();
-    let mut to_run = &mut Command::cargo_bin("dust").unwrap();
+    let mut to_run = cargo_bin_cmd!("dust");
     // Hide progress bar
     to_run.arg("-P");
     for p in command_args {
-        to_run = to_run.arg(p);
+        to_run.arg(p);
     }
     to_run.unwrap()
 }
