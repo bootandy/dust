@@ -27,9 +27,9 @@ lto = true
 strip = true
 
 [dependencies]
-ansi_term = "0.12"
 clap = { version = "4", features = ["derive"] }
 lscolors = "0.21"
+nu-ansi-term = "0.50"
 terminal_size = "0.4"
 unicode-width = "0.2"
 rayon = "1"

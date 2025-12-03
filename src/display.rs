@@ -1,8 +1,8 @@
 use crate::display_node::DisplayNode;
 use crate::node::FileTime;
 
-use ansi_term::Colour::Red;
 use lscolors::{LsColors, Style};
+use nu_ansi_term::Color::Red;
 
 use unicode_width::UnicodeWidthStr;
 
