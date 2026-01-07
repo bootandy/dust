@@ -21,7 +21,7 @@ pub struct Cli {
     #[arg(long, value_name("FILE"), value_hint(ValueHint::FilePath))]
     pub config: Option<String>,
 
-    /// Number of lines of output to show. (Default is terminal_height - 10)
+    /// Display the 'n' largest entries. (Default is terminal_height)
     #[arg(short, long, value_name("NUMBER"))]
     pub number_of_lines: Option<usize>,
 

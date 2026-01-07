@@ -20,8 +20,8 @@ _dust() {
 '-T+[Number of threads to use]:THREADS:_default' \
 '--threads=[Number of threads to use]:THREADS:_default' \
 '--config=[Specify a config file to use]:FILE:_files' \
-'-n+[Number of lines of output to show. (Default is terminal_height - 10)]:NUMBER:_default' \
-'--number-of-lines=[Number of lines of output to show. (Default is terminal_height - 10)]:NUMBER:_default' \
+'-n+[Display the '\''n'\'' largest entries. (Default is terminal_height)]:NUMBER:_default' \
+'--number-of-lines=[Display the '\''n'\'' largest entries. (Default is terminal_height)]:NUMBER:_default' \
 '*-X+[Exclude any file or directory with this path]:PATH:_files' \
 '*--ignore-directory=[Exclude any file or directory with this path]:PATH:_files' \
 '-I+[Exclude any file or directory with a regex matching that listed in this file, the file entries will be added to the ignore regexs provided by --invert_filter]:FILE:_files' \
