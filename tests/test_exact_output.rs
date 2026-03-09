@@ -134,7 +134,17 @@ fn main_output() -> Vec<String> {
     .trim()
     .to_string();
 
-    vec![mac_and_some_linux, ubuntu]
+    // 64K block size (e.g. ppc64, some aarch64)
+    let large_block = r#"
+ 0B     ┌── a_file    │░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░█ │   0%
+64K     ├── hello_file│██████████████████████████████████████████████████ │ 100%
+64K   ┌─┴ many        │██████████████████████████████████████████████████ │ 100%
+64K ┌─┴ test_dir      │██████████████████████████████████████████████████ │ 100%
+"#
+    .trim()
+    .to_string();
+
+    vec![mac_and_some_linux, ubuntu, large_block]
 }
 
 #[cfg_attr(target_os = "windows", ignore)]
@@ -161,7 +171,16 @@ fn main_output_long_paths() -> Vec<String> {
 "#
     .trim()
     .to_string();
-    vec![mac_and_some_linux, ubuntu]
+    let large_block = r#"
+ 0B     ┌── /tmp/test_dir/many/a_file    │░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░█ │   0%
+64K     ├── /tmp/test_dir/many/hello_file│███████████████████████████████ │ 100%
+64K   ┌─┴ /tmp/test_dir/many             │███████████████████████████████ │ 100%
+64K ┌─┴ /tmp/test_dir                    │███████████████████████████████ │ 100%
+"#
+    .trim()
+    .to_string();
+
+    vec![mac_and_some_linux, ubuntu, large_block]
 }
 
 // Check against directories and files whose names are substrings of each other
@@ -196,7 +215,31 @@ fn no_substring_of_names_output() -> Vec<String> {
   "
     .trim()
     .into();
-    vec![mac_and_some_linux, ubuntu]
+    let large_block = "
+  0B   ┌── long_dir_name_what_a_very_long_dir_name_what_happens_when_this_goes..
+ 64K   │ ┌── hello
+ 64K   ├─┴ dir
+ 64K   ├── dir_name_clash
+ 64K   │ ┌── hello
+ 64K   ├─┴ dir_substring
+192K ┌─┴ test_dir2
+    "
+    .trim()
+    .into();
+
+    let large_block_alt = "
+  0B   ┌── long_dir_name_what_a_very_long_dir_name_what_happens_when_this_goes..
+ 64K   ├── dir_name_clash
+ 64K   │ ┌── hello
+ 64K   ├─┴ dir
+ 64K   │ ┌── hello
+ 64K   ├─┴ dir_substring
+192K ┌─┴ test_dir2
+  "
+    .trim()
+    .into();
+
+    vec![mac_and_some_linux, ubuntu, large_block, large_block_alt]
 }
 
 #[cfg_attr(target_os = "windows", ignore)]
@@ -223,7 +266,15 @@ fn unicode_dir() -> Vec<String> {
     "
     .trim()
     .into();
-    vec![mac_and_some_linux, ubuntu]
+    let large_block = "
+  0B   ┌── ラウトは難しいです！.japan│                                  █ │   0%
+  0B   ├── 👩.unicode                │                                  █ │   0%
+ 64K ┌─┴ test_dir_unicode            │███████████████████████████████████ │ 100%
+    "
+    .trim()
+    .into();
+
+    vec![mac_and_some_linux, ubuntu, large_block]
 }
 
 #[cfg_attr(target_os = "windows", ignore)]
