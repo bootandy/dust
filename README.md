@@ -11,6 +11,10 @@ Because I want an easy way to see where my disk is being used.
 
 # Demo
 
+<p align="center">
+  <img src="media/demo.gif" alt="dust demo — interactive disk usage analysis" width="600">
+</p>
+
 ![Example](media/snap.png)
 
 Study the above picture. 
