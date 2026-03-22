@@ -14,7 +14,6 @@ static UNREADABLE_DIR_PATH: &str = "/tmp/unreadable_dir";
  *
  * Despite the above problems, these tests are good as they are the closest to 'the real thing'.
  */
-
 //  Warning: File sizes differ on both platform and on the format of the disk.
 /// Copy to /tmp dir - we assume that the formatting of the /tmp partition
 /// is consistent. If the tests fail your /tmp filesystem probably differs

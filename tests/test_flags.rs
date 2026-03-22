@@ -7,7 +7,6 @@ use std::str;
  *
  * These tests should be the same cross platform
  */
-
 fn build_command<T: AsRef<OsStr>>(command_args: Vec<T>) -> String {
     let mut cmd = cargo_bin_cmd!("dust");
 
