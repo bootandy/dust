@@ -92,6 +92,10 @@ jobs:
               use-cross: use-cross,
             }
           - {
+              os: ubuntu-24.04-riscv,
+              target: riscv64gc-unknown-linux-gnu,
+            }
+          - {
               os: ubuntu-latest,
               target: aarch64-unknown-linux-musl,
               use-cross: use-cross,
