@@ -37,7 +37,7 @@ curl -sSfL https://raw.githubusercontent.com/bootandy/dust/refs/heads/master/ins
 
 - `cargo install du-dust`
 
-#### 🍺 Homebrew (Mac OS)
+#### 🍺 Homebrew (macOS)
 
 - `brew install dust`
 
@@ -154,5 +154,4 @@ Tools like ncdu & baobab, give you a view of directory sizes but you have no ide
 Dust will not count hard links multiple times (unless you want to `-s`).
 
 Typing `dust -n 90` will show you your 90 largest entries. `-n` is not quite like `head -n` or `tail -n`, dust is intelligent and chooses the largest entries
-
 
