@@ -304,7 +304,11 @@ fn handle_error_and_retry(failed: &Error, dir: &Path, walk_data: &WalkData) -> b
             // This does happen on some systems. It was set to 3 but sometimes dust runs would exceed this
             // However, if there is no limit this results in infinite retrys and dust never finishes
             if editable_error.interrupted_error > 999 {
-                panic!("Multiple Interrupted Errors occurred while scanning filesystem. Aborting");
+                eprintln!(
+                    "Too many Interrupted Errors occurred while scanning filesystem, skipping: {}",
+                    dir.to_string_lossy()
+                );
+                return false;
             } else {
                 return true;
             }
