@@ -16,7 +16,8 @@ use std::iter::repeat_n;
 use std::path::Path;
 use thousands::Separable;
 
-pub static UNITS: [char; 5] = ['P', 'T', 'G', 'M', 'K'];
+pub static SI_UNITS: [&str; 5] = ["P", "T", "G", "M", "K"];
+pub static IEC_UNITS: [&str; 5] = ["Pi", "Ti", "Gi", "Mi", "Ki"];
 static BLOCKS: [char; 5] = ['█', '▓', '▒', '░', ' '];
 const FILETIME_SHOW_LENGTH: usize = 19;
 
@@ -412,6 +413,14 @@ fn get_pretty_name(
     }
 }
 
+pub fn get_units(output_str: &str) -> &'static [&'static str; 5] {
+    if get_type_of_thousand(output_str) == 1024 {
+        &IEC_UNITS
+    } else {
+        &SI_UNITS
+    }
+}
+
 // If we are working with SI units or not
 pub fn get_type_of_thousand(output_str: &str) -> u64 {
     if output_str.is_empty() {
@@ -425,14 +434,16 @@ pub fn get_type_of_thousand(output_str: &str) -> u64 {
     }
 }
 
-pub fn get_number_format(output_str: &str) -> Option<(u64, char)> {
+pub fn get_number_format(output_str: &str) -> Option<(u64, &'static str)> {
     if output_str.starts_with('b') {
-        return Some((1, 'B'));
+        return Some((1, "B"));
     }
-    for (i, u) in UNITS.iter().enumerate() {
-        if output_str.starts_with((*u).to_ascii_lowercase()) {
-            let marker = get_type_of_thousand(output_str).pow((UNITS.len() - i) as u32);
-            return Some((marker, *u));
+    let units = get_units(output_str);
+    for (i, u) in units.iter().enumerate() {
+        if output_str.starts_with(u.chars().next().unwrap().to_ascii_lowercase()) {
+            let thousand = get_type_of_thousand(output_str);
+            let marker = thousand.pow((units.len() - i) as u32);
+            return Some((marker, u));
         }
     }
     None
@@ -447,8 +458,10 @@ pub fn human_readable_number(size: u64, output_str: &str) -> String {
             format!("{}{}", (size / x), u)
         }
         None => {
-            for (i, u) in UNITS.iter().enumerate() {
-                let marker = get_type_of_thousand(output_str).pow((UNITS.len() - i) as u32);
+            let units = get_units(output_str);
+            let thousand = get_type_of_thousand(output_str);
+            for (i, u) in units.iter().enumerate() {
+                let marker = thousand.pow((units.len() - i) as u32);
                 if size >= marker {
                     if size / marker < 10 {
                         return format!("{:.1}{}", (size as f32 / marker as f32), u);
@@ -502,7 +515,7 @@ mod tests {
         let data = get_fake_display_data(20);
 
         let s = format_string(&n, indent, percent_bar, is_biggest, &data);
-        assert_eq!(s, " 4.0K ┌─┴ short");
+        assert_eq!(s, "4.0Ki ┌─┴ short");
     }
 
     #[test]
@@ -521,7 +534,7 @@ mod tests {
         let s = format_string(&n, indent, percent_bar, is_biggest, &data);
         assert_eq!(
             s,
-            " 4.0K ┌─┴ very_long_name_longer_than_the_eighty_character_limit_very_.."
+            "4.0Ki ┌─┴ very_long_name_longer_than_the_eighty_character_limit_very_.."
         );
     }
 
@@ -539,7 +552,7 @@ mod tests {
         data.initial.is_screen_reader = true;
 
         let s = format_string(&n, indent, percent_bar, is_biggest, &data);
-        assert_eq!(s, "short               3  4.0K 100%");
+        assert_eq!(s, "short               3 4.0Ki 100%");
     }
 
     #[test]
@@ -554,26 +567,29 @@ mod tests {
         assert_eq!(human_readable_number(1, ""), "1B");
         assert_eq!(human_readable_number(956, ""), "956B");
         assert_eq!(human_readable_number(1004, ""), "1004B");
-        assert_eq!(human_readable_number(1024, ""), "1.0K");
-        assert_eq!(human_readable_number(1536, ""), "1.5K");
-        assert_eq!(human_readable_number(1024 * 512, ""), "512K");
-        assert_eq!(human_readable_number(1024 * 1024, ""), "1.0M");
-        assert_eq!(human_readable_number(1024 * 1024 * 1024 - 1, ""), "1023M");
-        assert_eq!(human_readable_number(1024 * 1024 * 1024 * 20, ""), "20G");
-        assert_eq!(human_readable_number(1024 * 1024 * 1024 * 1024, ""), "1.0T");
+        assert_eq!(human_readable_number(1024, ""), "1.0Ki");
+        assert_eq!(human_readable_number(1536, ""), "1.5Ki");
+        assert_eq!(human_readable_number(1024 * 512, ""), "512Ki");
+        assert_eq!(human_readable_number(1024 * 1024, ""), "1.0Mi");
+        assert_eq!(human_readable_number(1024 * 1024 * 1024 - 1, ""), "1023Mi");
+        assert_eq!(human_readable_number(1024 * 1024 * 1024 * 20, ""), "20Gi");
+        assert_eq!(
+            human_readable_number(1024 * 1024 * 1024 * 1024, ""),
+            "1.0Ti"
+        );
         assert_eq!(
             human_readable_number(1024 * 1024 * 1024 * 1024 * 234, ""),
-            "234T"
+            "234Ti"
         );
         assert_eq!(
             human_readable_number(1024 * 1024 * 1024 * 1024 * 1024, ""),
-            "1.0P"
+            "1.0Pi"
         );
     }
 
     #[test]
     fn test_human_readable_number_si() {
-        assert_eq!(human_readable_number(1024 * 100, ""), "100K");
+        assert_eq!(human_readable_number(1024 * 100, ""), "100Ki");
         assert_eq!(human_readable_number(1024 * 100, "si"), "102K");
     }
 
@@ -584,14 +600,14 @@ mod tests {
         assert_eq!(hrn(1023, "b"), "1023B");
         assert_eq!(hrn(1000 * 1000, "bytes"), "1000000B");
         assert_eq!(hrn(1023, "kb"), "1K");
-        assert_eq!(hrn(1023, "k"), "0K");
-        assert_eq!(hrn(1023, "kib"), "0K");
-        assert_eq!(hrn(1024, "kib"), "1K");
-        assert_eq!(hrn(1024 * 512, "kib"), "512K");
-        assert_eq!(hrn(1024 * 1024, "kib"), "1024K");
-        assert_eq!(hrn(1024 * 1000 * 1000 * 20, "kib"), "20000000K");
-        assert_eq!(hrn(1024 * 1024 * 1000 * 20, "mib"), "20000M");
-        assert_eq!(hrn(1024 * 1024 * 1024 * 20, "gib"), "20G");
+        assert_eq!(hrn(1023, "k"), "0Ki");
+        assert_eq!(hrn(1023, "kib"), "0Ki");
+        assert_eq!(hrn(1024, "kib"), "1Ki");
+        assert_eq!(hrn(1024 * 512, "kib"), "512Ki");
+        assert_eq!(hrn(1024 * 1024, "kib"), "1024Ki");
+        assert_eq!(hrn(1024 * 1000 * 1000 * 20, "kib"), "20000000Ki");
+        assert_eq!(hrn(1024 * 1024 * 1000 * 20, "mib"), "20000Mi");
+        assert_eq!(hrn(1024 * 1024 * 1024 * 20, "gib"), "20Gi");
     }
 
     #[cfg(test)]

@@ -117,19 +117,19 @@ fn main_output() -> Vec<String> {
     // Some linux currently thought to be Manjaro, Arch
     // Although probably depends on how drive is formatted
     let mac_and_some_linux = r#"
-  0B     ┌── a_file    │░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░█ │   0%
-4.0K     ├── hello_file│█████████████████████████████████████████████████ │ 100%
-4.0K   ┌─┴ many        │█████████████████████████████████████████████████ │ 100%
-4.0K ┌─┴ test_dir      │█████████████████████████████████████████████████ │ 100%
+  0B     ┌── a_file    │░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░█ │   0%
+4.0Ki     ├── hello_file│████████████████████████████████████████████████ │ 100%
+4.0Ki   ┌─┴ many        │████████████████████████████████████████████████ │ 100%
+4.0Ki ┌─┴ test_dir      │████████████████████████████████████████████████ │ 100%
 "#
     .trim()
     .to_string();
 
     let ubuntu = r#"
-  0B     ┌── a_file    │                ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░█ │   0%
-4.0K     ├── hello_file│                ░░░░░░░░░░░░░░░░█████████████████ │  33%
-8.0K   ┌─┴ many        │                █████████████████████████████████ │  67%
- 12K ┌─┴ test_dir      │█████████████████████████████████████████████████ │ 100%
+   0B     ┌── a_file    │               ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░█ │   0%
+4.0Ki     ├── hello_file│               ░░░░░░░░░░░░░░░░█████████████████ │  33%
+8.0Ki   ┌─┴ many        │               █████████████████████████████████ │  67%
+ 12Ki ┌─┴ test_dir      │████████████████████████████████████████████████ │ 100%
   "#
     .trim()
     .to_string();
@@ -156,18 +156,18 @@ pub fn test_main_long_paths() {
 
 fn main_output_long_paths() -> Vec<String> {
     let mac_and_some_linux = r#"
-  0B     ┌── /tmp/test_dir/many/a_file    │░░░░░░░░░░░░░░░░░░░░░░░░░░░░░█ │   0%
-4.0K     ├── /tmp/test_dir/many/hello_file│██████████████████████████████ │ 100%
-4.0K   ┌─┴ /tmp/test_dir/many             │██████████████████████████████ │ 100%
-4.0K ┌─┴ /tmp/test_dir                    │██████████████████████████████ │ 100%
+   0B     ┌── /tmp/test_dir/many/a_file    │░░░░░░░░░░░░░░░░░░░░░░░░░░░█ │   0%
+4.0Ki     ├── /tmp/test_dir/many/hello_file│████████████████████████████ │ 100%
+4.0Ki   ┌─┴ /tmp/test_dir/many             │████████████████████████████ │ 100%
+4.0Ki ┌─┴ /tmp/test_dir                    │████████████████████████████ │ 100%
 "#
     .trim()
     .to_string();
     let ubuntu = r#"
-  0B     ┌── /tmp/test_dir/many/a_file    │         ░░░░░░░░░░░░░░░░░░░░█ │   0%
-4.0K     ├── /tmp/test_dir/many/hello_file│         ░░░░░░░░░░███████████ │  33%
-8.0K   ┌─┴ /tmp/test_dir/many             │         █████████████████████ │  67%
- 12K ┌─┴ /tmp/test_dir                    │██████████████████████████████ │ 100%
+   0B     ┌── /tmp/test_dir/many/a_file    │         ░░░░░░░░░░░░░░░░░░░█ │   0%
+4.0Ki     ├── /tmp/test_dir/many/hello_file│         ░░░░░░░░░░██████████ │  33%
+8.0Ki   ┌─┴ /tmp/test_dir/many             │         ████████████████████ │  67%
+ 12Ki ┌─┴ /tmp/test_dir                    │█████████████████████████████ │ 100%
 "#
     .trim()
     .to_string();
@@ -193,25 +193,25 @@ pub fn test_substring_of_names_and_long_names() {
 
 fn no_substring_of_names_output() -> Vec<String> {
     let ubuntu = "
-  0B   ┌── long_dir_name_what_a_very_long_dir_name_what_happens_when_this_goes..
-4.0K   ├── dir_name_clash
-4.0K   │ ┌── hello
-8.0K   ├─┴ dir
-4.0K   │ ┌── hello
-8.0K   ├─┴ dir_substring
- 24K ┌─┴ test_dir2
+   0B   ┌── long_dir_name_what_a_very_long_dir_name_what_happens_when_this_goe..
+4.0Ki   ├── dir_name_clash
+4.0Ki   │ ┌── hello
+8.0Ki   ├─┴ dir
+4.0Ki   │ ┌── hello
+8.0Ki   ├─┴ dir_substring
+ 24Ki ┌─┴ test_dir2
     "
     .trim()
     .into();
 
     let mac_and_some_linux = "
-  0B   ┌── long_dir_name_what_a_very_long_dir_name_what_happens_when_this_goes..
-4.0K   │ ┌── hello
-4.0K   ├─┴ dir
-4.0K   ├── dir_name_clash
-4.0K   │ ┌── hello
-4.0K   ├─┴ dir_substring
- 12K ┌─┴ test_dir2
+   0B   ┌── long_dir_name_what_a_very_long_dir_name_what_happens_when_this_goe..
+4.0Ki   │ ┌── hello
+4.0Ki   ├─┴ dir
+4.0Ki   ├── dir_name_clash
+4.0Ki   │ ┌── hello
+4.0Ki   ├─┴ dir_substring
+ 12Ki ┌─┴ test_dir2
   "
     .trim()
     .into();
@@ -252,9 +252,9 @@ pub fn test_unicode_directories() {
 fn unicode_dir() -> Vec<String> {
     // The way unicode & asian characters are rendered on the terminal should make this line up
     let ubuntu = "
-  0B   ┌── ラウトは難しいです！.japan│                                  █ │   0%
-  0B   ├── 👩.unicode                │                                  █ │   0%
-4.0K ┌─┴ test_dir_unicode            │███████████████████████████████████ │ 100%
+   0B   ┌── ラウトは難しいです！.japan│                                 █ │   0%
+   0B   ├── 👩.unicode                │                                 █ │   0%
+4.0Ki ┌─┴ test_dir_unicode            │██████████████████████████████████ │ 100%
     "
     .trim()
     .into();
@@ -286,13 +286,6 @@ pub fn test_apparent_size() {
 
 fn apparent_size_output() -> Vec<String> {
     // The apparent directory sizes are too unpredictable and system dependent to try and match
-    let one_space_before = r#"
- 0B     ┌── a_file
- 6B     ├── hello_file
- "#
-    .trim()
-    .to_string();
-
     let two_space_before = r#"
   0B     ┌── a_file
   6B     ├── hello_file
@@ -300,7 +293,14 @@ fn apparent_size_output() -> Vec<String> {
     .trim()
     .to_string();
 
-    vec![one_space_before, two_space_before]
+    let three_space_before = r#"
+   0B     ┌── a_file
+   6B     ├── hello_file
+ "#
+    .trim()
+    .to_string();
+
+    vec![two_space_before, three_space_before]
 }
 
 #[cfg_attr(target_os = "windows", ignore)]
