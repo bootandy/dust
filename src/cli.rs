@@ -64,6 +64,10 @@ pub struct Cli {
     #[arg(short('C'), long)]
     pub force_colors: bool,
 
+    /// Dim the percent bars (grey) to reduce brightness on dark terminals
+    #[arg(long)]
+    pub dim: bool,
+
     /// No percent bars or percentages will be displayed
     #[arg(short('b'), long)]
     pub no_percent_bars: bool,

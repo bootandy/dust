@@ -20,6 +20,7 @@ pub struct Config {
     pub reverse: Option<bool>,
     pub no_colors: Option<bool>,
     pub force_colors: Option<bool>,
+    pub dim: Option<bool>,
     pub no_bars: Option<bool>,
     pub skip_total: Option<bool>,
     pub screen_reader: Option<bool>,
@@ -137,6 +138,9 @@ impl Config {
     }
     pub fn get_bars_on_right(&self, options: &Cli) -> bool {
         Some(true) == self.bars_on_right || options.bars_on_right
+    }
+    pub fn get_dim(&self, options: &Cli) -> bool {
+        Some(true) == self.dim || options.dim
     }
     pub fn get_custom_stack_size(&self, options: &Cli) -> Option<usize> {
         let from_cmd_line = options.stack_size;

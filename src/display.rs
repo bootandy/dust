@@ -2,7 +2,7 @@ use crate::display_node::DisplayNode;
 use crate::node::FileTime;
 
 use lscolors::{LsColors, Style};
-use nu_ansi_term::Color::Red;
+use nu_ansi_term::Color::{DarkGray, Red};
 
 use unicode_width::UnicodeWidthStr;
 
@@ -24,6 +24,7 @@ pub struct InitialDisplayData {
     pub short_paths: bool,
     pub is_reversed: bool,
     pub colors_on: bool,
+    pub dim: bool,
     pub by_filecount: bool,
     pub by_filetime: Option<FileTime>,
     pub is_screen_reader: bool,
@@ -356,7 +357,12 @@ fn get_name_percent(
     } else if !bar_chart.is_empty() {
         let percent = display_data.percent_size(node) * 100.0;
         let percent_size_str = format!("{percent:.0}%");
-        let percents = format!("│{bar_chart} │ {percent_size_str:>4}");
+        let colored_bar = if display_data.initial.dim {
+            format!("{}", DarkGray.paint(bar_chart))
+        } else {
+            bar_chart.to_string()
+        };
+        let percents = format!("│{colored_bar} │ {percent_size_str:>4}");
         let name_and_padding = pad_or_trim_filename(node, indent, display_data);
         (percents, name_and_padding)
     } else {

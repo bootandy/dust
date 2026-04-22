@@ -331,6 +331,7 @@ fn print_output(
             short_paths: !config.get_full_paths(&options),
             is_reversed: !config.get_reverse(&options),
             colors_on: is_colors,
+            dim: config.get_dim(&options),
             by_filecount,
             by_filetime: config.get_filetime(&options),
             is_screen_reader: config.get_screen_reader(&options),
