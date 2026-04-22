@@ -66,6 +66,7 @@ set edit:completion:arg-completer[dust] = {|@words|
             cand --no-colors 'No colors will be printed (Useful for commands like: watch)'
             cand -C 'Force colors print'
             cand --force-colors 'Force colors print'
+            cand --dim 'Dim the percent bars (grey) to reduce brightness on dark terminals'
             cand -b 'No percent bars or percentages will be displayed'
             cand --no-percent-bars 'No percent bars or percentages will be displayed'
             cand -B 'percent bars moved to right side of screen'
