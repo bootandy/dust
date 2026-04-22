@@ -69,6 +69,7 @@ Register-ArgumentCompleter -Native -CommandName 'dust' -ScriptBlock {
             [CompletionResult]::new('--no-colors', '--no-colors', [CompletionResultType]::ParameterName, 'No colors will be printed (Useful for commands like: watch)')
             [CompletionResult]::new('-C', '-C ', [CompletionResultType]::ParameterName, 'Force colors print')
             [CompletionResult]::new('--force-colors', '--force-colors', [CompletionResultType]::ParameterName, 'Force colors print')
+            [CompletionResult]::new('--dim', '--dim', [CompletionResultType]::ParameterName, 'Dim the percent bars (grey) to reduce brightness on dark terminals')
             [CompletionResult]::new('-b', '-b', [CompletionResultType]::ParameterName, 'No percent bars or percentages will be displayed')
             [CompletionResult]::new('--no-percent-bars', '--no-percent-bars', [CompletionResultType]::ParameterName, 'No percent bars or percentages will be displayed')
             [CompletionResult]::new('-B', '-B ', [CompletionResultType]::ParameterName, 'percent bars moved to right side of screen')
