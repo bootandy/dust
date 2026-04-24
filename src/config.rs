@@ -34,7 +34,6 @@ pub struct Config {
     pub disable_progress: Option<bool>,
     pub depth: Option<usize>,
     pub bars_on_right: Option<bool>,
-    pub stack_size: Option<usize>,
     pub threads: Option<usize>,
     pub output_json: Option<bool>,
     pub print_errors: Option<bool>,
@@ -146,14 +145,6 @@ impl Config {
     }
     pub fn get_dim(&self, options: &Cli) -> bool {
         Some(true) == self.dim || options.dim
-    }
-    pub fn get_custom_stack_size(&self, options: &Cli) -> Option<usize> {
-        let from_cmd_line = options.stack_size;
-        if from_cmd_line.is_none() {
-            self.stack_size
-        } else {
-            from_cmd_line
-        }
     }
     pub fn get_threads(&self, options: &Cli) -> Option<usize> {
         let from_cmd_line = options.threads;

@@ -18,7 +18,7 @@ kb\t'kilobyte (kB)'
 mb\t'megabyte (MB)'
 gb\t'gigabyte (GB)'
 tb\t'terabyte (TB)'"
-complete -c dust -s S -l stack-size -d 'Specify memory to use as stack size - use if you see: \'fatal runtime error: stack overflow\' (default low memory=1048576, high memory=1073741824)' -r
+complete -c dust -s S -l stack-size -d 'Deprecated. The walker no longer recurses so a custom stack size is unnecessary. Accepted for compatibility but the value is ignored' -r
 complete -c dust -s M -l mtime -d '+/-n matches files modified more/less than n days ago , and n matches files modified exactly n days ago, days are rounded down.That is +n => (−∞, curr−(n+1)), n => [curr−(n+1), curr−n), and -n => (𝑐𝑢𝑟𝑟−𝑛, +∞)' -r
 complete -c dust -s A -l atime -d 'just like -mtime, but based on file access time' -r
 complete -c dust -s y -l ctime -d 'just like -mtime, but based on file change time' -r
