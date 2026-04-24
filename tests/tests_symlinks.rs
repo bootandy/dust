@@ -111,6 +111,33 @@ pub fn test_hard_sym_link_no_dup_multi_arg() {
     assert!(has_file_only || has_link_only);
 }
 
+// Regression: dust passed a symlink-to-dir as its root path (no `-L`)
+// must walk into the target dir, matching `du`'s `Path::is_dir()`-style
+// behavior.
+#[cfg_attr(target_os = "windows", ignore)]
+#[test]
+pub fn test_root_symlink_to_dir_no_follow() {
+    let dir = Builder::new().tempdir().unwrap();
+    let target = dir.path().join("target");
+    std::fs::create_dir(&target).unwrap();
+    let mut f = File::create(target.join("notes.txt")).unwrap();
+    writeln!(f, "hello").unwrap();
+
+    let link = dir.path().join("link");
+    let link_s = link_it(link.clone(), target.to_str().unwrap(), true);
+
+    let mut cmd = cargo_bin_cmd!("dust");
+    let output = cmd.args(["-p", "-c", "-w", "999", &link_s]).unwrap().stdout;
+    let output = str::from_utf8(&output).unwrap();
+    let notes_line = format!("── {}/notes.txt", link_s);
+    assert!(
+        output.contains(&notes_line),
+        "expected `{}` in output, got:\n{}",
+        notes_line,
+        output
+    );
+}
+
 #[cfg_attr(target_os = "windows", ignore)]
 #[test]
 pub fn test_recursive_sym_link() {
