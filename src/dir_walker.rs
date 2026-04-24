@@ -3,6 +3,7 @@ use std::fs;
 use std::io::Error;
 use std::sync::Arc;
 use std::sync::Mutex;
+use std::sync::OnceLock;
 use std::sync::atomic::{AtomicUsize, Ordering as AtomicOrdering};
 
 use crate::node::Node;
@@ -26,7 +27,7 @@ use crate::node::build_node;
 use std::fs::DirEntry;
 
 use crate::node::FileTime;
-use crate::platform::get_metadata;
+use crate::platform::{MetadataTuple, get_metadata, tuple_from_metadata};
 
 #[derive(Debug)]
 pub enum Operator {
@@ -73,6 +74,13 @@ struct PendingDir {
     // means this directory and all descendants are done.
     pending: AtomicUsize,
     children: Mutex<Vec<Node>>,
+    // Cached stat for this directory, set once at `walk_dir` entry and
+    // consumed at `finalize_chain`. Avoids a second stat per directory
+    // (one for the is_dir/is_file branching, one to build the Node).
+    // We cache the parsed `MetadataTuple` rather than `std::fs::Metadata`
+    // Just the info we need, ~120 B/dir smaller, and `Copy`.
+    // `None` means the stat failed (broken symlink, raced deletion, ...).
+    cached_metadata: OnceLock<Option<MetadataTuple>>,
 }
 
 pub fn walk_it(dirs: HashSet<PathBuf>, walk_data: &WalkData) -> Vec<Node> {
@@ -85,10 +93,12 @@ pub fn walk_it(dirs: HashSet<PathBuf>, walk_data: &WalkData) -> Vec<Node> {
     for d in dirs {
         walk_data.progress_data.clear_state(&d);
 
-        let root_is_symlink = walk_data.follow_links
-            && fs::symlink_metadata(&d)
-                .map(|m| m.file_type().is_symlink())
-                .unwrap_or(false);
+        // A root passed on the command line that *is* a symlink-to-dir gets
+        // followed regardless of `follow_links`. This preserves the existing
+        // behavior.
+        let root_is_symlink = fs::symlink_metadata(&d)
+            .map(|m| m.file_type().is_symlink())
+            .unwrap_or(false);
 
         // Synthetic outer parent above the root. Lets `finalize_chain` build
         // the root's Node via the same code path as every other directory: it
@@ -103,6 +113,7 @@ pub fn walk_it(dirs: HashSet<PathBuf>, walk_data: &WalkData) -> Vec<Node> {
             parent: None,
             pending: AtomicUsize::new(1),
             children: Mutex::new(Vec::new()),
+            cached_metadata: OnceLock::new(),
         });
         let root = Arc::new(PendingDir {
             dir: d,
@@ -113,6 +124,7 @@ pub fn walk_it(dirs: HashSet<PathBuf>, walk_data: &WalkData) -> Vec<Node> {
             // finalize_chain until the root's own scan is done.
             pending: AtomicUsize::new(1),
             children: Mutex::new(Vec::new()),
+            cached_metadata: OnceLock::new(),
         });
 
         // Single scope per root: all descendant work runs as flat tasks inside
@@ -304,7 +316,22 @@ fn walk_dir<'scope>(
     pending: Arc<PendingDir>,
     walk_data: &'scope WalkData<'scope>,
 ) {
-    if pending.dir.is_dir() {
+    let md_result = if pending.is_symlink {
+        fs::metadata(&pending.dir)
+    } else {
+        fs::symlink_metadata(&pending.dir)
+    };
+    let (is_dir_path, is_file_path, tuple) = match &md_result {
+        Ok(m) => (
+            m.is_dir(),
+            m.is_file(),
+            tuple_from_metadata(m, walk_data.use_apparent_size),
+        ),
+        Err(_) => (false, false, None),
+    };
+    let _ = pending.cached_metadata.set(tuple);
+
+    if is_dir_path {
         // EINTR is the only retryable error. Looping iteratively (rather than
         // recursing on retry, like the old code) keeps stack depth O(1).
         loop {
@@ -372,7 +399,7 @@ fn walk_dir<'scope>(
             }
             break;
         }
-    } else if !pending.dir.is_file() {
+    } else if !is_file_path {
         let mut editable_error = walk_data.errors.lock().unwrap();
         let bad_file = pending.dir.as_os_str().to_string_lossy().into();
         editable_error.file_not_found.insert(bad_file);
@@ -441,6 +468,7 @@ fn process_entry<'scope>(
             parent: Some(pending.clone()),
             pending: AtomicUsize::new(1),
             children: Mutex::new(Vec::new()),
+            cached_metadata: OnceLock::new(),
         });
         scope.spawn(move |s| walk_dir(s, child, walk_data));
         return None;
@@ -557,9 +585,11 @@ fn finalize_chain(mut pending: Arc<PendingDir>, walk_data: &WalkData) {
             };
             (parent, std::mem::take(&mut *children_guard))
         };
+        let cached = pending.cached_metadata.get().copied().flatten();
         node_to_push = build_node(
             pending.dir.clone(),
             children,
+            cached,
             pending.is_symlink,
             false,
             pending.depth,
