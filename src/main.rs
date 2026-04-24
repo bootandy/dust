@@ -240,6 +240,16 @@ fn main() {
     let filter_accessed_time = config.get_accessed_time_operator(&options);
     let filter_changed_time = config.get_changed_time_operator(&options);
 
+    // Precompute whether any filter flag is active so the walker's hot path
+    // can skip `ignore_file` entirely on a default walk.
+    let has_any_filter = !ignored_full_path.is_empty()
+        || !allowed_filesystems.is_empty()
+        || filter_modified_time.is_some()
+        || filter_accessed_time.is_some()
+        || filter_changed_time.is_some()
+        || !filter_regexs.is_empty()
+        || !invert_filter_regexs.is_empty();
+
     let walk_data = WalkData {
         ignore_directories: ignored_full_path,
         filter_regex: &filter_regexs,
@@ -255,6 +265,7 @@ fn main() {
         follow_links,
         progress_data: indicator.data.clone(),
         errors: errors_for_rayon,
+        has_any_filter,
     };
 
     let threads_to_use = config.get_threads(&options);

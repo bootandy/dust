@@ -49,6 +49,12 @@ pub struct WalkData<'a> {
     pub follow_links: bool,
     pub progress_data: Arc<PAtomicInfo>,
     pub errors: Arc<Mutex<RuntimeErrors>>,
+    // True iff any of the filter-style WalkData fields (ignore_directories,
+    // allowed_filesystems, filter_*_time, filter_regex, invert_filter_regex)
+    // would do work in `ignore_file`. Computed once in main.rs so the hot
+    // path in `process_entry` can skip the function call entirely when no
+    // filter flags are set.
+    pub has_any_filter: bool,
 }
 
 // Per-directory bookkeeping used during the parallel walk. Each directory gets
@@ -200,14 +206,19 @@ fn is_ignored_path(path: &Path, walk_data: &WalkData) -> bool {
         return true;
     }
 
-    // Entry is inside an ignored absolute path
-    // Absolute paths should be canonicalized before being added to `WalkData.ignore_directories`
+    // Entry is inside an ignored absolute path.
+    // Absolute paths should be canonicalized before being added to
+    // `WalkData.ignore_directories`. Canonicalize `path` at most once
+    // (and only if there is at least one absolute ignore path), instead
+    // of re-canonicalizing inside the loop per ignored entry.
+    let mut absolute_entry_path: Option<PathBuf> = None;
     for ignored_path in walk_data.ignore_directories.iter() {
         if !ignored_path.is_absolute() {
             continue;
         }
-        let absolute_entry_path = std::fs::canonicalize(path).unwrap_or_default();
-        if absolute_entry_path.starts_with(ignored_path) {
+        let canon = absolute_entry_path
+            .get_or_insert_with(|| std::fs::canonicalize(path).unwrap_or_default());
+        if canon.starts_with(ignored_path) {
             return true;
         }
     }
@@ -215,10 +226,25 @@ fn is_ignored_path(path: &Path, walk_data: &WalkData) -> bool {
     false
 }
 
+// Predicate for whether `ignore_file`'s filter checks would consult any
+// `MetadataTuple` field (dev or m/a/c times). Path-only filters (regex,
+// `--ignore-directory`) don't need a stat.
+fn filter_needs_metadata(walk_data: &WalkData) -> bool {
+    !walk_data.allowed_filesystems.is_empty()
+        || walk_data.filter_accessed_time.is_some()
+        || walk_data.filter_modified_time.is_some()
+        || walk_data.filter_changed_time.is_some()
+}
+
+// `metadata` is the entry's pre-fetched stat tuple (or `None` if nothing
+// here would have needed it). The caller fetches it once and threads it
+// through to `build_node` afterwards, so we never stat the same file
+// twice on a filter-active walk.
 fn ignore_file(
     entry: &DirEntry,
     path: &Path,
     file_type: std::fs::FileType,
+    metadata: Option<&MetadataTuple>,
     walk_data: &WalkData,
 ) -> bool {
     // `is_ignored_path` is a no-op when no ignore dirs are configured, but the
@@ -228,47 +254,50 @@ fn ignore_file(
     }
 
     let is_dot_file = entry.file_name().to_str().unwrap_or("").starts_with('.');
-    let follow_links = walk_data.follow_links && file_type.is_symlink();
 
-    if !walk_data.allowed_filesystems.is_empty() {
-        let size_inode_device = get_metadata(path, false, follow_links);
-        if let Some((_size, Some((_id, dev)), _gunk)) = size_inode_device
-            && !walk_data.allowed_filesystems.contains(&dev)
-        {
-            return true;
-        }
-    }
-    if walk_data.filter_accessed_time.is_some()
-        || walk_data.filter_modified_time.is_some()
-        || walk_data.filter_changed_time.is_some()
+    if !walk_data.allowed_filesystems.is_empty()
+        && let Some((_size, Some((_id, dev)), _gunk)) = metadata
+        && !walk_data.allowed_filesystems.contains(dev)
     {
-        let size_inode_device = get_metadata(path, false, follow_links);
-        if let Some((_, _, (modified_time, accessed_time, changed_time))) = size_inode_device
-            && path.is_file()
-            && [
-                (&walk_data.filter_modified_time, modified_time),
-                (&walk_data.filter_accessed_time, accessed_time),
-                (&walk_data.filter_changed_time, changed_time),
-            ]
-            .iter()
-            .any(|(filter_time, actual_time)| {
-                is_filtered_out_due_to_file_time(filter_time, *actual_time)
-            })
-        {
-            return true;
-        }
+        return true;
+    }
+
+    let has_time_filter = walk_data.filter_accessed_time.is_some()
+        || walk_data.filter_modified_time.is_some()
+        || walk_data.filter_changed_time.is_some();
+
+    // `file_type` from the d_type-based DirEntry::file_type already tells
+    // us whether this is a regular file. For symlinks we still need one
+    // `path.is_file()` syscall (metadata follows the link) to match the
+    // previous behavior so do it at most once and cache it.
+    let is_file_for_filter = file_type.is_file() || (file_type.is_symlink() && path.is_file());
+
+    if has_time_filter
+        && let Some((_, _, (modified_time, accessed_time, changed_time))) = metadata
+        && is_file_for_filter
+        && [
+            (&walk_data.filter_modified_time, *modified_time),
+            (&walk_data.filter_accessed_time, *accessed_time),
+            (&walk_data.filter_changed_time, *changed_time),
+        ]
+        .iter()
+        .any(|(filter_time, actual_time)| {
+            is_filtered_out_due_to_file_time(filter_time, *actual_time)
+        })
+    {
+        return true;
     }
 
     // Keeping `walk_data.filter_regex.is_empty()` is important for performance reasons, it stops unnecessary work
     if !walk_data.filter_regex.is_empty()
-        && path.is_file()
+        && is_file_for_filter
         && is_filtered_out_due_to_regex(walk_data.filter_regex, path)
     {
         return true;
     }
 
     if !walk_data.invert_filter_regex.is_empty()
-        && path.is_file()
+        && is_file_for_filter
         && is_filtered_out_due_to_invert_regex(walk_data.invert_filter_regex, path)
     {
         return true;
@@ -390,7 +419,30 @@ fn process_entry<'scope>(
     // up to 3 times per entry.
     let path = entry.path();
     let file_type = entry.file_type().ok()?;
-    if ignore_file(entry, &path, file_type, walk_data) {
+    // Fetch metadata at most once per entry. Without filters, the
+    // per-file stat lives inside `build_node` as before. With filters,
+    // we used to stat twice — once in `ignore_file` for the filter
+    // check, once in `build_node` to actually build the Node. Now we
+    // fetch once and thread the tuple through.
+    //
+    // Use the user's `use_apparent_size` flag at fetch time so the
+    // tuple is already in the form `build_node` wants. `ignore_file`
+    // discards the size field, so this is harmless for the filter
+    // logic but means the tuple can be reused unchanged below.
+    let mut prefetched: Option<MetadataTuple> = None;
+    // Fast path: no filters means `ignore_file` has nothing to do. On a
+    // default walk this avoids a function call, a HashSet probe, and an
+    // OsString allocation for `file_name` per entry. We still need to honour
+    // `ignore_hidden` separately when no other filters are set.
+    if walk_data.has_any_filter {
+        if filter_needs_metadata(walk_data) {
+            let follow_links = walk_data.follow_links && file_type.is_symlink();
+            prefetched = get_metadata(&path, walk_data.use_apparent_size, follow_links);
+        }
+        if ignore_file(entry, &path, file_type, prefetched.as_ref(), walk_data) {
+            return None;
+        }
+    } else if walk_data.ignore_hidden && entry.file_name().to_str().unwrap_or("").starts_with('.') {
         return None;
     }
     let is_symlink = file_type.is_symlink();
@@ -418,7 +470,7 @@ fn process_entry<'scope>(
     let node = build_node(
         path,
         vec![],
-        None,
+        prefetched,
         is_symlink,
         file_type.is_file(),
         pending.depth,
@@ -555,6 +607,7 @@ mod tests {
             follow_links: false,
             progress_data: indicator.data.clone(),
             errors: Arc::new(Mutex::new(RuntimeErrors::default())),
+            has_any_filter: true,
         }
     }
 
