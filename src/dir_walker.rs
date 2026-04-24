@@ -20,6 +20,8 @@ use std::path::PathBuf;
 
 use std::collections::HashSet;
 
+use rustc_hash::FxHashSet;
+
 use crate::node::build_node;
 use std::fs::DirEntry;
 
@@ -74,7 +76,10 @@ struct PendingDir {
 }
 
 pub fn walk_it(dirs: HashSet<PathBuf>, walk_data: &WalkData) -> Vec<Node> {
-    let mut inodes = HashSet::new();
+    // FxHash is substantially faster than std's default SipHash on small
+    // primitive keys. DoS resistance is irrelevant here; the keys are
+    // (inode, device) pairs from the filesystem, not user input.
+    let mut inodes: FxHashSet<(u64, u64)> = FxHashSet::default();
     let mut top_level_nodes: Vec<Node> = Vec::new();
 
     for d in dirs {
@@ -132,7 +137,7 @@ pub fn walk_it(dirs: HashSet<PathBuf>, walk_data: &WalkData) -> Vec<Node> {
 }
 
 // Remove files which have the same inode, we don't want to double count them.
-fn clean_inodes(x: Node, inodes: &mut HashSet<(u64, u64)>, walk_data: &WalkData) -> Option<Node> {
+fn clean_inodes(x: Node, inodes: &mut FxHashSet<(u64, u64)>, walk_data: &WalkData) -> Option<Node> {
     if !walk_data.use_apparent_size
         && let Some(id) = x.inode_device
         && !inodes.insert(id)
@@ -589,7 +594,7 @@ mod tests {
     #[test]
     #[allow(clippy::redundant_clone)]
     fn test_should_ignore_file() {
-        let mut inodes = HashSet::new();
+        let mut inodes = FxHashSet::default();
         let n = create_node();
         let walkdata = create_walker(false);
 
@@ -606,7 +611,7 @@ mod tests {
     #[test]
     #[allow(clippy::redundant_clone)]
     fn test_should_not_ignore_files_if_using_apparent_size() {
-        let mut inodes = HashSet::new();
+        let mut inodes = FxHashSet::default();
         let n = create_node();
         let walkdata = create_walker(true);
 
