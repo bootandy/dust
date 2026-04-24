@@ -215,16 +215,23 @@ fn is_ignored_path(path: &Path, walk_data: &WalkData) -> bool {
     false
 }
 
-fn ignore_file(entry: &DirEntry, walk_data: &WalkData) -> bool {
-    if is_ignored_path(&entry.path(), walk_data) {
+fn ignore_file(
+    entry: &DirEntry,
+    path: &Path,
+    file_type: std::fs::FileType,
+    walk_data: &WalkData,
+) -> bool {
+    // `is_ignored_path` is a no-op when no ignore dirs are configured, but the
+    // guard still pays off: it skips the HashSet hash+probe on every entry.
+    if !walk_data.ignore_directories.is_empty() && is_ignored_path(path, walk_data) {
         return true;
     }
 
     let is_dot_file = entry.file_name().to_str().unwrap_or("").starts_with('.');
-    let follow_links = walk_data.follow_links && entry.file_type().is_ok_and(|ft| ft.is_symlink());
+    let follow_links = walk_data.follow_links && file_type.is_symlink();
 
     if !walk_data.allowed_filesystems.is_empty() {
-        let size_inode_device = get_metadata(entry.path(), false, follow_links);
+        let size_inode_device = get_metadata(path, false, follow_links);
         if let Some((_size, Some((_id, dev)), _gunk)) = size_inode_device
             && !walk_data.allowed_filesystems.contains(&dev)
         {
@@ -235,9 +242,9 @@ fn ignore_file(entry: &DirEntry, walk_data: &WalkData) -> bool {
         || walk_data.filter_modified_time.is_some()
         || walk_data.filter_changed_time.is_some()
     {
-        let size_inode_device = get_metadata(entry.path(), false, follow_links);
+        let size_inode_device = get_metadata(path, false, follow_links);
         if let Some((_, _, (modified_time, accessed_time, changed_time))) = size_inode_device
-            && entry.path().is_file()
+            && path.is_file()
             && [
                 (&walk_data.filter_modified_time, modified_time),
                 (&walk_data.filter_accessed_time, accessed_time),
@@ -254,15 +261,15 @@ fn ignore_file(entry: &DirEntry, walk_data: &WalkData) -> bool {
 
     // Keeping `walk_data.filter_regex.is_empty()` is important for performance reasons, it stops unnecessary work
     if !walk_data.filter_regex.is_empty()
-        && entry.path().is_file()
-        && is_filtered_out_due_to_regex(walk_data.filter_regex, &entry.path())
+        && path.is_file()
+        && is_filtered_out_due_to_regex(walk_data.filter_regex, path)
     {
         return true;
     }
 
     if !walk_data.invert_filter_regex.is_empty()
-        && entry.path().is_file()
-        && is_filtered_out_due_to_invert_regex(walk_data.invert_filter_regex, &entry.path())
+        && path.is_file()
+        && is_filtered_out_due_to_invert_regex(walk_data.invert_filter_regex, path)
     {
         return true;
     }
@@ -377,22 +384,26 @@ fn process_entry<'scope>(
     entry: &DirEntry,
     walk_data: &'scope WalkData<'scope>,
 ) -> Option<Node> {
-    if ignore_file(entry, walk_data) {
+    // Compute path + file_type once per entry and thread them through.
+    // `entry.path()` allocates a PathBuf; `entry.file_type()` can require a
+    // stat on filesystems without d_type support. Previously each was called
+    // up to 3 times per entry.
+    let path = entry.path();
+    let file_type = entry.file_type().ok()?;
+    if ignore_file(entry, &path, file_type, walk_data) {
         return None;
     }
-    let data = entry.file_type().ok()?;
-    let is_symlink = data.is_symlink();
+    let is_symlink = file_type.is_symlink();
 
     // If the entry is a directory we'll spawn off a new task to walk it.
-    if data.is_dir() || (walk_data.follow_links && is_symlink) {
+    if file_type.is_dir() || (walk_data.follow_links && is_symlink) {
         // Increment must happen before scope.spawn so a fast child's decrement
         // can never observe pending = 0 before this walk_dir's finalize_chain
         // runs. It can be Relaxed ordering because rayon's scope spawn does
         // its own fencing.
         pending.pending.fetch_add(1, AtomicOrdering::Relaxed);
-
         let child = Arc::new(PendingDir {
-            dir: entry.path(),
+            dir: path,
             depth: pending.depth + 1,
             is_symlink,
             parent: Some(pending.clone()),
@@ -405,11 +416,11 @@ fn process_entry<'scope>(
     }
 
     let node = build_node(
-        entry.path(),
+        path,
         vec![],
         None,
         is_symlink,
-        data.is_file(),
+        file_type.is_file(),
         pending.depth,
         walk_data,
     );
