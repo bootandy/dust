@@ -144,9 +144,8 @@ pub struct Cli {
     #[arg(short, long, value_enum, value_name("FORMAT"), ignore_case(true))]
     pub output_format: Option<OutputFormat>,
 
-    /// Specify memory to use as stack size - use if you see: 'fatal runtime
-    /// error: stack overflow' (default low memory=1048576, high
-    /// memory=1073741824)
+    /// Deprecated. The walker no longer recurses so a custom stack size is
+    /// unnecessary. Accepted for compatibility but the value is ignored.
     #[arg(short('S'), long)]
     pub stack_size: Option<usize>,
 
