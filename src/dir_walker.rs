@@ -472,6 +472,55 @@ fn process_entry<'scope>(
         return None;
     }
 
+    // Under `-f` / `--filecount` without metadata-needing filters,
+    // the file's `MetadataTuple` is mostly thrown away, so we create
+    // a fake `MetadataTuple` to avoid the syscall.
+    //
+    // `node_from_tuple` sets size to 1 unconditionally and the time
+    // fields are only consulted when `-M` / `-A` / `-y` are active.
+    // The only field actually consumed downstream is `inode_device`
+    // for `clean_inodes` dedup, and both halves are available
+    // without a syscall:
+    //
+    //   * `inode` comes from `getdents64`'s `d_ino` (already returned
+    //     from the `read_dir` that gave us this entry; surfaced via
+    //     `DirEntry::ino()` on unix). On Linux's getdents64, d_ino
+    //     matches statx's stx_ino — confirmed by the kernel's filldir
+    //     callback, which copies the inode straight from the dentry.
+    //
+    //   * `dev` is the parent directory's dev. Cross-mount transitions
+    //     can only happen at directory boundaries, and each such
+    //     boundary is a fresh `walk_dir` invocation that re-stats the
+    //     mount point — so within a single dir's child list, every
+    //     non-directory entry shares its dev with the parent.
+    //
+    // Synthesise the tuple instead of statting. Gated three ways:
+    // (a) prefetched is None — no filter wanted metadata. This
+    //     transitively guarantees no time filter (`-M` / `-A` / `-y`)
+    //     is set, because `filter_needs_metadata()` returns true under
+    //     any of those. With no time filter, the synthesised `times=0`
+    //     are inert downstream: `is_filtered_out_due_to_file_time(&None,
+    //     _)` short-circuits to false in `node_from_tuple`.
+    // (b) `-f` is on — otherwise size/times do matter for display.
+    // (c) `-L` is off — under follow_links, a symlink-to-file would
+    //     have been dedup'd against its target via stat-follow; d_ino
+    //     gives the symlink's own inode, a different key. Falling back
+    //     to the stat path under `-L` preserves previous behavior.
+    // Unix-gated: on Windows there's no cheap `d_ino`-equivalent in
+    // `DirEntry`, so the existing stat path keeps running there.
+    #[cfg(target_family = "unix")]
+    if prefetched.is_none() && walk_data.by_filecount && !walk_data.follow_links {
+        use std::os::unix::fs::DirEntryExt;
+        let parent_dev = pending
+            .cached_metadata
+            .get()
+            .copied()
+            .flatten()
+            .and_then(|t| t.1.map(|(_, dev)| dev))
+            .unwrap_or(0);
+        prefetched = Some((0, Some((entry.ino(), parent_dev)), (0, 0, 0)));
+    }
+
     let node = build_node(
         path,
         vec![],
