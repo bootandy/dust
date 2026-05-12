@@ -3,6 +3,8 @@ use std::fs;
 use std::io::Error;
 use std::sync::Arc;
 use std::sync::Mutex;
+use std::sync::OnceLock;
+use std::sync::atomic::{AtomicUsize, Ordering as AtomicOrdering};
 
 use crate::node::Node;
 use crate::progress::ORDERING;
@@ -12,19 +14,20 @@ use crate::progress::RuntimeErrors;
 use crate::utils::is_filtered_out_due_to_file_time;
 use crate::utils::is_filtered_out_due_to_invert_regex;
 use crate::utils::is_filtered_out_due_to_regex;
-use rayon::iter::ParallelBridge;
-use rayon::prelude::ParallelIterator;
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use regex::Regex;
 use std::path::Path;
 use std::path::PathBuf;
 
 use std::collections::HashSet;
 
+use rustc_hash::FxHashSet;
+
 use crate::node::build_node;
 use std::fs::DirEntry;
 
 use crate::node::FileTime;
-use crate::platform::get_metadata;
+use crate::platform::{MetadataTuple, get_metadata, tuple_from_metadata};
 
 #[derive(Debug)]
 pub enum Operator {
@@ -48,27 +51,105 @@ pub struct WalkData<'a> {
     pub follow_links: bool,
     pub progress_data: Arc<PAtomicInfo>,
     pub errors: Arc<Mutex<RuntimeErrors>>,
+    // True iff any of the filter-style WalkData fields (ignore_directories,
+    // allowed_filesystems, filter_*_time, filter_regex, invert_filter_regex)
+    // would do work in `ignore_file`. Computed once in main.rs so the hot
+    // path in `process_entry` can skip the function call entirely when no
+    // filter flags are set.
+    pub has_any_filter: bool,
+}
+
+// Per-directory bookkeeping used during the parallel walk. Each directory gets
+// one `PendingDir`. Subdirectory tasks hold an `Arc` back to their parent so
+// they can push their finished `Node` into the parent's `children` and
+// decrement `pending`. When `pending` reaches zero the directory is ready to
+// be built and handed up to its own parent.
+struct PendingDir {
+    dir: PathBuf,
+    depth: usize,
+    is_symlink: bool,
+    parent: Option<Arc<PendingDir>>,
+    // Starts at 1 for the directory itself; incremented per spawned
+    // subdirectory task. Each completion decrements by 1. Reaching 0
+    // means this directory and all descendants are done.
+    pending: AtomicUsize,
+    children: Mutex<Vec<Node>>,
+    // Cached stat for this directory, set once at `walk_dir` entry and
+    // consumed at `finalize_chain`. Avoids a second stat per directory
+    // (one for the is_dir/is_file branching, one to build the Node).
+    // We cache the parsed `MetadataTuple` rather than `std::fs::Metadata`
+    // Just the info we need, ~120 B/dir smaller, and `Copy`.
+    // `None` means the stat failed (broken symlink, raced deletion, ...).
+    cached_metadata: OnceLock<Option<MetadataTuple>>,
 }
 
 pub fn walk_it(dirs: HashSet<PathBuf>, walk_data: &WalkData) -> Vec<Node> {
-    let mut inodes = HashSet::new();
-    let top_level_nodes: Vec<_> = dirs
-        .into_iter()
-        .filter_map(|d| {
-            let prog_data = &walk_data.progress_data;
-            prog_data.clear_state(&d);
-            let node = walk(d, walk_data, 0)?;
+    // FxHash is substantially faster than std's default SipHash on small
+    // primitive keys. DoS resistance is irrelevant here; the keys are
+    // (inode, device) pairs from the filesystem, not user input.
+    let mut inodes: FxHashSet<(u64, u64)> = FxHashSet::default();
+    let mut top_level_nodes: Vec<Node> = Vec::new();
 
-            prog_data.state.store(Operation::PREPARING, ORDERING);
+    for d in dirs {
+        walk_data.progress_data.clear_state(&d);
 
-            clean_inodes(node, &mut inodes, walk_data)
-        })
-        .collect();
+        // A root passed on the command line that *is* a symlink-to-dir gets
+        // followed regardless of `follow_links`. This preserves the existing
+        // behavior.
+        let root_is_symlink = fs::symlink_metadata(&d)
+            .map(|m| m.file_type().is_symlink())
+            .unwrap_or(false);
+
+        // Synthetic outer parent above the root. Lets `finalize_chain` build
+        // the root's Node via the same code path as every other directory: it
+        // pushes the finished root Node into `outer.children`, then bubbles
+        // one more time and stops at outer's `parent: None` early-return
+        // before any further build_node call. We drain `outer.children`
+        // afterwards.
+        let outer = Arc::new(PendingDir {
+            dir: PathBuf::new(),
+            depth: 0,
+            is_symlink: false,
+            parent: None,
+            pending: AtomicUsize::new(1),
+            children: Mutex::new(Vec::new()),
+            cached_metadata: OnceLock::new(),
+        });
+        let root = Arc::new(PendingDir {
+            dir: d,
+            depth: 0,
+            is_symlink: root_is_symlink,
+            parent: Some(outer.clone()),
+            // Sentinel +1: ensures subdirectory tasks can't bubble through
+            // finalize_chain until the root's own scan is done.
+            pending: AtomicUsize::new(1),
+            children: Mutex::new(Vec::new()),
+            cached_metadata: OnceLock::new(),
+        });
+
+        // Single scope per root: all descendant work runs as flat tasks inside
+        // it, so stack depth is O(1) regardless of tree depth.
+        rayon::scope(|s| {
+            s.spawn(move |s| walk_dir(s, root, walk_data));
+        });
+
+        walk_data
+            .progress_data
+            .state
+            .store(Operation::PREPARING, ORDERING);
+
+        let mut outer_children = std::mem::take(&mut *outer.children.lock().unwrap());
+        if let Some(node) = outer_children.pop()
+            && let Some(cleaned) = clean_inodes(node, &mut inodes, walk_data)
+        {
+            top_level_nodes.push(cleaned);
+        }
+    }
     top_level_nodes
 }
 
 // Remove files which have the same inode, we don't want to double count them.
-fn clean_inodes(x: Node, inodes: &mut HashSet<(u64, u64)>, walk_data: &WalkData) -> Option<Node> {
+fn clean_inodes(x: Node, inodes: &mut FxHashSet<(u64, u64)>, walk_data: &WalkData) -> Option<Node> {
     if !walk_data.use_apparent_size
         && let Some(id) = x.inode_device
         && !inodes.insert(id)
@@ -130,14 +211,19 @@ fn is_ignored_path(path: &Path, walk_data: &WalkData) -> bool {
         return true;
     }
 
-    // Entry is inside an ignored absolute path
-    // Absolute paths should be canonicalized before being added to `WalkData.ignore_directories`
+    // Entry is inside an ignored absolute path.
+    // Absolute paths should be canonicalized before being added to
+    // `WalkData.ignore_directories`. Canonicalize `path` at most once
+    // (and only if there is at least one absolute ignore path), instead
+    // of re-canonicalizing inside the loop per ignored entry.
+    let mut absolute_entry_path: Option<PathBuf> = None;
     for ignored_path in walk_data.ignore_directories.iter() {
         if !ignored_path.is_absolute() {
             continue;
         }
-        let absolute_entry_path = std::fs::canonicalize(path).unwrap_or_default();
-        if absolute_entry_path.starts_with(ignored_path) {
+        let canon = absolute_entry_path
+            .get_or_insert_with(|| std::fs::canonicalize(path).unwrap_or_default());
+        if canon.starts_with(ignored_path) {
             return true;
         }
     }
@@ -145,54 +231,79 @@ fn is_ignored_path(path: &Path, walk_data: &WalkData) -> bool {
     false
 }
 
-fn ignore_file(entry: &DirEntry, walk_data: &WalkData) -> bool {
-    if is_ignored_path(&entry.path(), walk_data) {
+// Predicate for whether `ignore_file`'s filter checks would consult any
+// `MetadataTuple` field (dev or m/a/c times). Path-only filters (regex,
+// `--ignore-directory`) don't need a stat.
+fn filter_needs_metadata(walk_data: &WalkData) -> bool {
+    !walk_data.allowed_filesystems.is_empty()
+        || walk_data.filter_accessed_time.is_some()
+        || walk_data.filter_modified_time.is_some()
+        || walk_data.filter_changed_time.is_some()
+}
+
+// `metadata` is the entry's pre-fetched stat tuple (or `None` if nothing
+// here would have needed it). The caller fetches it once and threads it
+// through to `build_node` afterwards, so we never stat the same file
+// twice on a filter-active walk.
+fn ignore_file(
+    entry: &DirEntry,
+    path: &Path,
+    file_type: std::fs::FileType,
+    metadata: Option<&MetadataTuple>,
+    walk_data: &WalkData,
+) -> bool {
+    // `is_ignored_path` is a no-op when no ignore dirs are configured, but the
+    // guard still pays off: it skips the HashSet hash+probe on every entry.
+    if !walk_data.ignore_directories.is_empty() && is_ignored_path(path, walk_data) {
         return true;
     }
 
     let is_dot_file = entry.file_name().to_str().unwrap_or("").starts_with('.');
-    let follow_links = walk_data.follow_links && entry.file_type().is_ok_and(|ft| ft.is_symlink());
 
-    if !walk_data.allowed_filesystems.is_empty() {
-        let size_inode_device = get_metadata(entry.path(), false, follow_links);
-        if let Some((_size, Some((_id, dev)), _gunk)) = size_inode_device
-            && !walk_data.allowed_filesystems.contains(&dev)
-        {
-            return true;
-        }
-    }
-    if walk_data.filter_accessed_time.is_some()
-        || walk_data.filter_modified_time.is_some()
-        || walk_data.filter_changed_time.is_some()
+    if !walk_data.allowed_filesystems.is_empty()
+        && let Some((_size, Some((_id, dev)), _gunk)) = metadata
+        && !walk_data.allowed_filesystems.contains(dev)
     {
-        let size_inode_device = get_metadata(entry.path(), false, follow_links);
-        if let Some((_, _, (modified_time, accessed_time, changed_time))) = size_inode_device
-            && entry.path().is_file()
-            && [
-                (&walk_data.filter_modified_time, modified_time),
-                (&walk_data.filter_accessed_time, accessed_time),
-                (&walk_data.filter_changed_time, changed_time),
-            ]
-            .iter()
-            .any(|(filter_time, actual_time)| {
-                is_filtered_out_due_to_file_time(filter_time, *actual_time)
-            })
-        {
-            return true;
-        }
+        return true;
+    }
+
+    let has_time_filter = walk_data.filter_accessed_time.is_some()
+        || walk_data.filter_modified_time.is_some()
+        || walk_data.filter_changed_time.is_some();
+
+    // `file_type` from the d_type-based DirEntry::file_type already tells
+    // us whether this is a regular file. For symlinks we still need one
+    // `path.is_file()` syscall (metadata follows the link) to match the
+    // previous behavior so do it at most once and cache it.
+    let is_file_for_filter = file_type.is_file() || (file_type.is_symlink() && path.is_file());
+
+    if has_time_filter
+        && let Some((_, _, (modified_time, accessed_time, changed_time))) = metadata
+        && is_file_for_filter
+        && [
+            (&walk_data.filter_modified_time, *modified_time),
+            (&walk_data.filter_accessed_time, *accessed_time),
+            (&walk_data.filter_changed_time, *changed_time),
+        ]
+        .iter()
+        .any(|(filter_time, actual_time)| {
+            is_filtered_out_due_to_file_time(filter_time, *actual_time)
+        })
+    {
+        return true;
     }
 
     // Keeping `walk_data.filter_regex.is_empty()` is important for performance reasons, it stops unnecessary work
     if !walk_data.filter_regex.is_empty()
-        && entry.path().is_file()
-        && is_filtered_out_due_to_regex(walk_data.filter_regex, &entry.path())
+        && is_file_for_filter
+        && is_filtered_out_due_to_regex(walk_data.filter_regex, path)
     {
         return true;
     }
 
     if !walk_data.invert_filter_regex.is_empty()
-        && entry.path().is_file()
-        && is_filtered_out_due_to_invert_regex(walk_data.invert_filter_regex, &entry.path())
+        && is_file_for_filter
+        && is_filtered_out_due_to_invert_regex(walk_data.invert_filter_regex, path)
     {
         return true;
     }
@@ -200,98 +311,300 @@ fn ignore_file(entry: &DirEntry, walk_data: &WalkData) -> bool {
     is_dot_file && walk_data.ignore_hidden
 }
 
-fn walk(dir: PathBuf, walk_data: &WalkData, depth: usize) -> Option<Node> {
-    let prog_data = &walk_data.progress_data;
-    let errors = &walk_data.errors;
+fn walk_dir<'scope>(
+    scope: &rayon::Scope<'scope>,
+    pending: Arc<PendingDir>,
+    walk_data: &'scope WalkData<'scope>,
+) {
+    let md_result = if pending.is_symlink {
+        fs::metadata(&pending.dir)
+    } else {
+        fs::symlink_metadata(&pending.dir)
+    };
+    let (is_dir_path, is_file_path, tuple) = match &md_result {
+        Ok(m) => (
+            m.is_dir(),
+            m.is_file(),
+            tuple_from_metadata(m, walk_data.use_apparent_size),
+        ),
+        Err(_) => (false, false, None),
+    };
+    let _ = pending.cached_metadata.set(tuple);
 
-    let children = if dir.is_dir() {
-        let read_dir = fs::read_dir(&dir);
-        match read_dir {
-            Ok(entries) => {
-                entries
-                    .into_iter()
-                    .par_bridge()
-                    .filter_map(|entry| {
-                        match entry {
-                            Ok(ref entry) => {
-                                // uncommenting the below line gives simpler code but
-                                // rayon doesn't parallelize as well giving a 3X performance drop
-                                // hence we unravel the recursion a bit
-
-                                // return walk(entry.path(), walk_data, depth)
-
-                                if !ignore_file(entry, walk_data)
-                                    && let Ok(data) = entry.file_type()
-                                {
-                                    if data.is_dir()
-                                        || (walk_data.follow_links && data.is_symlink())
-                                    {
-                                        return walk(entry.path(), walk_data, depth + 1);
-                                    }
-
-                                    let node = build_node(
-                                        entry.path(),
-                                        vec![],
-                                        data.is_symlink(),
-                                        data.is_file(),
-                                        depth,
-                                        walk_data,
-                                    );
-
-                                    prog_data.num_files.fetch_add(1, ORDERING);
-                                    if let Some(ref file) = node {
-                                        prog_data.total_file_size.fetch_add(file.size, ORDERING);
-                                    }
-
-                                    return node;
-                                }
-                            }
-                            Err(ref failed) => {
-                                if handle_error_and_retry(failed, &dir, walk_data) {
-                                    return walk(dir.clone(), walk_data, depth);
-                                }
-                            }
-                        }
-                        None
-                    })
-                    .collect()
-            }
-            Err(failed) => {
-                if handle_error_and_retry(&failed, &dir, walk_data) {
-                    return walk(dir, walk_data, depth);
-                } else {
-                    vec![]
+    if is_dir_path {
+        // EINTR is the only retryable error. Looping iteratively (rather than
+        // recursing on retry, like the old code) keeps stack depth O(1).
+        loop {
+            let entries = match fs::read_dir(&pending.dir) {
+                Ok(entries) => entries,
+                Err(ref failed) => {
+                    record_error(failed, &pending.dir, walk_data);
+                    if is_retryable(failed) {
+                        continue;
+                    }
+                    break;
                 }
+            };
+
+            // Drain into a Vec before doing anything observable on `pending`.
+            // This is the load-bearing structural choice for retry safety: if
+            // we decide to retry, we throw the Vec away and re-list, with no
+            // spawned subdir tasks or pushed file nodes to roll back.
+            let collected: Vec<_> = entries.collect();
+
+            // If any entry yielded a retryable error, throw the Vec away and
+            // re-list. We record only that one error (which bumps the EINTR
+            // counter and trips a panic threshold if retries are runaway);
+            // other errors aren't recorded yet because they'll resurface on
+            // retry if they're real, and recording them now would log
+            // phantoms when the retry succeeds cleanly.
+            if let Some(failed) = collected
+                .iter()
+                .filter_map(|r| r.as_ref().err())
+                .find(|e| is_retryable(e))
+            {
+                record_error(failed, &pending.dir, walk_data);
+                continue;
             }
+
+            // Commit point: from here on we mutate `pending`. File nodes
+            // are accumulated thread-locally by rayon's collect (no lock
+            // contention in the hot loop) and merged with one extend.
+            // Subdirs spawn from inside process_entry and bubble their own
+            // Node in via finalize_chain later; those still take the lock,
+            // but at most once per subdir.
+            //
+            // Pre-reserve children capacity to `collected.len()` (an upper
+            // bound: every entry contributes at most one child Node, either
+            // as a file via the extend below or as a subdir via bubble-up
+            // in finalize_chain).
+            {
+                let mut children = pending.children.lock().unwrap();
+                children.reserve(collected.len());
+            }
+
+            let file_nodes: Vec<Node> = collected
+                .into_par_iter()
+                .filter_map(|r| match r {
+                    Ok(entry) => process_entry(scope, &pending, &entry, walk_data),
+                    Err(failed) => {
+                        record_error(&failed, &pending.dir, walk_data);
+                        None
+                    }
+                })
+                .collect();
+
+            if !file_nodes.is_empty() {
+                pending.children.lock().unwrap().extend(file_nodes);
+            }
+            break;
         }
-    } else {
-        if !dir.is_file() {
-            let mut editable_error = errors.lock().unwrap();
-            let bad_file = dir.as_os_str().to_string_lossy().into();
-            editable_error.file_not_found.insert(bad_file);
-        }
-        vec![]
-    };
-    let is_symlink = if walk_data.follow_links {
-        match fs::symlink_metadata(&dir) {
-            Ok(metadata) => metadata.file_type().is_symlink(),
-            Err(_) => false,
-        }
-    } else {
-        false
-    };
-    build_node(dir, children, is_symlink, false, depth, walk_data)
+    } else if !is_file_path {
+        let mut editable_error = walk_data.errors.lock().unwrap();
+        let bad_file = pending.dir.as_os_str().to_string_lossy().into();
+        editable_error.file_not_found.insert(bad_file);
+    }
+
+    finalize_chain(pending, walk_data);
 }
 
-fn handle_error_and_retry(failed: &Error, dir: &Path, walk_data: &WalkData) -> bool {
+// Returns the file's Node when the entry is a file (so the caller can
+// gather it via rayon's collect). Returns None for ignored entries and
+// for subdirectories. Subdirs spawn a walk task and contribute their
+// Node later via finalize_chain instead.
+fn process_entry<'scope>(
+    scope: &rayon::Scope<'scope>,
+    pending: &Arc<PendingDir>,
+    entry: &DirEntry,
+    walk_data: &'scope WalkData<'scope>,
+) -> Option<Node> {
+    // Compute path + file_type once per entry and thread them through.
+    // `entry.path()` allocates a PathBuf; `entry.file_type()` can require a
+    // stat on filesystems without d_type support. Previously each was called
+    // up to 3 times per entry.
+    let path = entry.path();
+    let file_type = entry.file_type().ok()?;
+    // Fetch metadata at most once per entry. Without filters, the
+    // per-file stat lives inside `build_node` as before. With filters,
+    // we used to stat twice — once in `ignore_file` for the filter
+    // check, once in `build_node` to actually build the Node. Now we
+    // fetch once and thread the tuple through.
+    //
+    // Use the user's `use_apparent_size` flag at fetch time so the
+    // tuple is already in the form `build_node` wants. `ignore_file`
+    // discards the size field, so this is harmless for the filter
+    // logic but means the tuple can be reused unchanged below.
+    let mut prefetched: Option<MetadataTuple> = None;
+    // Fast path: no filters means `ignore_file` has nothing to do. On a
+    // default walk this avoids a function call, a HashSet probe, and an
+    // OsString allocation for `file_name` per entry. We still need to honour
+    // `ignore_hidden` separately when no other filters are set.
+    if walk_data.has_any_filter {
+        if filter_needs_metadata(walk_data) {
+            let follow_links = walk_data.follow_links && file_type.is_symlink();
+            prefetched = get_metadata(&path, walk_data.use_apparent_size, follow_links);
+        }
+        if ignore_file(entry, &path, file_type, prefetched.as_ref(), walk_data) {
+            return None;
+        }
+    } else if walk_data.ignore_hidden && entry.file_name().to_str().unwrap_or("").starts_with('.') {
+        return None;
+    }
+    let is_symlink = file_type.is_symlink();
+
+    // If the entry is a directory we'll spawn off a new task to walk it.
+    if file_type.is_dir() || (walk_data.follow_links && is_symlink) {
+        // Increment must happen before scope.spawn so a fast child's decrement
+        // can never observe pending = 0 before this walk_dir's finalize_chain
+        // runs. It can be Relaxed ordering because rayon's scope spawn does
+        // its own fencing.
+        pending.pending.fetch_add(1, AtomicOrdering::Relaxed);
+        let child = Arc::new(PendingDir {
+            dir: path,
+            depth: pending.depth + 1,
+            is_symlink,
+            parent: Some(pending.clone()),
+            pending: AtomicUsize::new(1),
+            children: Mutex::new(Vec::new()),
+            cached_metadata: OnceLock::new(),
+        });
+        scope.spawn(move |s| walk_dir(s, child, walk_data));
+        return None;
+    }
+
+    // Under `-f` / `--filecount` without metadata-needing filters,
+    // the file's `MetadataTuple` is mostly thrown away, so we create
+    // a fake `MetadataTuple` to avoid the syscall.
+    //
+    // `node_from_tuple` sets size to 1 unconditionally and the time
+    // fields are only consulted when `-M` / `-A` / `-y` are active.
+    // The only field actually consumed downstream is `inode_device`
+    // for `clean_inodes` dedup, and both halves are available
+    // without a syscall:
+    //
+    //   * `inode` comes from `getdents64`'s `d_ino` (already returned
+    //     from the `read_dir` that gave us this entry; surfaced via
+    //     `DirEntry::ino()` on unix). On Linux's getdents64, d_ino
+    //     matches statx's stx_ino — confirmed by the kernel's filldir
+    //     callback, which copies the inode straight from the dentry.
+    //
+    //   * `dev` is the parent directory's dev. Cross-mount transitions
+    //     can only happen at directory boundaries, and each such
+    //     boundary is a fresh `walk_dir` invocation that re-stats the
+    //     mount point — so within a single dir's child list, every
+    //     non-directory entry shares its dev with the parent.
+    //
+    // Synthesise the tuple instead of statting. Gated three ways:
+    // (a) prefetched is None — no filter wanted metadata. This
+    //     transitively guarantees no time filter (`-M` / `-A` / `-y`)
+    //     is set, because `filter_needs_metadata()` returns true under
+    //     any of those. With no time filter, the synthesised `times=0`
+    //     are inert downstream: `is_filtered_out_due_to_file_time(&None,
+    //     _)` short-circuits to false in `node_from_tuple`.
+    // (b) `-f` is on — otherwise size/times do matter for display.
+    // (c) `-L` is off — under follow_links, a symlink-to-file would
+    //     have been dedup'd against its target via stat-follow; d_ino
+    //     gives the symlink's own inode, a different key. Falling back
+    //     to the stat path under `-L` preserves previous behavior.
+    // Unix-gated: on Windows there's no cheap `d_ino`-equivalent in
+    // `DirEntry`, so the existing stat path keeps running there.
+    #[cfg(target_family = "unix")]
+    if prefetched.is_none() && walk_data.by_filecount && !walk_data.follow_links {
+        use std::os::unix::fs::DirEntryExt;
+        let parent_dev = pending
+            .cached_metadata
+            .get()
+            .copied()
+            .flatten()
+            .and_then(|t| t.1.map(|(_, dev)| dev))
+            .unwrap_or(0);
+        prefetched = Some((0, Some((entry.ino(), parent_dev)), (0, 0, 0)));
+    }
+
+    let node = build_node(
+        path,
+        vec![],
+        prefetched,
+        is_symlink,
+        file_type.is_file(),
+        pending.depth,
+        walk_data,
+    );
+
+    let prog_data = &walk_data.progress_data;
+    prog_data.num_files.fetch_add(1, ORDERING);
+    if let Some(ref n) = node {
+        prog_data.total_file_size.fetch_add(n.size, ORDERING);
+    }
+    node
+}
+
+// Iteratively bubbles completions up the parent chain, taking exactly one
+// lock per directory along the way.
+//
+// Each iteration "completes" `pending`. We carry `node_to_push` between
+// iterations: it holds the previous level's built Node so we can push it
+// into `pending.children` in the same critical section as our own
+// decrement. That collapses what would otherwise be three separate locks
+// per directory (push from child, decrement, take children) into one.
+//
+// Termination paths:
+//   1. pending stays > 0 after decrement: not the last completer. Return
+//      with the prior level's Node already pushed into our children.
+//   2. pending hits 0 and parent is None: this is the synthetic outer
+//      created in `walk_it`. Its `children` now holds the finished root
+//      Node; `walk_it` drains it after `rayon::scope` returns.
+fn finalize_chain(mut pending: Arc<PendingDir>, walk_data: &WalkData) {
+    let mut node_to_push: Option<Node> = None;
+    loop {
+        // Single critical section per directory: push the prior level's
+        // Node, decrement (atomically, since `pending` is a separate
+        // primitive from the children Vec), and (if we're the last
+        // completer) take our children so we can build our own Node
+        // outside the lock.
+        //
+        // The fetch_sub runs while holding the children mutex. That's not
+        // required for the atomic itself, but it lets the "am I last?"
+        // check and the subsequent `take` happen back-to-back without
+        // re-locking, and it serializes against any concurrent push from
+        // a sibling task that hasn't yet decremented.
+        let (parent, children) = {
+            let mut children_guard = pending.children.lock().unwrap();
+            if let Some(n) = node_to_push.take() {
+                children_guard.push(n);
+            }
+            // Relaxed: the children mutex carries the happens-before edge
+            // an Acquire fence would otherwise provide.
+            if pending.pending.fetch_sub(1, AtomicOrdering::Relaxed) != 1 {
+                return;
+            }
+            let Some(parent) = pending.parent.clone() else {
+                return;
+            };
+            (parent, std::mem::take(&mut *children_guard))
+        };
+        let cached = pending.cached_metadata.get().copied().flatten();
+        node_to_push = build_node(
+            pending.dir.clone(),
+            children,
+            cached,
+            pending.is_symlink,
+            false,
+            pending.depth,
+            walk_data,
+        );
+        pending = parent;
+    }
+}
+
+fn is_retryable(failed: &Error) -> bool {
+    failed.kind() == std::io::ErrorKind::Interrupted
+}
+
+fn record_error(failed: &Error, dir: &Path, walk_data: &WalkData) {
     let mut editable_error = walk_data.errors.lock().unwrap();
     match failed.kind() {
-        std::io::ErrorKind::PermissionDenied => {
-            editable_error
-                .no_permissions
-                .insert(dir.to_string_lossy().into());
-        }
-        std::io::ErrorKind::InvalidInput => {
+        std::io::ErrorKind::PermissionDenied | std::io::ErrorKind::InvalidInput => {
             editable_error
                 .no_permissions
                 .insert(dir.to_string_lossy().into());
@@ -305,15 +618,12 @@ fn handle_error_and_retry(failed: &Error, dir: &Path, walk_data: &WalkData) -> b
             // However, if there is no limit this results in infinite retrys and dust never finishes
             if editable_error.interrupted_error > 999 {
                 panic!("Multiple Interrupted Errors occurred while scanning filesystem. Aborting");
-            } else {
-                return true;
             }
         }
         _ => {
             editable_error.unknown_error.insert(failed.to_string());
         }
     }
-    false
 }
 
 mod tests {
@@ -351,13 +661,14 @@ mod tests {
             follow_links: false,
             progress_data: indicator.data.clone(),
             errors: Arc::new(Mutex::new(RuntimeErrors::default())),
+            has_any_filter: true,
         }
     }
 
     #[test]
     #[allow(clippy::redundant_clone)]
     fn test_should_ignore_file() {
-        let mut inodes = HashSet::new();
+        let mut inodes = FxHashSet::default();
         let n = create_node();
         let walkdata = create_walker(false);
 
@@ -374,7 +685,7 @@ mod tests {
     #[test]
     #[allow(clippy::redundant_clone)]
     fn test_should_not_ignore_files_if_using_apparent_size() {
-        let mut inodes = HashSet::new();
+        let mut inodes = FxHashSet::default();
         let n = create_node();
         let walkdata = create_walker(true);
 
@@ -424,5 +735,138 @@ mod tests {
         assert_eq!(sort_by_inode(&b, &a), Ordering::Less);
         assert_eq!(sort_by_inode(&c, &a), Ordering::Less);
         assert_eq!(sort_by_inode(&b, &c), Ordering::Less);
+    }
+
+    #[cfg(test)]
+    fn count_nodes(node: &Node) -> usize {
+        let mut count = 0;
+        let mut stack: Vec<&Node> = vec![node];
+        while let Some(n) = stack.pop() {
+            count += 1;
+            stack.extend(n.children.iter());
+        }
+        count
+    }
+
+    #[cfg(test)]
+    fn max_depth(node: &Node) -> usize {
+        let mut max = node.depth;
+        let mut stack: Vec<&Node> = vec![node];
+        while let Some(n) = stack.pop() {
+            if n.depth > max {
+                max = n.depth;
+            }
+            stack.extend(n.children.iter());
+        }
+        max
+    }
+
+    #[test]
+    fn test_walk_deeply_nested_tree() {
+        // Builds tmp/a/a/.../a (DEPTH levels) and walks it. Catches regressions
+        // back to a recursive walker, which would risk stack overflow on deep
+        // trees (the original motivation for the removed -S flag).
+        const DEPTH: usize = 500;
+        let tmp = tempfile::tempdir().unwrap();
+        let mut path = tmp.path().to_path_buf();
+        for _ in 0..DEPTH {
+            path.push("a");
+            std::fs::create_dir(&path).unwrap();
+        }
+
+        let walkdata = create_walker(true);
+        let mut roots = HashSet::new();
+        roots.insert(tmp.path().to_path_buf());
+
+        let result = walk_it(roots, &walkdata);
+        assert_eq!(result.len(), 1);
+        assert_eq!(max_depth(&result[0]), DEPTH);
+        // Root + DEPTH descendants, each holding exactly one child.
+        assert_eq!(count_nodes(&result[0]), DEPTH + 1);
+    }
+
+    #[test]
+    fn test_walk_wide_directory() {
+        // Many sibling files in one directory exercise the per-directory
+        // parallel iteration: every file pushes into the same parent's
+        // `children` Mutex, and finalize_chain is the sole reader.
+        use std::io::Write;
+        const N: usize = 500;
+        let tmp = tempfile::tempdir().unwrap();
+        for i in 0..N {
+            let mut f = std::fs::File::create(tmp.path().join(format!("f{i}"))).unwrap();
+            writeln!(f, "{i}").unwrap();
+        }
+
+        let walkdata = create_walker(true);
+        let mut roots = HashSet::new();
+        roots.insert(tmp.path().to_path_buf());
+
+        let result = walk_it(roots, &walkdata);
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].children.len(), N);
+        assert_eq!(count_nodes(&result[0]), N + 1);
+    }
+
+    #[test]
+    fn test_walk_missing_root_records_file_not_found() {
+        // A root that is neither a dir nor a file hits the `else if
+        // !pending.dir.is_file()` branch in walk_dir and should be recorded
+        // under `file_not_found`.
+        let tmp = tempfile::tempdir().unwrap();
+        let missing = tmp.path().join("does-not-exist");
+
+        let walkdata = create_walker(true);
+        let mut roots = HashSet::new();
+        roots.insert(missing.clone());
+
+        let _ = walk_it(roots, &walkdata);
+        let errors = walkdata.errors.lock().unwrap();
+        assert!(
+            errors
+                .file_not_found
+                .contains(&missing.to_string_lossy().into_owned()),
+            "expected file_not_found to contain {missing:?}, got {:?}",
+            errors.file_not_found
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn test_walk_permission_denied_subdir_is_recorded() {
+        // A subdirectory we can't read should land in `no_permissions` via
+        // record_error's PermissionDenied arm. Skipped when running as root,
+        // since chmod 000 doesn't deny root.
+        use std::os::unix::fs::PermissionsExt;
+
+        let tmp = tempfile::tempdir().unwrap();
+        let locked = tmp.path().join("locked");
+        std::fs::create_dir(&locked).unwrap();
+        std::fs::set_permissions(&locked, std::fs::Permissions::from_mode(0o000)).unwrap();
+
+        // Probe: if we can still list it, we're effectively root (or the FS
+        // ignores mode bits) and the test can't observe a PermissionDenied.
+        if std::fs::read_dir(&locked).is_ok() {
+            std::fs::set_permissions(&locked, std::fs::Permissions::from_mode(0o755)).unwrap();
+            return;
+        }
+
+        let walkdata = create_walker(true);
+        let mut roots = HashSet::new();
+        roots.insert(tmp.path().to_path_buf());
+
+        let _ = walk_it(roots, &walkdata);
+
+        // Restore permissions before tempdir's Drop tries to clean up.
+        std::fs::set_permissions(&locked, std::fs::Permissions::from_mode(0o755)).unwrap();
+
+        let errors = walkdata.errors.lock().unwrap();
+        assert!(
+            errors
+                .no_permissions
+                .contains(&locked.to_string_lossy().into_owned()),
+            "expected no_permissions to contain {locked:?}, got {:?}",
+            errors.no_permissions
+        );
     }
 }
