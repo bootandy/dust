@@ -88,6 +88,7 @@ set edit:completion:arg-completer[dust] = {|@words|
             cand --only-file 'Only files will be displayed. (Finds your largest files)'
             cand -j 'Output the directory tree as json to the current directory'
             cand --output-json 'Output the directory tree as json to the current directory'
+            cand --output-metrics 'Output the directory tree as OpenMetrics / prometheus metrics'
             cand -h 'Print help (see more with ''--help'')'
             cand --help 'Print help (see more with ''--help'')'
             cand -V 'Print version'

@@ -326,6 +326,15 @@ fn print_output(
             }
         });
         println!("{}", serde_json::to_string(&tree).unwrap());
+    } else if config.get_output_metrics(&options) {
+        print!(
+            "{}",
+            tree.into_metrics(
+                options.params.clone(),
+                by_filecount,
+                config.get_skip_total(&options)
+            )
+        );
     } else {
         let idd = InitialDisplayData {
             short_paths: !config.get_full_paths(&options),

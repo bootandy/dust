@@ -34,6 +34,7 @@ pub struct Config {
     pub stack_size: Option<usize>,
     pub threads: Option<usize>,
     pub output_json: Option<bool>,
+    pub output_metrics: Option<bool>,
     pub print_errors: Option<bool>,
     pub files0_from: Option<String>,
     pub number_of_lines: Option<usize>,
@@ -156,6 +157,9 @@ impl Config {
     }
     pub fn get_output_json(&self, options: &Cli) -> bool {
         Some(true) == self.output_json || options.output_json
+    }
+    pub fn get_output_metrics(&self, options: &Cli) -> bool {
+        Some(true) == self.output_metrics || options.output_metrics
     }
 
     pub fn get_number_of_lines(&self, options: &Cli) -> Option<usize> {

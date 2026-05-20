@@ -158,6 +158,10 @@ pub struct Cli {
     #[arg(short('j'), long)]
     pub output_json: bool,
 
+    /// Output the directory tree as OpenMetrics / prometheus metrics
+    #[arg(long)]
+    pub output_metrics: bool,
+
     /// +/-n matches files modified more/less than n days ago , and n matches
     /// files modified exactly n days ago, days are rounded down.That is +n =>
     /// (−∞, curr−(n+1)), n => [curr−(n+1), curr−n), and -n => (𝑐𝑢𝑟𝑟−𝑛, +∞)

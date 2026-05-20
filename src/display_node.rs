@@ -1,10 +1,16 @@
+use std::borrow::Cow;
 use std::cell::RefCell;
 use std::path::PathBuf;
 
+use prometheus_client::collector::Collector;
+use prometheus_client::encoding::{EncodeMetric as _, MetricEncoder};
+use prometheus_client::metrics::MetricType;
+use prometheus_client::metrics::gauge::ConstGauge;
+use prometheus_client::registry::{Registry, Unit};
 use serde::ser::SerializeStruct;
 use serde::{Serialize, Serializer};
 
-use crate::display::human_readable_number;
+use crate::display::{get_printable_name, human_readable_number};
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub struct DisplayNode {
@@ -28,6 +34,87 @@ impl DisplayNode {
         };
         out
     }
+
+    pub fn into_metrics(
+        self,
+        cli_params: Option<Vec<String>>,
+        by_filecount: bool,
+        skip_total: bool,
+    ) -> String {
+        #[derive(Debug)]
+        struct DustExporter {
+            root_node: DisplayNode,
+            by_filecount: bool,
+            skip_total: bool,
+        }
+        impl Collector for DustExporter {
+            fn encode(
+                &self,
+                mut enc: prometheus_client::encoding::DescriptorEncoder,
+            ) -> Result<(), std::fmt::Error> {
+                let mut metric_encoder = match self.by_filecount {
+                    false => enc.encode_descriptor(
+                        "dust_file_size",
+                        "Total size of files in this folder / size of this file.",
+                        Some(&Unit::Bytes),
+                        MetricType::Gauge,
+                    )?,
+                    true => enc.encode_descriptor(
+                        "dust_file_count",
+                        "Total number of files in this folder / '1' for files.",
+                        None,
+                        MetricType::Gauge,
+                    )?,
+                };
+                self.root_node
+                    .encode_metrics(&mut metric_encoder, self.skip_total)?;
+                Ok(())
+            }
+        }
+
+        let global_labels = cli_params_to_label(cli_params.as_ref());
+
+        let mut registry = Registry::with_labels(global_labels.into_iter());
+        registry.register_collector(Box::new(DustExporter {
+            root_node: self,
+            by_filecount,
+            skip_total,
+        }));
+
+        let mut out = String::new();
+        prometheus_client::encoding::text::encode(&mut out, &registry)
+            .expect("String's Write impl never fails");
+        out
+    }
+    fn encode_metrics(
+        &self,
+        metric_encoder: &mut MetricEncoder,
+        skip_self: bool,
+    ) -> Result<(), std::fmt::Error> {
+        if !skip_self {
+            let g = ConstGauge::new(self.size);
+            let labels = [("path", get_printable_name(&self.name, false))];
+            let labeled = metric_encoder.encode_family(&labels)?;
+            g.encode(labeled)?;
+        }
+        for child in self.children.iter() {
+            child.encode_metrics(metric_encoder, false)?;
+        }
+        Ok(())
+    }
+}
+
+fn cli_params_to_label(
+    cli_params: Option<&Vec<String>>,
+) -> Option<(Cow<'static, str>, Cow<'static, str>)> {
+    let params = cli_params?;
+
+    let value = params.iter().fold(None, |acc, param| match acc {
+        Some(acc) => Some(acc + " " + param.as_str()),
+        None => Some(param.to_string()),
+    })?;
+
+    Some((Cow::Borrowed("paths"), Cow::Owned(value)))
 }
 
 // Only used for -j 'json' flag combined with -o 'output_type' flag
