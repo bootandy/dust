@@ -51,6 +51,10 @@ curl -sSfL https://raw.githubusercontent.com/bootandy/dust/refs/heads/master/ins
 
 Note: `dust` installed through `snap` can only access files stored in the `/home` directory. See daniejstriata/dust-snap#2 for more information.
 
+#### [mise](https://github.com/jdx/mise)
+
+- `mise use -g dust`
+
 #### [Pacstall](https://github.com/pacstall/pacstall) (Debian/Ubuntu)
 
 - `pacstall -I dust-bin`
