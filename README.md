@@ -45,6 +45,10 @@ curl -sSfL https://raw.githubusercontent.com/bootandy/dust/refs/heads/master/ins
 
 - `brew install dust`
 
+#### DNF (Fedora Linux)
+
+- `sudo dnf install du-dust`
+
 #### [Snap](https://ubuntu.com/core/services/guide/snaps-intro) Ubuntu and [supported systems](https://snapcraft.io/docs/installing-snapd)
 
 - `snap install dust`
