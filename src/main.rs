@@ -440,7 +440,7 @@ fn init_rayon(stack: &Option<usize>, threads: &Option<usize>) -> rayon::ThreadPo
                 None
             } else {
                 let large_stack = usize::pow(1024, 3);
-                let mut sys = System::new_all();
+                let mut sys = System::new();
                 sys.refresh_memory();
                 // Larger stack size if possible to handle cases with lots of nested directories
                 let available = sys.available_memory();

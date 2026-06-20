@@ -42,7 +42,7 @@ fn create_unreadable_directory() -> io::Result<()> {
         use std::fs::Permissions;
         use std::os::unix::fs::PermissionsExt;
         fs::create_dir_all(UNREADABLE_DIR_PATH)?;
-        fs::set_permissions(UNREADABLE_DIR_PATH, Permissions::from_mode(0))?;
+        fs::set_permissions(UNREADABLE_DIR_PATH, Permissions::from_mode(0o0))?;
     }
     Ok(())
 }
