@@ -130,7 +130,8 @@ Usage: dust --collapse=node-modules will keep the node-modules folder collapsed 
 ## Config file
 
 Dust has a config file where the above options can be set.
-Either: `~/.config/dust/config.toml` or `~/.dust.toml`
+Either: `$XDG_CONFIG_HOME/dust/config.toml` (falling back to
+`~/.config/dust/config.toml`) or `~/.dust.toml`
 ```
 $ cat ~/.config/dust/config.toml
 reverse=true
@@ -154,5 +155,4 @@ Tools like ncdu & baobab, give you a view of directory sizes but you have no ide
 Dust will not count hard links multiple times (unless you want to `-s`).
 
 Typing `dust -n 90` will show you your 90 largest entries. `-n` is not quite like `head -n` or `tail -n`, dust is intelligent and chooses the largest entries
-
 
