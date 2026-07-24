@@ -202,7 +202,7 @@ fn main() {
 
     let by_filecount = options.filecount;
     let by_filetime = config.get_filetime(&options);
-    let limit_filesystem = options.limit_filesystem;
+    let limit_filesystem = config.get_limit_filesystem(&options);
     let follow_links = options.dereference_links;
 
     let allowed_filesystems = if limit_filesystem {

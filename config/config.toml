@@ -24,6 +24,9 @@ skip-total=true
 # Do not display hidden files
 ignore-hidden=true
 
+# Only count files and directories on the same filesystem as the supplied directory
+limit-filesystem=true
+
 # print sizes in powers of 1000 (e.g., 1.1G)
 output-format="si"
 
