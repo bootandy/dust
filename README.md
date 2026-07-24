@@ -134,7 +134,9 @@ Either: `~/.config/dust/config.toml` or `~/.dust.toml`
 ```
 $ cat ~/.config/dust/config.toml
 reverse=true
+limit-filesystem=true
 ```
+Keys use the long flag name in kebab-case. See [config/config.toml](config/config.toml) for a fuller sample.
 
 ## Alternatives
 
