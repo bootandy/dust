@@ -37,6 +37,7 @@ complete -c dust -s c -l no-colors -d 'No colors will be printed (Useful for com
 complete -c dust -s C -l force-colors -d 'Force colors print'
 complete -c dust -s b -l no-percent-bars -d 'No percent bars or percentages will be displayed'
 complete -c dust -s B -l bars-on-right -d 'percent bars moved to right side of screen'
+complete -c dust -l no-leader-lines -d 'No dotted leader lines drawn between the filename and its percent bar'
 complete -c dust -s R -l screen-reader -d 'For screen readers. Removes bars. Adds new column: depth level (May want to use -p too for full path)'
 complete -c dust -l skip-total -d 'No total row will be displayed'
 complete -c dust -s f -l filecount -d 'Directory \'size\' is number of child files instead of disk size'

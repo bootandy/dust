@@ -31,6 +31,7 @@ pub struct Config {
     pub disable_progress: Option<bool>,
     pub depth: Option<usize>,
     pub bars_on_right: Option<bool>,
+    pub no_leader_lines: Option<bool>,
     pub stack_size: Option<usize>,
     pub threads: Option<usize>,
     pub output_json: Option<bool>,
@@ -137,6 +138,9 @@ impl Config {
     }
     pub fn get_bars_on_right(&self, options: &Cli) -> bool {
         Some(true) == self.bars_on_right || options.bars_on_right
+    }
+    pub fn get_no_leader_lines(&self, options: &Cli) -> bool {
+        Some(true) == self.no_leader_lines || options.no_leader_lines
     }
     pub fn get_custom_stack_size(&self, options: &Cli) -> Option<usize> {
         let from_cmd_line = options.stack_size;

@@ -117,6 +117,36 @@ fn main_output() -> Vec<String> {
     // Some linux currently thought to be Manjaro, Arch
     // Although probably depends on how drive is formatted
     let mac_and_some_linux = r#"
+  0B     ┌── a_file ···│░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░█ │   0%
+4.0K     ├── hello_file│█████████████████████████████████████████████████ │ 100%
+4.0K   ┌─┴ many ·······│█████████████████████████████████████████████████ │ 100%
+4.0K ┌─┴ test_dir ·····│█████████████████████████████████████████████████ │ 100%
+"#
+    .trim()
+    .to_string();
+
+    let ubuntu = r#"
+  0B     ┌── a_file ···│                ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░█ │   0%
+4.0K     ├── hello_file│                ░░░░░░░░░░░░░░░░█████████████████ │  33%
+8.0K   ┌─┴ many ·······│                █████████████████████████████████ │  67%
+ 12K ┌─┴ test_dir ·····│█████████████████████████████████████████████████ │ 100%
+  "#
+    .trim()
+    .to_string();
+
+    vec![mac_and_some_linux, ubuntu]
+}
+
+#[cfg_attr(target_os = "windows", ignore)]
+#[test]
+pub fn test_no_leader_lines() {
+    let command_args = ["-c", "-B", "--no-leader-lines", "/tmp/test_dir/"];
+    exact_stdout_test(&command_args, main_output_no_leader_lines());
+}
+
+/// Same as main_output but the gap before the bar is plain spaces
+fn main_output_no_leader_lines() -> Vec<String> {
+    let mac_and_some_linux = r#"
   0B     ┌── a_file    │░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░█ │   0%
 4.0K     ├── hello_file│█████████████████████████████████████████████████ │ 100%
 4.0K   ┌─┴ many        │█████████████████████████████████████████████████ │ 100%
@@ -146,18 +176,18 @@ pub fn test_main_long_paths() {
 
 fn main_output_long_paths() -> Vec<String> {
     let mac_and_some_linux = r#"
-  0B     ┌── /tmp/test_dir/many/a_file    │░░░░░░░░░░░░░░░░░░░░░░░░░░░░░█ │   0%
+  0B     ┌── /tmp/test_dir/many/a_file ···│░░░░░░░░░░░░░░░░░░░░░░░░░░░░░█ │   0%
 4.0K     ├── /tmp/test_dir/many/hello_file│██████████████████████████████ │ 100%
-4.0K   ┌─┴ /tmp/test_dir/many             │██████████████████████████████ │ 100%
-4.0K ┌─┴ /tmp/test_dir                    │██████████████████████████████ │ 100%
+4.0K   ┌─┴ /tmp/test_dir/many ············│██████████████████████████████ │ 100%
+4.0K ┌─┴ /tmp/test_dir ···················│██████████████████████████████ │ 100%
 "#
     .trim()
     .to_string();
     let ubuntu = r#"
-  0B     ┌── /tmp/test_dir/many/a_file    │         ░░░░░░░░░░░░░░░░░░░░█ │   0%
+  0B     ┌── /tmp/test_dir/many/a_file ···│         ░░░░░░░░░░░░░░░░░░░░█ │   0%
 4.0K     ├── /tmp/test_dir/many/hello_file│         ░░░░░░░░░░███████████ │  33%
-8.0K   ┌─┴ /tmp/test_dir/many             │         █████████████████████ │  67%
- 12K ┌─┴ /tmp/test_dir                    │██████████████████████████████ │ 100%
+8.0K   ┌─┴ /tmp/test_dir/many ············│         █████████████████████ │  67%
+ 12K ┌─┴ /tmp/test_dir ···················│██████████████████████████████ │ 100%
 "#
     .trim()
     .to_string();
@@ -210,16 +240,16 @@ fn unicode_dir() -> Vec<String> {
     // The way unicode & asian characters are rendered on the terminal should make this line up
     let ubuntu = "
   0B   ┌── ラウトは難しいです！.japan│                                  █ │   0%
-  0B   ├── 👩.unicode                │                                  █ │   0%
-4.0K ┌─┴ test_dir_unicode            │███████████████████████████████████ │ 100%
+  0B   ├── 👩.unicode ···············│                                  █ │   0%
+4.0K ┌─┴ test_dir_unicode ···········│███████████████████████████████████ │ 100%
     "
     .trim()
     .into();
 
     let mac_and_some_linux = "
 0B   ┌── ラウトは難しいです！.japan│                                    █ │   0%
-0B   ├── 👩.unicode                │                                    █ │   0%
-0B ┌─┴ test_dir_unicode            │                                    █ │   0%
+0B   ├── 👩.unicode ···············│                                    █ │   0%
+0B ┌─┴ test_dir_unicode ···········│                                    █ │   0%
     "
     .trim()
     .into();

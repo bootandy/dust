@@ -2,7 +2,7 @@ use crate::display_node::DisplayNode;
 use crate::node::FileTime;
 
 use lscolors::{LsColors, Style};
-use nu_ansi_term::Color::Red;
+use nu_ansi_term::Color::{DarkGray, Red};
 
 use unicode_width::UnicodeWidthStr;
 
@@ -18,6 +18,7 @@ use thousands::Separable;
 
 pub static UNITS: [char; 5] = ['P', 'T', 'G', 'M', 'K'];
 static BLOCKS: [char; 5] = ['█', '▓', '▒', '░', ' '];
+static LEADER: char = '·';
 const FILETIME_SHOW_LENGTH: usize = 19;
 
 pub struct InitialDisplayData {
@@ -29,6 +30,7 @@ pub struct InitialDisplayData {
     pub is_screen_reader: bool,
     pub output_format: String,
     pub bars_on_right: bool,
+    pub leader_lines_on: bool,
 }
 
 pub struct DisplayData {
@@ -287,7 +289,13 @@ pub fn get_printable_name<P: AsRef<Path>>(dir_name: &P, short_paths: bool) -> St
     encode_u8(printable_name.display().to_string().as_bytes())
 }
 
-fn pad_or_trim_filename(node: &DisplayNode, indent: &str, display_data: &DisplayData) -> String {
+/// The printable name, plus how many columns of filler are needed after it
+/// before the % used bar chart starts.
+fn name_and_padding_width(
+    node: &DisplayNode,
+    indent: &str,
+    display_data: &DisplayData,
+) -> (String, usize) {
     let name = get_printable_name(&node.name, display_data.initial.short_paths);
     let indent_and_name = format!("{indent} {name}");
     let width = UnicodeWidthStr::width(&*indent_and_name);
@@ -297,10 +305,32 @@ fn pad_or_trim_filename(node: &DisplayNode, indent: &str, display_data: &Display
         "Terminal width not wide enough to draw directory tree"
     );
 
-    // Add spaces after the filename so we can draw the % used bar chart.
-    name + " "
-        .repeat(display_data.longest_string_length - width)
-        .as_str()
+    (name, display_data.longest_string_length - width)
+}
+
+/// Fills the gap between the end of the filename and the start of the bar
+/// chart. A dotted leader makes it easy to see which bar belongs to which row;
+/// without it the filler is plain spaces.
+fn get_leader(padding: usize, display_data: &DisplayData) -> String {
+    // Filetime mode prints no bar chart, so a leader would trail off to nothing
+    // Under 2 columns there is no room for the gap plus a dot
+    if !display_data.initial.leader_lines_on
+        || display_data.initial.by_filetime.is_some()
+        || padding < 2
+    {
+        return " ".repeat(padding);
+    }
+
+    // Keep a space after the filename so the two do not run together
+    let leader: String = std::iter::once(' ')
+        .chain(repeat_n(LEADER, padding - 1))
+        .collect();
+
+    if display_data.initial.colors_on {
+        format!("{}", DarkGray.paint(leader))
+    } else {
+        leader
+    }
 }
 
 fn maybe_trim_filename(name_in: String, indent: &str, display_data: &DisplayData) -> String {
@@ -326,17 +356,19 @@ pub fn format_string(
     is_biggest: bool,
     display_data: &DisplayData,
 ) -> String {
-    let (percent, name_and_padding) = get_name_percent(node, indent, bars, display_data);
+    let (percent, name, padding) = get_name_percent(node, indent, bars, display_data);
     let pretty_size = get_pretty_size(node, is_biggest, display_data);
-    let pretty_name = get_pretty_name(node, name_and_padding, display_data);
+    // Only the name is painted with the file's color, the padding after it is
+    // styled separately so a leader line is not tinted by the entry's color
+    let pretty_name = get_pretty_name(node, name, display_data);
     // we can clean this and the method below somehow, not sure yet
     if display_data.initial.is_screen_reader {
         // if screen_reader then bars is 'depth'
-        format!("{pretty_name} {bars} {pretty_size}{percent}")
+        format!("{pretty_name}{padding} {bars} {pretty_size}{percent}")
     } else if display_data.initial.by_filetime.is_some() {
-        format!("{pretty_size} {indent}{pretty_name}")
+        format!("{pretty_size} {indent}{pretty_name}{padding}")
     } else {
-        format!("{pretty_size} {indent} {pretty_name}{percent}")
+        format!("{pretty_size} {indent} {pretty_name}{padding}{percent}")
     }
 }
 
@@ -345,24 +377,26 @@ fn get_name_percent(
     indent: &str,
     bar_chart: &str,
     display_data: &DisplayData,
-) -> (String, String) {
+) -> (String, String, String) {
     if display_data.initial.is_screen_reader {
         let percent = display_data.percent_size(node) * 100.0;
         let percent_size_str = format!("{percent:.0}%");
         let percents = format!(" {percent_size_str:>4}",);
-        let name = pad_or_trim_filename(node, "", display_data);
-        (percents, name)
+        // Leader dots would only be noise read aloud, so pad with spaces
+        let (name, padding) = name_and_padding_width(node, "", display_data);
+        (percents, name, " ".repeat(padding))
     // Bar chart being empty may come from either config or the screen not being wide enough
     } else if !bar_chart.is_empty() {
         let percent = display_data.percent_size(node) * 100.0;
         let percent_size_str = format!("{percent:.0}%");
         let percents = format!("│{bar_chart} │ {percent_size_str:>4}");
-        let name_and_padding = pad_or_trim_filename(node, indent, display_data);
-        (percents, name_and_padding)
+        let (name, padding) = name_and_padding_width(node, indent, display_data);
+        (percents, name, get_leader(padding, display_data))
     } else {
+        // No bar chart to lead the eye to, so no padding either
         let n = get_printable_name(&node.name, display_data.initial.short_paths);
         let name = maybe_trim_filename(n, indent, display_data);
-        ("".into(), name)
+        ("".into(), name, "".into())
     }
 }
 
@@ -392,11 +426,7 @@ fn get_pretty_file_modified_time(timestamp: i64) -> String {
     local_datetime.format("%Y-%m-%dT%H:%M:%S").to_string()
 }
 
-fn get_pretty_name(
-    node: &DisplayNode,
-    name_and_padding: String,
-    display_data: &DisplayData,
-) -> String {
+fn get_pretty_name(node: &DisplayNode, name: String, display_data: &DisplayData) -> String {
     if display_data.initial.colors_on {
         let meta_result = fs::metadata(&node.name);
         let directory_color = display_data
@@ -405,10 +435,10 @@ fn get_pretty_name(
         let ansi_style = directory_color
             .map(Style::to_nu_ansi_term_style)
             .unwrap_or_default();
-        let out = ansi_style.paint(name_and_padding);
+        let out = ansi_style.paint(name);
         format!("{out}")
     } else {
-        name_and_padding
+        name
     }
 }
 
@@ -479,6 +509,7 @@ mod tests {
             is_screen_reader: false,
             output_format: "".into(),
             bars_on_right: false,
+            leader_lines_on: true,
         };
         DisplayData {
             initial,
@@ -523,6 +554,57 @@ mod tests {
             s,
             " 4.0K ┌─┴ very_long_name_longer_than_the_eighty_character_limit_very_.."
         );
+    }
+
+    #[cfg(test)]
+    fn short_node() -> DisplayNode {
+        DisplayNode {
+            name: PathBuf::from("/short"),
+            size: 2_u64.pow(12), // This is 4.0K
+            children: vec![],
+        }
+    }
+
+    #[test]
+    fn test_format_str_leader_line() {
+        // 'short' at this indent leaves 11 columns before the bar: a space
+        // to separate it from the name, then 10 dots up to the bar
+        let s = format_string(
+            &short_node(),
+            "┌─┴",
+            "████",
+            false,
+            &get_fake_display_data(20),
+        );
+        assert_eq!(s, " 4.0K ┌─┴ short ··········│████ │ 100%");
+    }
+
+    #[test]
+    fn test_format_str_leader_line_off() {
+        let mut data = get_fake_display_data(20);
+        data.initial.leader_lines_on = false;
+
+        let s = format_string(&short_node(), "┌─┴", "████", false, &data);
+        assert_eq!(s, " 4.0K ┌─┴ short           │████ │ 100%");
+    }
+
+    #[test]
+    fn test_leader_line_not_drawn_for_filetime() {
+        let mut data = get_fake_display_data(20);
+        data.initial.by_filetime = Some(FileTime::Modified);
+
+        // Filetime mode draws no bar chart, so there is nothing to lead to
+        assert_eq!(get_leader(11, &data), " ".repeat(11));
+    }
+
+    #[test]
+    fn test_leader_too_narrow_falls_back_to_spaces() {
+        let data = get_fake_display_data(20);
+
+        // Needs room for the separating space plus at least one dot
+        assert_eq!(get_leader(0, &data), "");
+        assert_eq!(get_leader(1, &data), " ");
+        assert_eq!(get_leader(2, &data), " ·");
     }
 
     #[test]

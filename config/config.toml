@@ -18,6 +18,9 @@ no-colors=true
 # No percent bars or percentages will be displayed
 no-bars=true
 
+# No dotted leader lines joining each name to its percent bar
+no-leader-lines=true
+
 # No total row will be displayed
 skip-total=true
 

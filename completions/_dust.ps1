@@ -73,6 +73,7 @@ Register-ArgumentCompleter -Native -CommandName 'dust' -ScriptBlock {
             [CompletionResult]::new('--no-percent-bars', '--no-percent-bars', [CompletionResultType]::ParameterName, 'No percent bars or percentages will be displayed')
             [CompletionResult]::new('-B', '-B ', [CompletionResultType]::ParameterName, 'percent bars moved to right side of screen')
             [CompletionResult]::new('--bars-on-right', '--bars-on-right', [CompletionResultType]::ParameterName, 'percent bars moved to right side of screen')
+            [CompletionResult]::new('--no-leader-lines', '--no-leader-lines', [CompletionResultType]::ParameterName, 'No dotted leader lines drawn between the filename and its percent bar')
             [CompletionResult]::new('-R', '-R ', [CompletionResultType]::ParameterName, 'For screen readers. Removes bars. Adds new column: depth level (May want to use -p too for full path)')
             [CompletionResult]::new('--screen-reader', '--screen-reader', [CompletionResultType]::ParameterName, 'For screen readers. Removes bars. Adds new column: depth level (May want to use -p too for full path)')
             [CompletionResult]::new('--skip-total', '--skip-total', [CompletionResultType]::ParameterName, 'No total row will be displayed')

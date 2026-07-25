@@ -72,6 +72,10 @@ pub struct Cli {
     #[arg(short('B'), long)]
     pub bars_on_right: bool,
 
+    /// No dotted leader lines drawn between the filename and its percent bar
+    #[arg(long)]
+    pub no_leader_lines: bool,
+
     /// Minimum size file to include in output
     #[arg(short('z'), long)]
     pub min_size: Option<String>,

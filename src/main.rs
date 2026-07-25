@@ -336,6 +336,7 @@ fn print_output(
             is_screen_reader: config.get_screen_reader(&options),
             output_format,
             bars_on_right: config.get_bars_on_right(&options),
+            leader_lines_on: !config.get_no_leader_lines(&options),
         };
 
         draw_it(
