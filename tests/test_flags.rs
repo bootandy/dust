@@ -138,6 +138,35 @@ pub fn test_files_from_flag_stdin() {
 }
 
 #[test]
+pub fn test_files_from_ignores_empty_lines() {
+    let mut cmd = cargo_bin_cmd!("dust");
+    cmd.arg("-P").arg("--files-from").arg("-");
+    let input = b"tests/test_dir_files_from/a_file\n\ntests/test_dir_files_from/hello_file\n";
+    cmd.write_stdin(input.as_ref());
+    let finished = &cmd.unwrap();
+    let stderr = str::from_utf8(&finished.stderr).unwrap();
+    assert_eq!(stderr, "");
+    let output = str::from_utf8(&finished.stdout).unwrap();
+    assert!(output.contains("a_file"));
+    assert!(output.contains("hello_file"));
+}
+
+#[test]
+pub fn test_cli_paths_ignore_empty_arguments() {
+    let output = build_command(vec![
+        "-b",
+        "-c",
+        "-d",
+        "0",
+        "tests/test_dir_files_from/a_file",
+        "",
+        "tests/test_dir_files_from/hello_file",
+    ]);
+    assert!(output.contains("a_file"));
+    assert!(output.contains("hello_file"));
+}
+
+#[test]
 pub fn test_files0_from_flag_stdin() {
     let mut cmd = cargo_bin_cmd!("dust");
     cmd.arg("-P").arg("--files0-from").arg("-");
