@@ -73,6 +73,8 @@ Note: `dust` installed through `snap` can only access files stored in the `/home
 - Windows GNU version - works
 - Windows MSVC - requires: [VCRUNTIME140.dll](https://docs.microsoft.com/en-gb/cpp/windows/latest-supported-vc-redist?view=msvc-170)
 
+After Scoop (or another Windows package manager), open a **new** terminal so `dust` is on your `PATH`.
+
 #### Download
 
 - Download Linux/Mac binary from [Releases](https://github.com/bootandy/dust/releases)
