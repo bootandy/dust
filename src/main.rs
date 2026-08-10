@@ -136,7 +136,10 @@ fn main() {
             Some(ref values) => values.clone(),
             None => vec![".".to_owned()],
         }
-    };
+    }
+    .into_iter()
+    .filter(|path| !path.is_empty())
+    .collect::<Vec<_>>();
 
     let summarize_file_types = options.file_types;
 
