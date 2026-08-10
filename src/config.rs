@@ -269,11 +269,11 @@ pub fn get_config(conf_path: Option<&String>) -> Config {
                 match Config::from_config_file(path) {
                     Ok(config) => return config,
                     Err(e) => {
-                        eprintln!("Ignoring invalid config file '{}': {}", &path.display(), e)
+                        eprintln!("Ignoring invalid config file '{}': {}", path.display(), e)
                     }
                 }
             } else {
-                eprintln!("Config file {:?} doesn't exists", &path.display());
+                eprintln!("Config file {:?} doesn't exists", path.display());
             }
         }
         None => {

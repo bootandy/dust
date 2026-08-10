@@ -156,10 +156,10 @@ pub fn test_main_long_paths() {
 
 fn main_output_long_paths() -> Vec<String> {
     let mac_and_some_linux = r#"
-   0B     ┌── /tmp/test_dir/many/a_file    │░░░░░░░░░░░░░░░░░░░░░░░░░░░█ │   0%
-4.0Ki     ├── /tmp/test_dir/many/hello_file│████████████████████████████ │ 100%
-4.0Ki   ┌─┴ /tmp/test_dir/many             │████████████████████████████ │ 100%
-4.0Ki ┌─┴ /tmp/test_dir                    │████████████████████████████ │ 100%
+   0B     ┌── /tmp/test_dir/many/a_file    │░░░░░░░░░░░░░░░░░░░░░░░░░░░░█ │   0%
+4.0Ki     ├── /tmp/test_dir/many/hello_file│█████████████████████████████ │ 100%
+4.0Ki   ┌─┴ /tmp/test_dir/many             │█████████████████████████████ │ 100%
+4.0Ki ┌─┴ /tmp/test_dir                    │█████████████████████████████ │ 100%
 "#
     .trim()
     .to_string();
