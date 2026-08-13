@@ -54,8 +54,8 @@ kb\:"kilobyte (kB)"
 mb\:"megabyte (MB)"
 gb\:"gigabyte (GB)"
 tb\:"terabyte (TB)"))' \
-'-S+[Specify memory to use as stack size - use if you see\: '\''fatal runtime error\: stack overflow'\'' (default low memory=1048576, high memory=1073741824)]:STACK_SIZE:_default' \
-'--stack-size=[Specify memory to use as stack size - use if you see\: '\''fatal runtime error\: stack overflow'\'' (default low memory=1048576, high memory=1073741824)]:STACK_SIZE:_default' \
+'-S+[Deprecated. The walker no longer recurses so a custom stack size is unnecessary. Accepted for compatibility but the value is ignored]:STACK_SIZE:_default' \
+'--stack-size=[Deprecated. The walker no longer recurses so a custom stack size is unnecessary. Accepted for compatibility but the value is ignored]:STACK_SIZE:_default' \
 '-M+[+/-n matches files modified more/less than n days ago , and n matches files modified exactly n days ago, days are rounded down.That is +n => (−∞, curr−(n+1)), n => \[curr−(n+1), curr−n), and -n => (𝑐𝑢𝑟𝑟−𝑛, +∞)]:MTIME:_default' \
 '--mtime=[+/-n matches files modified more/less than n days ago , and n matches files modified exactly n days ago, days are rounded down.That is +n => (−∞, curr−(n+1)), n => \[curr−(n+1), curr−n), and -n => (𝑐𝑢𝑟𝑟−𝑛, +∞)]:MTIME:_default' \
 '-A+[just like -mtime, but based on file access time]:ATIME:_default' \

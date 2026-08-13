@@ -29,7 +29,6 @@ use std::panic;
 use std::process;
 use std::sync::Arc;
 use std::sync::Mutex;
-use sysinfo::System;
 use utils::canonicalize_absolute_path;
 
 use self::display::draw_it;
@@ -262,9 +261,15 @@ fn main() {
     };
 
     let threads_to_use = config.get_threads(&options);
-    let stack_size = config.get_custom_stack_size(&options);
 
-    init_rayon(&stack_size, &threads_to_use).install(|| {
+    if options.stack_size.is_some() {
+        eprintln!(
+            "warning: --stack-size/-S is deprecated and ignored; \
+             the walker no longer recurses, so a custom stack is unnecessary."
+        );
+    }
+
+    init_rayon(&threads_to_use).install(|| {
         let top_level_nodes = walk_it(simplified_dirs, &walk_data);
 
         let tree = match summarize_file_types {
@@ -434,54 +439,13 @@ fn read_paths_from_source(path: &str, null_terminated: bool) -> Vec<String> {
     }
 }
 
-fn init_rayon(stack: &Option<usize>, threads: &Option<usize>) -> rayon::ThreadPool {
-    let stack_size = match stack {
-        Some(s) => Some(*s),
-        None => {
-            // Do not increase the stack size on a 32 bit system, it will fail
-            if cfg!(target_pointer_width = "32") {
-                None
-            } else {
-                let large_stack = usize::pow(1024, 3);
-                let mut sys = System::new();
-                sys.refresh_memory();
-                // Larger stack size if possible to handle cases with lots of nested directories
-                let available = sys.available_memory();
-                if available > (large_stack * threads.unwrap_or(1)).try_into().unwrap() {
-                    Some(large_stack)
-                } else {
-                    None
-                }
-            }
-        }
-    };
-
-    match build_thread_pool(stack_size, threads) {
-        Ok(pool) => pool,
-        Err(err) => {
-            eprintln!("Problem initializing rayon, try: export RAYON_NUM_THREADS=1");
-            if stack.is_none() && stack_size.is_some() {
-                // stack parameter was none, try with default stack size
-                if let Ok(pool) = build_thread_pool(None, threads) {
-                    eprintln!("WARNING: not using large stack size, got error: {err}");
-                    return pool;
-                }
-            }
-            panic!("{err}");
-        }
+fn init_rayon(threads: &Option<usize>) -> rayon::ThreadPool {
+    let mut builder = rayon::ThreadPoolBuilder::new();
+    if let Some(t) = threads {
+        builder = builder.num_threads(*t);
     }
-}
-
-fn build_thread_pool(
-    stack_size: Option<usize>,
-    threads: &Option<usize>,
-) -> Result<rayon::ThreadPool, rayon::ThreadPoolBuildError> {
-    let mut pool_builder = rayon::ThreadPoolBuilder::new();
-    if let Some(stack_size_param) = stack_size {
-        pool_builder = pool_builder.stack_size(stack_size_param);
-    }
-    if let Some(thread_count) = threads {
-        pool_builder = pool_builder.num_threads(*thread_count);
-    }
-    pool_builder.build()
+    builder.build().unwrap_or_else(|err| {
+        eprintln!("Problem initializing rayon, try: export RAYON_NUM_THREADS=1");
+        panic!("{err}");
+    })
 }

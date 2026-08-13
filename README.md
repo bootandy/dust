@@ -129,8 +129,8 @@ Usage: dust -e regex (Only include files matching this regex (eg dust -e "\.png$
 Usage: dust -v regex (Exclude files matching this regex (eg dust -v "\.png$" would ignore png files))
 Usage: dust -L (dereference-links - Treat sym links as directories and go into them)
 Usage: dust -P (Disable the progress indicator)
+Usage: dust -T (Set the number of walker threads. Default is the CPU count. For high-latency storage like NFS or remote mounts, a higher count can speed up the walk by overlapping more concurrent stat calls.)
 Usage: dust -R (For screen readers. Removes bars/symbols. Adds new column: depth level. (May want to use -p for full path too))
-Usage: dust -S (Custom Stack size - Use if you see: 'fatal runtime error: stack overflow' (default allocation: low memory=1048576, high memory=1073741824)"),
 Usage: dust --skip-total (No total row will be displayed)
 Usage: dust -z 40000/30MB/20kib (Exclude output files/directories below size 40000 bytes / 30MB / 20KiB)
 Usage: dust -j (Prints JSON representation of directories, try: dust -j  | jq)
