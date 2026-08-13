@@ -493,6 +493,7 @@ mod tests {
             short_paths: true,
             is_reversed: false,
             colors_on: false,
+            dim: false,
             by_filecount: false,
             by_filetime: None,
             is_screen_reader: false,
