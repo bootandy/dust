@@ -11,6 +11,10 @@ Because I want an easy way to see where my disk is being used.
 
 # Demo
 
+<p align="center">
+  <img src="media/demo.gif" alt="dust demo — interactive disk usage analysis" width="600">
+</p>
+
 ![Example](media/snap.png)
 
 Study the above picture. 
@@ -45,11 +49,19 @@ curl -sSfL https://raw.githubusercontent.com/bootandy/dust/refs/heads/master/ins
 
 - `brew install dust`
 
+#### DNF (Fedora Linux)
+
+- `sudo dnf install du-dust`
+
 #### [Snap](https://ubuntu.com/core/services/guide/snaps-intro) Ubuntu and [supported systems](https://snapcraft.io/docs/installing-snapd)
 
 - `snap install dust`
 
-Note: `dust` installed through `snap` can only access files stored in the `/home` directory. See daniejstriata/dust-snap#2 for more information.
+Note: `dust` installed through `snap` can only access files stored in the `/home` directory. See danie-dejager/dust-snap#2 for more information.
+
+#### [mise](https://github.com/jdx/mise)
+
+- `mise use -g dust`
 
 #### [Pacstall](https://github.com/pacstall/pacstall) (Debian/Ubuntu)
 
@@ -131,7 +143,8 @@ Usage: dust --collapse=node-modules will keep the node-modules folder collapsed 
 ## Config file
 
 Dust has a config file where the above options can be set.
-Either: `~/.config/dust/config.toml` or `~/.dust.toml`
+Either: `$XDG_CONFIG_HOME/dust/config.toml` (falling back to
+`~/.config/dust/config.toml`) or `~/.dust.toml`
 ```
 $ cat ~/.config/dust/config.toml
 reverse=true
@@ -155,3 +168,4 @@ Tools like ncdu & baobab, give you a view of directory sizes but you have no ide
 Dust will not count hard links multiple times (unless you want to `-s`).
 
 Typing `dust -n 90` will show you your 90 largest entries. `-n` is not quite like `head -n` or `tail -n`, dust is intelligent and chooses the largest entries
+
