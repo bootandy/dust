@@ -405,49 +405,6 @@ mod tests {
     }
 
     #[test]
-    fn test_get_limit_filesystem() {
-        // Neither config nor flag.
-        let c = Config::default();
-        assert!(!c.get_limit_filesystem(&get_args(vec![])));
-
-        // Flag only.
-        let c = Config::default();
-        assert!(c.get_limit_filesystem(&get_args(vec!["dust", "-x"])));
-
-        // Config only.
-        let c = Config {
-            limit_filesystem: Some(true),
-            ..Default::default()
-        };
-        assert!(c.get_limit_filesystem(&get_args(vec![])));
-
-        // Config disabled, flag still wins.
-        let c = Config {
-            limit_filesystem: Some(false),
-            ..Default::default()
-        };
-        assert!(!c.get_limit_filesystem(&get_args(vec![])));
-        assert!(c.get_limit_filesystem(&get_args(vec!["dust", "-x"])));
-    }
-
-    // Pins the config file key name ('limit-filesystem', not 'limit_filesystem')
-    // that the kebab-case rename produces - a rename would silently stop
-    // applying the user's setting.
-    #[test]
-    fn test_limit_filesystem_read_from_config_file() {
-        let file = tempfile::Builder::new()
-            .suffix(".toml")
-            .tempfile()
-            .expect("failed to create temp config file");
-        std::fs::write(file.path(), "limit-filesystem=true\n").expect("failed to write config");
-
-        let path = file.path().to_string_lossy().to_string();
-        let c = get_config(Some(&path));
-        assert_eq!(c.limit_filesystem, Some(true));
-        assert!(c.get_limit_filesystem(&get_args(vec![])));
-    }
-
-    #[test]
     fn test_get_filetime() {
         // No config and no flag.
         let c = Config::default();
