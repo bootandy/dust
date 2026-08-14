@@ -26,6 +26,7 @@ pub struct Config {
     pub screen_reader: Option<bool>,
     pub ignore_hidden: Option<bool>,
     pub limit_filesystem: Option<bool>,
+    pub exclude_mounts: Option<bool>,
     pub output_format: Option<String>,
     pub min_size: Option<String>,
     pub only_dir: Option<bool>,
@@ -76,6 +77,9 @@ impl Config {
     }
     pub fn get_limit_filesystem(&self, options: &Cli) -> bool {
         Some(true) == self.limit_filesystem || options.limit_filesystem
+    }
+    pub fn get_exclude_mounts(&self, options: &Cli) -> bool {
+        Some(true) == self.exclude_mounts || options.exclude_mounts
     }
     pub fn get_full_paths(&self, options: &Cli) -> bool {
         Some(true) == self.display_full_paths || options.full_paths
@@ -428,6 +432,33 @@ mod tests {
         };
         assert!(!c.get_limit_filesystem(&get_args(vec![])));
         assert!(c.get_limit_filesystem(&get_args(vec!["dust", "-x"])));
+    }
+
+    #[test]
+    fn test_get_exclude_mounts() {
+        let c = Config::default();
+        assert!(!c.get_exclude_mounts(&get_args(vec![])));
+        assert!(c.get_exclude_mounts(&get_args(vec!["dust", "--exclude-mounts"])));
+
+        let c = Config {
+            exclude_mounts: Some(true),
+            ..Default::default()
+        };
+        assert!(c.get_exclude_mounts(&get_args(vec![])));
+    }
+
+    #[test]
+    fn test_exclude_mounts_read_from_config_file() {
+        let file = tempfile::Builder::new()
+            .suffix(".toml")
+            .tempfile()
+            .expect("failed to create temp config file");
+        std::fs::write(file.path(), "exclude-mounts=true\n").expect("failed to write config");
+
+        let path = file.path().to_string_lossy().to_string();
+        let c = get_config(Some(&path));
+        assert_eq!(c.exclude_mounts, Some(true));
+        assert!(c.get_exclude_mounts(&get_args(vec![])));
     }
 
     // Pins the config file key name ('limit-filesystem', not 'limit_filesystem')

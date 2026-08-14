@@ -117,6 +117,7 @@ Usage: dust -r (reverse order of output)
 Usage: dust -o si/b/kb/kib/mb/mib/gb/gib (si - prints sizes in powers of 1000. Others print size in that format).
 Usage: dust -X ignore  (ignore all files and directories with the name 'ignore')
 Usage: dust -x (Only show directories on the same filesystem)
+Usage: dust --exclude-mounts (Do not descend into mount points below the supplied paths)
 Usage: dust -b (Do not show percentages or draw ASCII bars)
 Usage: dust -B (--bars-on-right - Percent bars moved to right side of screen)
 Usage: dust -i (Do not show hidden files)
@@ -149,6 +150,7 @@ Either: `$XDG_CONFIG_HOME/dust/config.toml` (falling back to
 $ cat ~/.config/dust/config.toml
 reverse=true
 limit-filesystem=true
+exclude-mounts=true
 ```
 Keys use the long flag name in kebab-case. See [config/config.toml](config/config.toml) for a fuller sample.
 

@@ -27,6 +27,9 @@ ignore-hidden=true
 # Only count files and directories on the same filesystem as the supplied directory
 limit-filesystem=true
 
+# Do not descend into mount points below the supplied paths
+exclude-mounts=true
+
 # print sizes in powers of 1000 (e.g., 1.1G)
 output-format="si"
 

@@ -43,6 +43,7 @@ use std::cmp::max;
 use std::path::PathBuf;
 use terminal_size::{Height, Width, terminal_size};
 use utils::get_filesystem_devices;
+use utils::get_mount_points;
 use utils::simplify_dir_names;
 
 static DEFAULT_NUMBER_OF_LINES: usize = 30;
@@ -213,6 +214,12 @@ fn main() {
 
     let simplified_dirs = simplify_dir_names(&target_dirs);
 
+    let excluded_mounts = if config.get_exclude_mounts(&options) {
+        get_mount_points(&simplified_dirs)
+    } else {
+        Default::default()
+    };
+
     let ignored_full_path: HashSet<PathBuf> = ignore_directories
         .into_iter()
         .flat_map(|x| simplified_dirs.iter().map(move |d| d.join(&x)))
@@ -246,6 +253,7 @@ fn main() {
 
     let walk_data = WalkData {
         ignore_directories: ignored_full_path,
+        excluded_mounts,
         filter_regex: &filter_regexs,
         invert_filter_regex: &invert_filter_regexs,
         allowed_filesystems,

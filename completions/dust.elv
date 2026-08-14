@@ -58,6 +58,7 @@ set edit:completion:arg-completer[dust] = {|@words|
             cand --dereference-links 'dereference sym links - Treat sym links as directories and go into them'
             cand -x 'Only count the files and directories on the same filesystem as the supplied directory'
             cand --limit-filesystem 'Only count the files and directories on the same filesystem as the supplied directory'
+            cand --exclude-mounts 'Do not descend into mount points below the supplied paths'
             cand -s 'Use file length instead of blocks'
             cand --apparent-size 'Use file length instead of blocks'
             cand -r 'Print tree upside down (biggest highest)'

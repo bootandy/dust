@@ -35,6 +35,7 @@ pub enum Operator {
 
 pub struct WalkData<'a> {
     pub ignore_directories: HashSet<PathBuf>,
+    pub excluded_mounts: HashSet<PathBuf>,
     pub filter_regex: &'a [Regex],
     pub invert_filter_regex: &'a [Regex],
     pub allowed_filesystems: HashSet<u64>,
@@ -146,6 +147,10 @@ fn is_ignored_path(path: &Path, walk_data: &WalkData) -> bool {
 }
 
 fn ignore_file(entry: &DirEntry, walk_data: &WalkData) -> bool {
+    if !walk_data.excluded_mounts.is_empty() && walk_data.excluded_mounts.contains(&entry.path()) {
+        return true;
+    }
+
     if is_ignored_path(&entry.path(), walk_data) {
         return true;
     }
@@ -342,6 +347,7 @@ mod tests {
         let indicator = PIndicator::build_me();
         WalkData {
             ignore_directories: HashSet::new(),
+            excluded_mounts: HashSet::new(),
             filter_regex: &[],
             invert_filter_regex: &[],
             allowed_filesystems: HashSet::new(),
@@ -373,6 +379,22 @@ mod tests {
 
         // Second time is a duplicate - we ignore it
         assert_eq!(clean_inodes(n.clone(), &mut inodes, &walkdata), None);
+    }
+
+    #[test]
+    fn test_should_ignore_excluded_mount() {
+        let root = tempfile::tempdir().unwrap();
+        let mount_point = root.path().join("mounted");
+        std::fs::create_dir(&mount_point).unwrap();
+        let entry = std::fs::read_dir(root.path())
+            .unwrap()
+            .next()
+            .unwrap()
+            .unwrap();
+        let mut walk_data = create_walker(false);
+        walk_data.excluded_mounts.insert(mount_point);
+
+        assert!(ignore_file(&entry, &walk_data));
     }
 
     #[test]

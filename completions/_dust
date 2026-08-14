@@ -77,6 +77,7 @@ m\:"last modified time"))' \
 '--dereference-links[dereference sym links - Treat sym links as directories and go into them]' \
 '-x[Only count the files and directories on the same filesystem as the supplied directory]' \
 '--limit-filesystem[Only count the files and directories on the same filesystem as the supplied directory]' \
+'--exclude-mounts[Do not descend into mount points below the supplied paths]' \
 '-s[Use file length instead of blocks]' \
 '--apparent-size[Use file length instead of blocks]' \
 '-r[Print tree upside down (biggest highest)]' \

@@ -48,6 +48,10 @@ pub struct Cli {
     #[arg(short('x'), long)]
     pub limit_filesystem: bool,
 
+    /// Do not descend into mount points below the supplied paths
+    #[arg(long)]
+    pub exclude_mounts: bool,
+
     /// Use file length instead of blocks
     #[arg(short('s'), long)]
     pub apparent_size: bool,

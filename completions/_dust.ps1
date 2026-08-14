@@ -61,6 +61,7 @@ Register-ArgumentCompleter -Native -CommandName 'dust' -ScriptBlock {
             [CompletionResult]::new('--dereference-links', '--dereference-links', [CompletionResultType]::ParameterName, 'dereference sym links - Treat sym links as directories and go into them')
             [CompletionResult]::new('-x', '-x', [CompletionResultType]::ParameterName, 'Only count the files and directories on the same filesystem as the supplied directory')
             [CompletionResult]::new('--limit-filesystem', '--limit-filesystem', [CompletionResultType]::ParameterName, 'Only count the files and directories on the same filesystem as the supplied directory')
+            [CompletionResult]::new('--exclude-mounts', '--exclude-mounts', [CompletionResultType]::ParameterName, 'Do not descend into mount points below the supplied paths')
             [CompletionResult]::new('-s', '-s', [CompletionResultType]::ParameterName, 'Use file length instead of blocks')
             [CompletionResult]::new('--apparent-size', '--apparent-size', [CompletionResultType]::ParameterName, 'Use file length instead of blocks')
             [CompletionResult]::new('-r', '-r', [CompletionResultType]::ParameterName, 'Print tree upside down (biggest highest)')

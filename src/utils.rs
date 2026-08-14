@@ -1,5 +1,7 @@
 use platform::get_metadata;
 use std::collections::HashSet;
+#[cfg(target_os = "linux")]
+use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 
 use crate::config::DAY_SECONDS;
@@ -54,6 +56,85 @@ pub fn get_filesystem_devices<P: AsRef<Path>>(paths: &[P], follow_links: bool) -
                 _ => None,
             }
         })
+        .collect()
+}
+
+pub fn get_mount_points<P: AsRef<Path>>(targets: &HashSet<P>) -> HashSet<PathBuf> {
+    map_mount_points(targets, &system_mount_points())
+}
+
+fn map_mount_points<P: AsRef<Path>>(
+    targets: &HashSet<P>,
+    mount_points: &HashSet<PathBuf>,
+) -> HashSet<PathBuf> {
+    targets
+        .iter()
+        .filter_map(|target| {
+            let walked_root = normalize_path(target);
+            std::fs::canonicalize(&walked_root)
+                .ok()
+                .map(|absolute_root| (walked_root, absolute_root))
+        })
+        .flat_map(|(walked_root, absolute_root)| {
+            mount_points.iter().filter_map(move |mount_point| {
+                let relative = mount_point.strip_prefix(&absolute_root).ok()?;
+                if relative.as_os_str().is_empty() {
+                    None
+                } else {
+                    Some(walked_root.join(relative))
+                }
+            })
+        })
+        .collect()
+}
+
+#[cfg(target_os = "linux")]
+fn system_mount_points() -> HashSet<PathBuf> {
+    std::fs::read("/proc/self/mountinfo")
+        .map(|contents| linux_mount_points_from(&contents))
+        .unwrap_or_default()
+}
+
+#[cfg(target_os = "linux")]
+fn linux_mount_points_from(contents: &[u8]) -> HashSet<PathBuf> {
+    use std::os::unix::ffi::OsStringExt;
+
+    contents
+        .split(|byte| *byte == b'\n')
+        .filter_map(|line| line.split(|byte| *byte == b' ').nth(4))
+        .map(unescape_mount_path)
+        .map(OsString::from_vec)
+        .map(PathBuf::from)
+        .collect()
+}
+
+#[cfg(target_os = "linux")]
+fn unescape_mount_path(path: &[u8]) -> Vec<u8> {
+    let mut unescaped = Vec::with_capacity(path.len());
+    let mut index = 0;
+    while index < path.len() {
+        if path[index] == b'\\'
+            && let Some(octal) = path.get(index + 1..index + 4)
+            && octal.iter().all(|byte| matches!(byte, b'0'..=b'7'))
+        {
+            unescaped.push((octal[0] - b'0') * 64 + (octal[1] - b'0') * 8 + octal[2] - b'0');
+            index += 4;
+        } else {
+            unescaped.push(path[index]);
+            index += 1;
+        }
+    }
+    unescaped
+}
+
+#[cfg(not(target_os = "linux"))]
+fn system_mount_points() -> HashSet<PathBuf> {
+    use sysinfo::Disks;
+
+    Disks::new_with_refreshed_list()
+        .list()
+        .iter()
+        .map(|disk| disk.mount_point().to_path_buf())
         .collect()
 }
 
@@ -117,6 +198,41 @@ fn is_a_parent_of<P: AsRef<Path>>(parent: P, child: P) -> bool {
 mod tests {
     #[allow(unused_imports)]
     use super::*;
+
+    #[test]
+    fn test_map_mount_points_excludes_descendants_but_not_target() {
+        let root = tempfile::tempdir().unwrap();
+        let nested_mount = root.path().join("nested");
+        let deeper_mount = nested_mount.join("deeper");
+        let outside_mount = root.path().with_extension("outside");
+        std::fs::create_dir(&nested_mount).unwrap();
+        std::fs::create_dir(&deeper_mount).unwrap();
+
+        let targets = HashSet::from([root.path().to_path_buf()]);
+        let mounts = HashSet::from([
+            root.path().to_path_buf(),
+            nested_mount.clone(),
+            deeper_mount.clone(),
+            outside_mount,
+        ]);
+
+        assert_eq!(
+            map_mount_points(&targets, &mounts),
+            HashSet::from([nested_mount, deeper_mount])
+        );
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn test_linux_mount_points_from_decodes_mountinfo_paths() {
+        let mountinfo = b"36 25 0:32 / / rw - ext4 /dev/root rw\n\
+                          37 36 0:33 / /mnt/with\\040space\\134slash rw - ext4 /dev/test rw\n";
+
+        assert_eq!(
+            linux_mount_points_from(mountinfo),
+            HashSet::from([PathBuf::from("/"), PathBuf::from("/mnt/with space\\slash")])
+        );
+    }
 
     #[test]
     fn test_simplify_dir() {
