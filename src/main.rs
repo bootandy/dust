@@ -154,13 +154,14 @@ fn main() {
 
     let depth = config.get_depth(&options);
 
-    // If depth is set, then we set the default number_of_lines to be max
+    // If depth is set, or the output is json (which is not rendered to a
+    // terminal), then we set the default number_of_lines to be max
     // instead of screen height
 
     let number_of_lines = match config.get_number_of_lines(&options) {
         Some(val) => val,
         None => {
-            if depth != usize::MAX {
+            if depth != usize::MAX || config.get_output_json(&options) {
                 usize::MAX
             } else {
                 get_height_of_terminal()
