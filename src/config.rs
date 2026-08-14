@@ -471,4 +471,37 @@ mod tests {
         let args = get_args(vec!["dust", "--number-of-lines", "5"]);
         assert_eq!(c.get_number_of_lines(&args), Some(5));
     }
+
+    #[test]
+    fn test_get_number_of_lines_with_output_json() {
+        // Json output and no number-of-lines: main defaults this to usize::MAX.
+        let c = Config::default();
+        let args = get_args(vec!["dust", "--output-json"]);
+        assert!(c.get_output_json(&args));
+        assert_eq!(c.get_number_of_lines(&args), None);
+
+        // Json output from config and no number-of-lines.
+        let c = Config {
+            output_json: Some(true),
+            ..Default::default()
+        };
+        let args = get_args(vec![]);
+        assert!(c.get_output_json(&args));
+        assert_eq!(c.get_number_of_lines(&args), None);
+
+        // An explicit number-of-lines still wins over the json default.
+        let c = Config::default();
+        let args = get_args(vec!["dust", "--output-json", "--number-of-lines", "5"]);
+        assert!(c.get_output_json(&args));
+        assert_eq!(c.get_number_of_lines(&args), Some(5));
+
+        // A number-of-lines from the config file also wins.
+        let c = Config {
+            number_of_lines: Some(3),
+            ..Default::default()
+        };
+        let args = get_args(vec!["dust", "--output-json"]);
+        assert!(c.get_output_json(&args));
+        assert_eq!(c.get_number_of_lines(&args), Some(3));
+    }
 }
