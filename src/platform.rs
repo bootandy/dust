@@ -13,6 +13,14 @@ fn get_block_size() -> u64 {
 type InodeAndDevice = (u64, u64);
 type FileTime = (i64, i64, i64);
 
+#[cfg(target_family = "windows")]
+fn filetime_to_unix_seconds(filetime: u64) -> i64 {
+    const TICKS_PER_SECOND: i128 = 10_000_000;
+    const UNIX_EPOCH_FILETIME: i128 = 116_444_736_000_000_000;
+
+    ((i128::from(filetime) - UNIX_EPOCH_FILETIME).div_euclid(TICKS_PER_SECOND)) as i64
+}
+
 #[cfg(target_family = "unix")]
 pub fn get_metadata<P: AsRef<Path>>(
     path: P,
@@ -146,9 +154,9 @@ pub fn get_metadata<P: AsRef<Path>>(
                 path.size_on_disk().ok()?,
                 Some((info.file_index(), info.volume_serial_number())),
                 (
-                    info.last_write_time().unwrap() as i64,
-                    info.last_access_time().unwrap() as i64,
-                    info.creation_time().unwrap() as i64,
+                    filetime_to_unix_seconds(info.last_write_time().unwrap()),
+                    filetime_to_unix_seconds(info.last_access_time().unwrap()),
+                    filetime_to_unix_seconds(info.creation_time().unwrap()),
                 ),
             ))
         } else {
@@ -156,9 +164,9 @@ pub fn get_metadata<P: AsRef<Path>>(
                 info.file_size(),
                 Some((info.file_index(), info.volume_serial_number())),
                 (
-                    info.last_write_time().unwrap() as i64,
-                    info.last_access_time().unwrap() as i64,
-                    info.creation_time().unwrap() as i64,
+                    filetime_to_unix_seconds(info.last_write_time().unwrap()),
+                    filetime_to_unix_seconds(info.last_access_time().unwrap()),
+                    filetime_to_unix_seconds(info.creation_time().unwrap()),
                 ),
             ))
         }
@@ -203,9 +211,9 @@ pub fn get_metadata<P: AsRef<Path>>(
                     md.len(),
                     None,
                     (
-                        md.last_write_time() as i64,
-                        md.last_access_time() as i64,
-                        md.creation_time() as i64,
+                        filetime_to_unix_seconds(md.last_write_time()),
+                        filetime_to_unix_seconds(md.last_access_time()),
+                        filetime_to_unix_seconds(md.creation_time()),
                     ),
                 ))
             } else {
