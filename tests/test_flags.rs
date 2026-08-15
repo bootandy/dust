@@ -22,6 +22,51 @@ fn build_command<T: AsRef<OsStr>>(command_args: Vec<T>) -> String {
     str::from_utf8(&finished.stdout).unwrap().into()
 }
 
+#[cfg(target_os = "windows")]
+#[test]
+fn test_windows_filetime_output_uses_unix_timestamp() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    std::fs::write(temp_dir.path().join("recent.txt"), b"recent").unwrap();
+
+    let mut cmd = cargo_bin_cmd!("dust");
+    let output = cmd
+        .arg("-P")
+        .arg("-c")
+        .arg("--filetime")
+        .arg("modified")
+        .arg(temp_dir.path())
+        .unwrap();
+
+    assert!(
+        output.status.success(),
+        "{}",
+        str::from_utf8(&output.stderr).unwrap()
+    );
+}
+
+#[cfg(target_os = "windows")]
+#[test]
+fn test_windows_mtime_filter_uses_unix_timestamp() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    std::fs::write(temp_dir.path().join("recent.txt"), b"recent").unwrap();
+
+    let mut cmd = cargo_bin_cmd!("dust");
+    let output = cmd
+        .arg("-P")
+        .arg("-c")
+        .arg("--mtime")
+        .arg("0")
+        .arg(temp_dir.path())
+        .unwrap();
+
+    assert!(output.status.success());
+    assert!(
+        str::from_utf8(&output.stdout)
+            .unwrap()
+            .contains("recent.txt")
+    );
+}
+
 // We can at least test the file names are there
 #[test]
 pub fn test_basic_output() {
