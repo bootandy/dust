@@ -214,13 +214,16 @@ fn get_filter_time_operator(
 ) -> Option<(Operator, i64)> {
     match option_value {
         Some(val) => {
-            let time = current_date_epoch_seconds
-                - val
-                    .parse::<i64>()
-                    .unwrap_or_else(|_| panic!("invalid data format"))
-                    .abs()
-                    * DAY_SECONDS;
-            match val.chars().next().expect("Value should not be empty") {
+            let Some(first_char) = val.chars().next() else {
+                eprintln!("Ignoring invalid time filter: {val}");
+                return None;
+            };
+            let Ok(parsed) = val.parse::<i64>() else {
+                eprintln!("Ignoring invalid time filter: {val}");
+                return None;
+            };
+            let time = current_date_epoch_seconds - parsed.abs() * DAY_SECONDS;
+            match first_char {
                 '+' => Some((Operator::LessThan, time - DAY_SECONDS)),
                 '-' => Some((Operator::GreaterThan, time)),
                 _ => Some((Operator::Equal, time - DAY_SECONDS)),
@@ -484,6 +487,51 @@ mod tests {
 
     fn get_filetime_args(args: Vec<&str>) -> Cli {
         Cli::parse_from(args)
+    }
+
+    #[test]
+    fn test_get_filter_time_operator_invalid_input() {
+        let now = get_current_date_epoch_seconds();
+
+        // Empty string should not panic, and should disable the filter.
+        let empty = "".to_string();
+        assert!(get_filter_time_operator(Some(&empty), now).is_none());
+
+        // Non-numeric value should not panic, and should disable the filter.
+        let non_numeric = "abc".to_string();
+        assert!(get_filter_time_operator(Some(&non_numeric), now).is_none());
+
+        // No value at all is already a supported "no filter" state.
+        assert!(get_filter_time_operator(None, now).is_none());
+    }
+
+    #[test]
+    fn test_get_filter_time_operator_valid_input_unchanged() {
+        let now = get_current_date_epoch_seconds();
+
+        let plus = "+5".to_string();
+        match get_filter_time_operator(Some(&plus), now) {
+            Some((Operator::LessThan, time)) => {
+                assert_eq!(time, now - 5 * DAY_SECONDS - DAY_SECONDS);
+            }
+            other => panic!("unexpected result for '+5': {other:?}"),
+        }
+
+        let minus = "-5".to_string();
+        match get_filter_time_operator(Some(&minus), now) {
+            Some((Operator::GreaterThan, time)) => {
+                assert_eq!(time, now - 5 * DAY_SECONDS);
+            }
+            other => panic!("unexpected result for '-5': {other:?}"),
+        }
+
+        let bare = "5".to_string();
+        match get_filter_time_operator(Some(&bare), now) {
+            Some((Operator::Equal, time)) => {
+                assert_eq!(time, now - 5 * DAY_SECONDS - DAY_SECONDS);
+            }
+            other => panic!("unexpected result for '5': {other:?}"),
+        }
     }
 
     #[test]
