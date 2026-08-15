@@ -13,6 +13,14 @@ fn get_block_size() -> u64 {
 type InodeAndDevice = (u64, u64);
 type FileTime = (i64, i64, i64);
 
+#[cfg(any(target_family = "windows", test))]
+fn filetime_to_unix_seconds(filetime: u64) -> i64 {
+    const TICKS_PER_SECOND: i128 = 10_000_000;
+    const UNIX_EPOCH_FILETIME: i128 = 116_444_736_000_000_000;
+
+    ((i128::from(filetime) - UNIX_EPOCH_FILETIME).div_euclid(TICKS_PER_SECOND)) as i64
+}
+
 #[cfg(target_family = "unix")]
 pub fn get_metadata<P: AsRef<Path>>(
     path: P,
@@ -146,9 +154,9 @@ pub fn get_metadata<P: AsRef<Path>>(
                 path.size_on_disk().ok()?,
                 Some((info.file_index(), info.volume_serial_number())),
                 (
-                    info.last_write_time().unwrap() as i64,
-                    info.last_access_time().unwrap() as i64,
-                    info.creation_time().unwrap() as i64,
+                    filetime_to_unix_seconds(info.last_write_time().unwrap()),
+                    filetime_to_unix_seconds(info.last_access_time().unwrap()),
+                    filetime_to_unix_seconds(info.creation_time().unwrap()),
                 ),
             ))
         } else {
@@ -156,9 +164,9 @@ pub fn get_metadata<P: AsRef<Path>>(
                 info.file_size(),
                 Some((info.file_index(), info.volume_serial_number())),
                 (
-                    info.last_write_time().unwrap() as i64,
-                    info.last_access_time().unwrap() as i64,
-                    info.creation_time().unwrap() as i64,
+                    filetime_to_unix_seconds(info.last_write_time().unwrap()),
+                    filetime_to_unix_seconds(info.last_access_time().unwrap()),
+                    filetime_to_unix_seconds(info.creation_time().unwrap()),
                 ),
             ))
         }
@@ -203,9 +211,9 @@ pub fn get_metadata<P: AsRef<Path>>(
                     md.len(),
                     None,
                     (
-                        md.last_write_time() as i64,
-                        md.last_access_time() as i64,
-                        md.creation_time() as i64,
+                        filetime_to_unix_seconds(md.last_write_time()),
+                        filetime_to_unix_seconds(md.last_access_time()),
+                        filetime_to_unix_seconds(md.creation_time()),
                     ),
                 ))
             } else {
@@ -213,5 +221,29 @@ pub fn get_metadata<P: AsRef<Path>>(
             }
         }
         _ => get_metadata_expensive(path, use_apparent_size),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::filetime_to_unix_seconds;
+
+    const TICKS_PER_SECOND: u64 = 10_000_000;
+    const UNIX_EPOCH_FILETIME: u64 = 116_444_736_000_000_000;
+
+    #[test]
+    fn converts_windows_filetime_to_unix_seconds() {
+        let cases = [
+            (UNIX_EPOCH_FILETIME - TICKS_PER_SECOND, -1),
+            (UNIX_EPOCH_FILETIME - 1, -1),
+            (UNIX_EPOCH_FILETIME, 0),
+            (UNIX_EPOCH_FILETIME + TICKS_PER_SECOND - 1, 0),
+            (UNIX_EPOCH_FILETIME + TICKS_PER_SECOND, 1),
+            (133_485_408_000_000_000, 1_704_067_200),
+        ];
+
+        for (filetime, expected) in cases {
+            assert_eq!(filetime_to_unix_seconds(filetime), expected);
+        }
     }
 }
