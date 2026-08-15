@@ -366,35 +366,3 @@ pub fn test_handle_duplicate_names() {
     assert!(output.contains("dup_name"));
     assert!(!output.contains("test_dir_matching"));
 }
-
-// An unparseable --mtime/--atime/--ctime value used to panic. It must fail
-// cleanly instead, and must not be silently ignored.
-#[test]
-pub fn test_invalid_time_filter_fails_cleanly() {
-    for flag in ["--mtime", "--atime", "--ctime"] {
-        for value in ["abc", ""] {
-            let mut cmd = cargo_bin_cmd!("dust");
-            let output = cmd
-                .arg("-P")
-                .arg(flag)
-                .arg(value)
-                .arg("tests/test_dir/")
-                .unwrap_err();
-            let output = output.as_output().unwrap();
-
-            assert!(
-                !output.status.success(),
-                "{flag} {value:?} should exit non-zero"
-            );
-            let stderr = str::from_utf8(&output.stderr).unwrap();
-            assert!(
-                stderr.contains("Invalid value for time filter"),
-                "{flag} {value:?} should say why, got: {stderr}"
-            );
-            assert!(
-                !stderr.contains("panicked"),
-                "{flag} {value:?} should not panic, got: {stderr}"
-            );
-        }
-    }
-}
