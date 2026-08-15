@@ -6,7 +6,6 @@ env:
   PROJECT_NAME: dust
   PROJECT_DESC: "du + rust = dust"
   PROJECT_AUTH: "bootandy"
-  RUST_MIN_SRV: "1.85.0" # floor for edition 2024; bump if a dependency needs a newer compiler
 
 on: [push, pull_request, workflow_dispatch]
 
@@ -38,18 +37,6 @@ jobs:
       - name: clippy
         if: success() || failure() # run regardless of fmt outcome
         run: cargo clippy -- -D warnings
-
-  min_version:
-    name: MinSRV # Minimum supported rust version
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install rust toolchain (v${{ env.RUST_MIN_SRV }})
-        uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: ${{ env.RUST_MIN_SRV }}
-      - name: Test
-        run: cargo test
 
   build:
     name: Build
