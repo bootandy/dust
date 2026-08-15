@@ -5,6 +5,7 @@ use regex::Regex;
 use serde::Deserialize;
 use std::path::Path;
 use std::path::PathBuf;
+use std::process;
 
 use crate::cli::Cli;
 use crate::dir_walker::Operator;
@@ -214,13 +215,16 @@ fn get_filter_time_operator(
 ) -> Option<(Operator, i64)> {
     match option_value {
         Some(val) => {
-            let time = current_date_epoch_seconds
-                - val
-                    .parse::<i64>()
-                    .unwrap_or_else(|_| panic!("invalid data format"))
-                    .abs()
-                    * DAY_SECONDS;
-            match val.chars().next().expect("Value should not be empty") {
+            let days = val.parse::<i64>().unwrap_or_else(|_| {
+                eprintln!("Invalid value for time filter: {val:?}");
+                process::exit(1)
+            });
+            let time = current_date_epoch_seconds - days.abs() * DAY_SECONDS;
+            // the parse above rejects an empty string, so there is a first char
+            match val.chars().next().unwrap_or_else(|| {
+                eprintln!("Invalid value for time filter: {val:?}");
+                process::exit(1)
+            }) {
                 '+' => Some((Operator::LessThan, time - DAY_SECONDS)),
                 '-' => Some((Operator::GreaterThan, time)),
                 _ => Some((Operator::Equal, time - DAY_SECONDS)),
