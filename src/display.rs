@@ -4,7 +4,7 @@ use crate::node::FileTime;
 use lscolors::{LsColors, Style};
 use nu_ansi_term::Color::{DarkGray, Red};
 
-use unicode_width::UnicodeWidthStr;
+use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
 use stfu8::encode_u8;
 
@@ -314,7 +314,18 @@ fn maybe_trim_filename(name_in: String, indent: &str, display_data: &DisplayData
 
     let max_size = display_data.longest_string_length - indent_length;
     if UnicodeWidthStr::width(&*name_in) > max_size {
-        let name = name_in.chars().take(max_size - 2).collect::<String>();
+        // Truncate by display width, not by char count: wide characters (CJK,
+        // emoji) take 2 columns each, so taking 'n' chars can overflow the line.
+        let mut width_left = max_size - 2;
+        let mut name = String::new();
+        for c in name_in.chars() {
+            let char_width = UnicodeWidthChar::width(c).unwrap_or(0);
+            if char_width > width_left {
+                break;
+            }
+            width_left -= char_width;
+            name.push(c);
+        }
         name + ".."
     } else {
         name_in
@@ -543,6 +554,28 @@ mod tests {
             s,
             "4.0Ki ┌─┴ very_long_name_longer_than_the_eighty_character_limit_very_.."
         );
+    }
+
+    #[test]
+    fn test_format_str_long_name_wide_chars() {
+        // Wide (2 column) characters must be truncated by display width, not by
+        // char count, otherwise the line overflows the terminal.
+        let name = "ラウトは難しいですラウトは難しいですラウトは難しいです";
+        let n = DisplayNode {
+            name: PathBuf::from(name),
+            size: 2_u64.pow(12),
+            children: vec![],
+        };
+        let indent = "┌─┴";
+        let percent_bar = "";
+        let is_biggest = false;
+
+        // longest_string_length of 20 leaves 20 - 3 = 17 columns for the name,
+        // of which 2 are the '..' marker: 7 wide chars (14 cols) then '..'
+        let data = get_fake_display_data(20);
+        let s = format_string(&n, indent, percent_bar, is_biggest, &data);
+        assert_eq!(s, "4.0Ki ┌─┴ ラウトは難しい..");
+        assert_eq!(UnicodeWidthStr::width(&*s), 26);
     }
 
     #[test]
