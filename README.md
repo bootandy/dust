@@ -11,22 +11,23 @@ Because I want an easy way to see where my disk is being used.
 
 # Demo
 
-<p align="center">
+<p>
   <img src="media/demo.gif" alt="dust demo — interactive disk usage analysis" width="600">
 </p>
 
-![Example](media/snap.png)
 
-Study the above picture. 
+Study the above demo
 
-* We see `target` has 1.8G
-* `target/debug` is the same size as `target` - so we know nearly all the disk usage of the 1.8G is in this folder
-* `target/debug/deps` this is 1.2G - Note the bar jumps down to 70% to indicate that most disk usage is here but not all.
-* `target/debug/deps/dust-e78c9f87a17f24f3` - This is the largest file in this folder, but it is only 46M - Note the bar jumps down to 3% to indicate the file is small.
+* We cd into a webapp it is 72K in size.
 
-From here we can conclude:
- * `target/debug/deps` takes the majority of the space in `target` and that `target/debug/deps` has a large number of relatively small files.
-  
+* We see 32K in the `src` folder. Note the bar jumps to 44%. Half of the webapp is in src
+
+* We see 8K in the `src/utils`. The bar jumps down to 11% but a shadow stays at 44% showing that it is part of the `src` folder
+
+* We then demo the -d 2 flag - Show a depth of 2 folders
+
+* We demo the -n 5 flag - Show only 5 items (by default we show terminal height items)
+
 
 ## Install
 
@@ -138,6 +139,8 @@ Usage: dust -j (Prints JSON representation of directories, try: dust -j  | jq)
 Usage: dust --files0-from=FILE (Read NUL-terminated file paths from FILE; if FILE is '-', read from stdin)
 Usage: dust --files-from=FILE (Read newline-terminated file paths from FILE; if FILE is '-', read from stdin)
 Usage: dust --collapse=node-modules will keep the node-modules folder collapsed in display instead of recursively opening it
+Usage: dust --dim Displays dimmer bars
+
 ```
 
 ## Config file
