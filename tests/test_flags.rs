@@ -407,6 +407,30 @@ pub fn test_collapse() {
 }
 
 #[test]
+pub fn test_show_files_by_type_with_filetime() {
+    // When grouping by file type and showing filetimes, the 'size' of a group is
+    // a timestamp: it must be the newest file's time, not the sum of the times.
+    use std::fs::File;
+    use std::time::{Duration, UNIX_EPOCH};
+
+    let dir = tempfile::Builder::new().tempdir().unwrap();
+
+    // Midday UTC, so the year is the same in every timezone
+    for epoch_seconds in [1593604800, 1625140800, 1656676800] {
+        let file = File::create(dir.path().join(format!("{epoch_seconds}.log"))).unwrap();
+        file.set_modified(UNIX_EPOCH + Duration::from_secs(epoch_seconds))
+            .unwrap();
+    }
+
+    let output = build_command(vec!["-c", "-t", "-m", "m", dir.path().to_str().unwrap()]);
+
+    // 1656676800 is 2022-07-01, the newest of the three
+    assert!(output.contains("2022-07-0"), "{output}");
+    assert!(!output.contains("2020-07-0"), "{output}");
+    assert!(!output.contains("2021-07-0"), "{output}");
+}
+
+#[test]
 pub fn test_handle_duplicate_names() {
     // Check that even if we run on a multiple directories with the same name
     // we still show the distinct parent dir in the output
