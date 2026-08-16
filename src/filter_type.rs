@@ -18,7 +18,11 @@ pub fn get_all_file_types(
 ) -> DisplayNode {
     let ext_nodes = {
         let mut extension_cumulative_sizes = HashMap::new();
-        build_by_all_file_types(top_level_nodes, &mut extension_cumulative_sizes);
+        build_by_all_file_types(
+            top_level_nodes,
+            &mut extension_cumulative_sizes,
+            by_filetime,
+        );
 
         let mut extension_cumulative_sizes: Vec<ExtensionNode<'_>> = extension_cumulative_sizes
             .iter()
@@ -77,13 +81,19 @@ pub fn get_all_file_types(
 fn build_by_all_file_types<'a>(
     top_level_nodes: &'a [Node],
     counter: &mut HashMap<Option<&'a OsStr>, u64>,
+    by_filetime: &Option<FileTime>,
 ) {
     for node in top_level_nodes {
         if node.name.is_file() {
             let ext = node.name.extension();
             let cumulative_size = counter.entry(ext).or_default();
-            *cumulative_size += node.size;
+            if by_filetime.is_some() {
+                // 'size' is a timestamp, summing them is meaningless
+                *cumulative_size = (*cumulative_size).max(node.size);
+            } else {
+                *cumulative_size += node.size;
+            }
         }
-        build_by_all_file_types(&node.children, counter)
+        build_by_all_file_types(&node.children, counter, by_filetime)
     }
 }
