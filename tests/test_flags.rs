@@ -24,9 +24,8 @@ fn build_command<T: AsRef<OsStr>>(command_args: Vec<T>) -> String {
     str::from_utf8(&finished.stdout).unwrap().into()
 }
 
-#[cfg(target_os = "windows")]
 #[test]
-fn test_windows_filetime_output_uses_unix_timestamp() {
+fn test_filetime_output_uses_unix_timestamp() {
     let temp_dir = tempfile::tempdir().unwrap();
     std::fs::write(temp_dir.path().join("recent.txt"), b"recent").unwrap();
 
