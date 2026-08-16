@@ -55,12 +55,13 @@ jobs:
           - { os: ubuntu-latest, target: i686-unknown-linux-musl, use-cross: use-cross }
           - { os: ubuntu-latest, target: x86_64-unknown-linux-gnu, use-cross: use-cross }
           - { os: ubuntu-latest, target: x86_64-unknown-linux-musl, use-cross: use-cross }
-          - { os: macos-latest, target: x86_64-apple-darwin }
+          - { os: macos-15-intel, target: x86_64-apple-darwin }
           - { os: macos-latest, target: aarch64-apple-darwin }
           - { os: windows-latest, target: i686-pc-windows-gnu }
           - { os: windows-latest, target: i686-pc-windows-msvc }
           - { os: windows-latest, target: x86_64-pc-windows-gnu }
           - { os: windows-latest, target: x86_64-pc-windows-msvc }
+          - { os: windows-11-arm, target: aarch64-pc-windows-msvc }
     steps:
       - uses: actions/checkout@v4
 
@@ -101,11 +102,11 @@ jobs:
           CARGO_USE_CROSS="true"
           case '${{ matrix.job.use-cross }}' in ''|0|f|false|n|no) CARGO_USE_CROSS="" ;; esac
 
-          # arm/aarch64 binaries can't be executed on the ubuntu-* build hosts, so only build the binary and skip running tests
+          # Cross-compiled Linux arm/aarch64 binaries can't be executed on the x86_64 build hosts.
           JOB_DO_TESTING="true"
           CARGO_TEST_OPTIONS=""
           case ${{ matrix.job.target }} in
-            arm-*|aarch64-*) JOB_DO_TESTING="" ; CARGO_TEST_OPTIONS="--bin ${PROJECT_NAME}" ;;
+            arm-unknown-linux-*|aarch64-unknown-linux-*) JOB_DO_TESTING="" ; CARGO_TEST_OPTIONS="--bin ${PROJECT_NAME}" ;;
           esac
 
           # strip executable?
