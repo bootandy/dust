@@ -36,7 +36,7 @@ jobs:
         run: cargo fmt --all -- --check
       - name: clippy
         if: success() || failure() # run regardless of fmt outcome
-        run: cargo clippy -- -D warnings
+        run: cargo clippy --locked -- -D warnings
 
   build:
     name: Build
@@ -160,7 +160,7 @@ jobs:
         run: |
           RUNNER=cargo
           [ -n "${{ steps.vars.outputs.CARGO_USE_CROSS }}" ] && RUNNER=cross
-          $RUNNER build --release --target=${{ matrix.job.target }} ${{ matrix.job.cargo-options }} ${{ steps.vars.outputs.CARGO_FEATURES_OPTION }}
+          $RUNNER build --locked --release --target=${{ matrix.job.target }} ${{ matrix.job.cargo-options }} ${{ steps.vars.outputs.CARGO_FEATURES_OPTION }}
 
       - name: Install cargo-deb
         if: matrix.job.target == 'i686-unknown-linux-musl' || matrix.job.target == 'x86_64-unknown-linux-musl'
@@ -178,7 +178,7 @@ jobs:
         run: |
           RUNNER=cargo
           [ -n "${{ steps.vars.outputs.CARGO_USE_CROSS }}" ] && RUNNER=cross
-          $RUNNER test --target=${{ matrix.job.target }} ${{ steps.vars.outputs.CARGO_TEST_OPTIONS }} ${{ matrix.job.cargo-options }} ${{ steps.vars.outputs.CARGO_FEATURES_OPTION }}
+          $RUNNER test --locked --target=${{ matrix.job.target }} ${{ steps.vars.outputs.CARGO_TEST_OPTIONS }} ${{ matrix.job.cargo-options }} ${{ steps.vars.outputs.CARGO_FEATURES_OPTION }}
 
       - name: Archive executable artifacts
         uses: actions/upload-artifact@v4
