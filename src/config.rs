@@ -188,10 +188,11 @@ impl Config {
     }
 
     pub fn get_collapse(&self, options: &Cli) -> Option<Vec<String>> {
-        if self.collapse.is_none() {
-            options.collapse.clone()
-        } else {
+        // command line wins, as in get_threads and get_number_of_lines
+        if options.collapse.is_none() {
             self.collapse.clone()
+        } else {
+            options.collapse.clone()
         }
     }
 }
@@ -398,6 +399,35 @@ mod tests {
         };
         let args = get_args(vec!["dust", "--depth", "5"]);
         assert_eq!(c.get_depth(&args), 5);
+    }
+
+    #[test]
+    fn test_get_collapse() {
+        // No config and no flag.
+        let c = Config::default();
+        let args = get_args(vec![]);
+        assert_eq!(c.get_collapse(&args), None);
+
+        // Config is not defined and flag is defined.
+        let c = Config::default();
+        let args = get_args(vec!["dust", "--collapse", "node_modules"]);
+        assert_eq!(c.get_collapse(&args), Some(vec!["node_modules".to_owned()]));
+
+        // Config is defined and flag is not defined.
+        let c = Config {
+            collapse: Some(vec![".git".to_owned()]),
+            ..Default::default()
+        };
+        let args = get_args(vec![]);
+        assert_eq!(c.get_collapse(&args), Some(vec![".git".to_owned()]));
+
+        // Both config and flag are defined: the flag wins.
+        let c = Config {
+            collapse: Some(vec![".git".to_owned()]),
+            ..Default::default()
+        };
+        let args = get_args(vec!["dust", "--collapse", "node_modules"]);
+        assert_eq!(c.get_collapse(&args), Some(vec!["node_modules".to_owned()]));
     }
 
     fn get_args(args: Vec<&str>) -> Cli {
