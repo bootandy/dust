@@ -1,5 +1,7 @@
 use assert_cmd::cargo_bin_cmd;
+use chrono::{Local, TimeZone};
 use std::ffi::OsStr;
+use std::fs::{FileTimes, OpenOptions};
 use std::str;
 
 /**
@@ -44,11 +46,20 @@ fn test_windows_filetime_output_uses_unix_timestamp() {
     );
 }
 
-#[cfg(target_os = "windows")]
 #[test]
-fn test_windows_mtime_filter_uses_unix_timestamp() {
+fn test_mtime_filter_uses_unix_timestamp() {
     let temp_dir = tempfile::tempdir().unwrap();
-    std::fs::write(temp_dir.path().join("recent.txt"), b"recent").unwrap();
+    let file_path = temp_dir.path().join("yesterday.txt");
+    std::fs::write(&file_path, b"yesterday").unwrap();
+
+    let yesterday = Local::now().date_naive().pred_opt().unwrap();
+    let yesterday_noon = Local
+        .from_local_datetime(&yesterday.and_hms_opt(12, 0, 0).unwrap())
+        .single()
+        .unwrap();
+    let file = OpenOptions::new().write(true).open(&file_path).unwrap();
+    file.set_times(FileTimes::new().set_modified(yesterday_noon.into()))
+        .unwrap();
 
     let mut cmd = cargo_bin_cmd!("dust");
     let output = cmd
@@ -63,7 +74,7 @@ fn test_windows_mtime_filter_uses_unix_timestamp() {
     assert!(
         str::from_utf8(&output.stdout)
             .unwrap()
-            .contains("recent.txt")
+            .contains("yesterday.txt")
     );
 }
 
