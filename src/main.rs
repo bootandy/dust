@@ -18,6 +18,7 @@ use clap::Parser;
 use dir_walker::WalkData;
 use display::InitialDisplayData;
 use filter::AggregateData;
+use progress::ORDERING;
 use progress::PIndicator;
 use regex::Error;
 use std::collections::HashSet;
@@ -29,6 +30,7 @@ use std::panic;
 use std::process;
 use std::sync::Arc;
 use std::sync::Mutex;
+use std::sync::atomic::AtomicBool;
 use sysinfo::System;
 use utils::canonicalize_absolute_path;
 
@@ -114,17 +116,22 @@ fn get_regex_value(maybe_value: Option<&Vec<String>>) -> Vec<Regex> {
         .collect()
 }
 
-fn main() {
+fn main() -> process::ExitCode {
     let options = Cli::parse();
     let config = get_config(options.config.as_ref());
 
-    let errors = RuntimeErrors::default();
-    let error_listen_for_ctrlc = Arc::new(Mutex::new(errors));
-    let errors_for_rayon = error_listen_for_ctrlc.clone();
+    let errors = Arc::new(Mutex::new(RuntimeErrors::default()));
+    let interrupted = Arc::new(AtomicBool::new(false));
+    let scanning = Arc::new(AtomicBool::new(false));
+    let interrupt_signal = interrupted.clone();
+    let scanning_signal = scanning.clone();
 
     ctrlc::set_handler(move || {
-        println!("\nAborting");
-        process::exit(1);
+        // During a scan, stop collecting entries and let the existing tree unwind.
+        // A second Ctrl-C (or one outside the scan) still exits immediately.
+        if !scanning_signal.load(ORDERING) || interrupt_signal.swap(true, ORDERING) {
+            process::exit(130);
+        }
     })
     .expect("Error setting Ctrl-C handler");
 
@@ -259,13 +266,15 @@ fn main() {
         ignore_hidden,
         follow_links,
         progress_data: indicator.data.clone(),
-        errors: errors_for_rayon,
+        errors,
+        interrupted,
     };
 
     let threads_to_use = config.get_threads(&options);
     let stack_size = config.get_custom_stack_size(&options);
 
     init_rayon(&stack_size, &threads_to_use).install(|| {
+        scanning.store(true, ORDERING);
         let top_level_nodes = walk_it(simplified_dirs, &walk_data);
 
         let tree = match summarize_file_types {
@@ -291,24 +300,33 @@ fn main() {
 
         // Must have stopped indicator before we print to stderr
         indicator.stop();
+        scanning.store(false, ORDERING);
+        let partial = walk_data.interrupted.load(ORDERING);
 
         let print_errors = config.get_print_errors(&options);
         let final_errors = walk_data.errors.lock().unwrap();
         print_any_errors(print_errors, &final_errors);
 
-        if tree.children.is_empty() && !final_errors.file_not_found.is_empty() {
-            std::process::exit(1)
-        } else {
-            print_output(
-                config,
-                options,
-                tree,
-                walk_data.by_filecount,
-                is_colors,
-                terminal_width,
-            )
+        if !partial && tree.children.is_empty() && !final_errors.file_not_found.is_empty() {
+            return process::ExitCode::FAILURE;
         }
-    });
+
+        print_output(
+            config,
+            options,
+            tree,
+            walk_data.by_filecount,
+            is_colors,
+            terminal_width,
+            partial,
+        );
+
+        if partial {
+            process::ExitCode::from(130)
+        } else {
+            process::ExitCode::SUCCESS
+        }
+    })
 }
 
 fn print_output(
@@ -318,6 +336,7 @@ fn print_output(
     by_filecount: bool,
     is_colors: bool,
     terminal_width: usize,
+    partial: bool,
 ) {
     let output_format = config.get_output_format(&options);
 
@@ -329,8 +348,27 @@ fn print_output(
                 wrapped.replace(output_format);
             }
         });
-        println!("{}", serde_json::to_string(&tree).unwrap());
+        if partial {
+            #[derive(serde::Serialize)]
+            struct PartialOutput<'a> {
+                #[serde(flatten)]
+                tree: &'a DisplayNode,
+                partial: bool,
+            }
+
+            let output = PartialOutput {
+                tree: &tree,
+                partial: true,
+            };
+            println!("{}", serde_json::to_string(&output).unwrap());
+        } else {
+            println!("{}", serde_json::to_string(&tree).unwrap());
+        }
     } else {
+        if partial {
+            println!("Partial result: scan interrupted by Ctrl-C.");
+        }
+
         let idd = InitialDisplayData {
             short_paths: !config.get_full_paths(&options),
             is_reversed: !config.get_reverse(&options),

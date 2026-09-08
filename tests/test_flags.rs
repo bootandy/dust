@@ -25,6 +25,16 @@ fn build_command<T: AsRef<OsStr>>(command_args: Vec<T>) -> String {
 }
 
 #[test]
+fn test_completed_json_has_no_partial_marker() {
+    let output = build_command(vec!["-j", "-f", "tests/test_dir/"]);
+    let tree: serde_json::Value = serde_json::from_str(&output).unwrap();
+
+    assert!(tree.get("partial").is_none());
+    assert_eq!(tree["size"], "2");
+    assert_eq!(tree.as_object().unwrap().len(), 3);
+}
+
+#[test]
 fn test_filetime_output_uses_unix_timestamp() {
     let temp_dir = tempfile::tempdir().unwrap();
     std::fs::write(temp_dir.path().join("recent.txt"), b"recent").unwrap();

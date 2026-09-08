@@ -104,6 +104,12 @@ If you are new to the tool I recommend to try tweaking the `-n` parameter. `dust
 
 ## Usage
 
+Press Ctrl-C during a scan to stop scanning and display the tree using the data
+collected so far. The output is marked as a partial result; sizes and percentages
+only describe the scanned entries. JSON output (`-j`) includes `"partial": true`
+at the root. Interrupted scans exit with status 130. Press Ctrl-C again to exit
+immediately without waiting for the partial result.
+
 ```
 Usage: dust
 Usage: dust <dir>

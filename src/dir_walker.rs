@@ -3,6 +3,7 @@ use std::fs;
 use std::io::Error;
 use std::sync::Arc;
 use std::sync::Mutex;
+use std::sync::atomic::AtomicBool;
 
 use crate::node::Node;
 use crate::progress::ORDERING;
@@ -48,12 +49,14 @@ pub struct WalkData<'a> {
     pub follow_links: bool,
     pub progress_data: Arc<PAtomicInfo>,
     pub errors: Arc<Mutex<RuntimeErrors>>,
+    pub interrupted: Arc<AtomicBool>,
 }
 
 pub fn walk_it(dirs: HashSet<PathBuf>, walk_data: &WalkData) -> Vec<Node> {
     let mut inodes = HashSet::new();
     let top_level_nodes: Vec<_> = dirs
         .into_iter()
+        .take_while(|_| !walk_data.interrupted.load(ORDERING))
         .filter_map(|d| {
             let prog_data = &walk_data.progress_data;
             prog_data.clear_state(&d);
@@ -201,6 +204,10 @@ fn ignore_file(entry: &DirEntry, walk_data: &WalkData) -> bool {
 }
 
 fn walk(dir: PathBuf, walk_data: &WalkData, depth: usize) -> Option<Node> {
+    if walk_data.interrupted.load(ORDERING) {
+        return None;
+    }
+
     let prog_data = &walk_data.progress_data;
     let errors = &walk_data.errors;
 
@@ -210,8 +217,13 @@ fn walk(dir: PathBuf, walk_data: &WalkData, depth: usize) -> Option<Node> {
             Ok(entries) => {
                 entries
                     .into_iter()
+                    .take_while(|_| !walk_data.interrupted.load(ORDERING))
                     .par_bridge()
                     .filter_map(|entry| {
+                        if walk_data.interrupted.load(ORDERING) {
+                            return None;
+                        }
+
                         match entry {
                             Ok(ref entry) => {
                                 // uncommenting the below line gives simpler code but
@@ -280,10 +292,15 @@ fn walk(dir: PathBuf, walk_data: &WalkData, depth: usize) -> Option<Node> {
     } else {
         false
     };
+    // Even when interrupted, keep the children collected so far and their ancestors.
     build_node(dir, children, is_symlink, false, depth, walk_data)
 }
 
 fn handle_error_and_retry(failed: &Error, dir: &Path, walk_data: &WalkData) -> bool {
+    if walk_data.interrupted.load(ORDERING) {
+        return false;
+    }
+
     let mut editable_error = walk_data.errors.lock().unwrap();
     match failed.kind() {
         std::io::ErrorKind::PermissionDenied => {
@@ -355,7 +372,31 @@ mod tests {
             follow_links: false,
             progress_data: indicator.data.clone(),
             errors: Arc::new(Mutex::new(RuntimeErrors::default())),
+            interrupted: Arc::new(AtomicBool::new(false)),
         }
+    }
+
+    #[test]
+    fn test_interrupted_scan_does_not_start_new_paths() {
+        let walk_data = create_walker(false);
+        walk_data.interrupted.store(true, ORDERING);
+        let missing = PathBuf::from("this-path-must-not-be-scanned");
+
+        assert!(walk(missing.clone(), &walk_data, 0).is_none());
+        assert!(walk_it(HashSet::from([missing]), &walk_data).is_empty());
+        assert!(walk_data.errors.lock().unwrap().file_not_found.is_empty());
+    }
+
+    #[test]
+    fn test_interrupted_scan_does_not_retry_io_errors() {
+        let walk_data = create_walker(false);
+        walk_data.interrupted.store(true, ORDERING);
+
+        assert!(!handle_error_and_retry(
+            &Error::from(std::io::ErrorKind::Interrupted),
+            Path::new("."),
+            &walk_data,
+        ));
     }
 
     #[test]
