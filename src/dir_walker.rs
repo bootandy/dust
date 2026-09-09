@@ -3,6 +3,7 @@ use std::fs;
 use std::io::Error;
 use std::sync::Arc;
 use std::sync::Mutex;
+use std::sync::OnceLock;
 use std::sync::atomic::{AtomicUsize, Ordering as AtomicOrdering};
 
 use crate::node::Node;
@@ -20,11 +21,13 @@ use std::path::PathBuf;
 
 use std::collections::HashSet;
 
+use rustc_hash::FxHashSet;
+
 use crate::node::build_node;
 use std::fs::DirEntry;
 
 use crate::node::FileTime;
-use crate::platform::get_metadata;
+use crate::platform::{MetadataTuple, get_metadata, tuple_from_metadata};
 
 #[derive(Debug)]
 pub enum Operator {
@@ -48,6 +51,12 @@ pub struct WalkData<'a> {
     pub follow_links: bool,
     pub progress_data: Arc<PAtomicInfo>,
     pub errors: Arc<Mutex<RuntimeErrors>>,
+    // True iff any of the filter-style WalkData fields (ignore_directories,
+    // allowed_filesystems, filter_*_time, filter_regex, invert_filter_regex)
+    // would do work in `ignore_file`. Computed once in main.rs so the hot
+    // path in `process_entry` can skip the function call entirely when no
+    // filter flags are set.
+    pub has_any_filter: bool,
 }
 
 // Per-directory bookkeeping used during the parallel walk. Each directory gets
@@ -65,19 +74,31 @@ struct PendingDir {
     // means this directory and all descendants are done.
     pending: AtomicUsize,
     children: Mutex<Vec<Node>>,
+    // Cached stat for this directory, set once at `walk_dir` entry and
+    // consumed at `finalize_chain`. Avoids a second stat per directory
+    // (one for the is_dir/is_file branching, one to build the Node).
+    // We cache the parsed `MetadataTuple` rather than `std::fs::Metadata`
+    // Just the info we need, ~120 B/dir smaller, and `Copy`.
+    // `None` means the stat failed (broken symlink, raced deletion, ...).
+    cached_metadata: OnceLock<Option<MetadataTuple>>,
 }
 
 pub fn walk_it(dirs: HashSet<PathBuf>, walk_data: &WalkData) -> Vec<Node> {
-    let mut inodes = HashSet::new();
+    // FxHash is substantially faster than std's default SipHash on small
+    // primitive keys. DoS resistance is irrelevant here; the keys are
+    // (inode, device) pairs from the filesystem, not user input.
+    let mut inodes: FxHashSet<(u64, u64)> = FxHashSet::default();
     let mut top_level_nodes: Vec<Node> = Vec::new();
 
     for d in dirs {
         walk_data.progress_data.clear_state(&d);
 
-        let root_is_symlink = walk_data.follow_links
-            && fs::symlink_metadata(&d)
-                .map(|m| m.file_type().is_symlink())
-                .unwrap_or(false);
+        // A root passed on the command line that *is* a symlink-to-dir gets
+        // followed regardless of `follow_links`. This preserves the existing
+        // behavior.
+        let root_is_symlink = fs::symlink_metadata(&d)
+            .map(|m| m.file_type().is_symlink())
+            .unwrap_or(false);
 
         // Synthetic outer parent above the root. Lets `finalize_chain` build
         // the root's Node via the same code path as every other directory: it
@@ -92,6 +113,7 @@ pub fn walk_it(dirs: HashSet<PathBuf>, walk_data: &WalkData) -> Vec<Node> {
             parent: None,
             pending: AtomicUsize::new(1),
             children: Mutex::new(Vec::new()),
+            cached_metadata: OnceLock::new(),
         });
         let root = Arc::new(PendingDir {
             dir: d,
@@ -102,6 +124,7 @@ pub fn walk_it(dirs: HashSet<PathBuf>, walk_data: &WalkData) -> Vec<Node> {
             // finalize_chain until the root's own scan is done.
             pending: AtomicUsize::new(1),
             children: Mutex::new(Vec::new()),
+            cached_metadata: OnceLock::new(),
         });
 
         // Single scope per root: all descendant work runs as flat tasks inside
@@ -126,7 +149,7 @@ pub fn walk_it(dirs: HashSet<PathBuf>, walk_data: &WalkData) -> Vec<Node> {
 }
 
 // Remove files which have the same inode, we don't want to double count them.
-fn clean_inodes(x: Node, inodes: &mut HashSet<(u64, u64)>, walk_data: &WalkData) -> Option<Node> {
+fn clean_inodes(x: Node, inodes: &mut FxHashSet<(u64, u64)>, walk_data: &WalkData) -> Option<Node> {
     if !walk_data.use_apparent_size
         && let Some(id) = x.inode_device
         && !inodes.insert(id)
@@ -188,14 +211,19 @@ fn is_ignored_path(path: &Path, walk_data: &WalkData) -> bool {
         return true;
     }
 
-    // Entry is inside an ignored absolute path
-    // Absolute paths should be canonicalized before being added to `WalkData.ignore_directories`
+    // Entry is inside an ignored absolute path.
+    // Absolute paths should be canonicalized before being added to
+    // `WalkData.ignore_directories`. Canonicalize `path` at most once
+    // (and only if there is at least one absolute ignore path), instead
+    // of re-canonicalizing inside the loop per ignored entry.
+    let mut absolute_entry_path: Option<PathBuf> = None;
     for ignored_path in walk_data.ignore_directories.iter() {
         if !ignored_path.is_absolute() {
             continue;
         }
-        let absolute_entry_path = std::fs::canonicalize(path).unwrap_or_default();
-        if absolute_entry_path.starts_with(ignored_path) {
+        let canon = absolute_entry_path
+            .get_or_insert_with(|| std::fs::canonicalize(path).unwrap_or_default());
+        if canon.starts_with(ignored_path) {
             return true;
         }
     }
@@ -203,54 +231,79 @@ fn is_ignored_path(path: &Path, walk_data: &WalkData) -> bool {
     false
 }
 
-fn ignore_file(entry: &DirEntry, walk_data: &WalkData) -> bool {
-    if is_ignored_path(&entry.path(), walk_data) {
+// Predicate for whether `ignore_file`'s filter checks would consult any
+// `MetadataTuple` field (dev or m/a/c times). Path-only filters (regex,
+// `--ignore-directory`) don't need a stat.
+fn filter_needs_metadata(walk_data: &WalkData) -> bool {
+    !walk_data.allowed_filesystems.is_empty()
+        || walk_data.filter_accessed_time.is_some()
+        || walk_data.filter_modified_time.is_some()
+        || walk_data.filter_changed_time.is_some()
+}
+
+// `metadata` is the entry's pre-fetched stat tuple (or `None` if nothing
+// here would have needed it). The caller fetches it once and threads it
+// through to `build_node` afterwards, so we never stat the same file
+// twice on a filter-active walk.
+fn ignore_file(
+    entry: &DirEntry,
+    path: &Path,
+    file_type: std::fs::FileType,
+    metadata: Option<&MetadataTuple>,
+    walk_data: &WalkData,
+) -> bool {
+    // `is_ignored_path` is a no-op when no ignore dirs are configured, but the
+    // guard still pays off: it skips the HashSet hash+probe on every entry.
+    if !walk_data.ignore_directories.is_empty() && is_ignored_path(path, walk_data) {
         return true;
     }
 
     let is_dot_file = entry.file_name().to_str().unwrap_or("").starts_with('.');
-    let follow_links = walk_data.follow_links && entry.file_type().is_ok_and(|ft| ft.is_symlink());
 
-    if !walk_data.allowed_filesystems.is_empty() {
-        let size_inode_device = get_metadata(entry.path(), false, follow_links);
-        if let Some((_size, Some((_id, dev)), _gunk)) = size_inode_device
-            && !walk_data.allowed_filesystems.contains(&dev)
-        {
-            return true;
-        }
-    }
-    if walk_data.filter_accessed_time.is_some()
-        || walk_data.filter_modified_time.is_some()
-        || walk_data.filter_changed_time.is_some()
+    if !walk_data.allowed_filesystems.is_empty()
+        && let Some((_size, Some((_id, dev)), _gunk)) = metadata
+        && !walk_data.allowed_filesystems.contains(dev)
     {
-        let size_inode_device = get_metadata(entry.path(), false, follow_links);
-        if let Some((_, _, (modified_time, accessed_time, changed_time))) = size_inode_device
-            && entry.path().is_file()
-            && [
-                (&walk_data.filter_modified_time, modified_time),
-                (&walk_data.filter_accessed_time, accessed_time),
-                (&walk_data.filter_changed_time, changed_time),
-            ]
-            .iter()
-            .any(|(filter_time, actual_time)| {
-                is_filtered_out_due_to_file_time(filter_time, *actual_time)
-            })
-        {
-            return true;
-        }
+        return true;
+    }
+
+    let has_time_filter = walk_data.filter_accessed_time.is_some()
+        || walk_data.filter_modified_time.is_some()
+        || walk_data.filter_changed_time.is_some();
+
+    // `file_type` from the d_type-based DirEntry::file_type already tells
+    // us whether this is a regular file. For symlinks we still need one
+    // `path.is_file()` syscall (metadata follows the link) to match the
+    // previous behavior so do it at most once and cache it.
+    let is_file_for_filter = file_type.is_file() || (file_type.is_symlink() && path.is_file());
+
+    if has_time_filter
+        && let Some((_, _, (modified_time, accessed_time, changed_time))) = metadata
+        && is_file_for_filter
+        && [
+            (&walk_data.filter_modified_time, *modified_time),
+            (&walk_data.filter_accessed_time, *accessed_time),
+            (&walk_data.filter_changed_time, *changed_time),
+        ]
+        .iter()
+        .any(|(filter_time, actual_time)| {
+            is_filtered_out_due_to_file_time(filter_time, *actual_time)
+        })
+    {
+        return true;
     }
 
     // Keeping `walk_data.filter_regex.is_empty()` is important for performance reasons, it stops unnecessary work
     if !walk_data.filter_regex.is_empty()
-        && entry.path().is_file()
-        && is_filtered_out_due_to_regex(walk_data.filter_regex, &entry.path())
+        && is_file_for_filter
+        && is_filtered_out_due_to_regex(walk_data.filter_regex, path)
     {
         return true;
     }
 
     if !walk_data.invert_filter_regex.is_empty()
-        && entry.path().is_file()
-        && is_filtered_out_due_to_invert_regex(walk_data.invert_filter_regex, &entry.path())
+        && is_file_for_filter
+        && is_filtered_out_due_to_invert_regex(walk_data.invert_filter_regex, path)
     {
         return true;
     }
@@ -263,7 +316,22 @@ fn walk_dir<'scope>(
     pending: Arc<PendingDir>,
     walk_data: &'scope WalkData<'scope>,
 ) {
-    if pending.dir.is_dir() {
+    let md_result = if pending.is_symlink {
+        fs::metadata(&pending.dir)
+    } else {
+        fs::symlink_metadata(&pending.dir)
+    };
+    let (is_dir_path, is_file_path, tuple) = match &md_result {
+        Ok(m) => (
+            m.is_dir(),
+            m.is_file(),
+            tuple_from_metadata(m, walk_data.use_apparent_size),
+        ),
+        Err(_) => (false, false, None),
+    };
+    let _ = pending.cached_metadata.set(tuple);
+
+    if is_dir_path {
         // EINTR is the only retryable error. Looping iteratively (rather than
         // recursing on retry, like the old code) keeps stack depth O(1).
         loop {
@@ -331,7 +399,7 @@ fn walk_dir<'scope>(
             }
             break;
         }
-    } else if !pending.dir.is_file() {
+    } else if !is_file_path {
         let mut editable_error = walk_data.errors.lock().unwrap();
         let bad_file = pending.dir.as_os_str().to_string_lossy().into();
         editable_error.file_not_found.insert(bad_file);
@@ -350,7 +418,36 @@ fn process_entry<'scope>(
     entry: &DirEntry,
     walk_data: &'scope WalkData<'scope>,
 ) -> Option<Node> {
-    if ignore_file(entry, walk_data) {
+    // Compute path + file_type once per entry and thread them through.
+    // `entry.path()` allocates a PathBuf; `entry.file_type()` can require a
+    // stat on filesystems without d_type support. Previously each was called
+    // up to 3 times per entry.
+    let path = entry.path();
+    let file_type = entry.file_type().ok()?;
+    // Fetch metadata at most once per entry. Without filters, the
+    // per-file stat lives inside `build_node` as before. With filters,
+    // we used to stat twice — once in `ignore_file` for the filter
+    // check, once in `build_node` to actually build the Node. Now we
+    // fetch once and thread the tuple through.
+    //
+    // Use the user's `use_apparent_size` flag at fetch time so the
+    // tuple is already in the form `build_node` wants. `ignore_file`
+    // discards the size field, so this is harmless for the filter
+    // logic but means the tuple can be reused unchanged below.
+    let mut prefetched: Option<MetadataTuple> = None;
+    // Fast path: no filters means `ignore_file` has nothing to do. On a
+    // default walk this avoids a function call, a HashSet probe, and an
+    // OsString allocation for `file_name` per entry. We still need to honour
+    // `ignore_hidden` separately when no other filters are set.
+    if walk_data.has_any_filter {
+        if filter_needs_metadata(walk_data) {
+            let follow_links = walk_data.follow_links && file_type.is_symlink();
+            prefetched = get_metadata(&path, walk_data.use_apparent_size, follow_links);
+        }
+        if ignore_file(entry, &path, file_type, prefetched.as_ref(), walk_data) {
+            return None;
+        }
+    } else if walk_data.ignore_hidden && entry.file_name().to_str().unwrap_or("").starts_with('.') {
         return None;
     }
     let data = entry.file_type().ok()?;
@@ -371,14 +468,65 @@ fn process_entry<'scope>(
             parent: Some(pending.clone()),
             pending: AtomicUsize::new(1),
             children: Mutex::new(Vec::new()),
+            cached_metadata: OnceLock::new(),
         });
         scope.spawn(move |s| walk_dir(s, child, walk_data));
         return None;
     }
 
+    // Under `-f` / `--filecount` without metadata-needing filters,
+    // the file's `MetadataTuple` is mostly thrown away, so we create
+    // a fake `MetadataTuple` to avoid the syscall.
+    //
+    // `node_from_tuple` sets size to 1 unconditionally and the time
+    // fields are only consulted when `-M` / `-A` / `-y` are active.
+    // The only field actually consumed downstream is `inode_device`
+    // for `clean_inodes` dedup, and both halves are available
+    // without a syscall:
+    //
+    //   * `inode` comes from `getdents64`'s `d_ino` (already returned
+    //     from the `read_dir` that gave us this entry; surfaced via
+    //     `DirEntry::ino()` on unix). On Linux's getdents64, d_ino
+    //     matches statx's stx_ino — confirmed by the kernel's filldir
+    //     callback, which copies the inode straight from the dentry.
+    //
+    //   * `dev` is the parent directory's dev. Cross-mount transitions
+    //     can only happen at directory boundaries, and each such
+    //     boundary is a fresh `walk_dir` invocation that re-stats the
+    //     mount point — so within a single dir's child list, every
+    //     non-directory entry shares its dev with the parent.
+    //
+    // Synthesise the tuple instead of statting. Gated three ways:
+    // (a) prefetched is None — no filter wanted metadata. This
+    //     transitively guarantees no time filter (`-M` / `-A` / `-y`)
+    //     is set, because `filter_needs_metadata()` returns true under
+    //     any of those. With no time filter, the synthesised `times=0`
+    //     are inert downstream: `is_filtered_out_due_to_file_time(&None,
+    //     _)` short-circuits to false in `node_from_tuple`.
+    // (b) `-f` is on — otherwise size/times do matter for display.
+    // (c) `-L` is off — under follow_links, a symlink-to-file would
+    //     have been dedup'd against its target via stat-follow; d_ino
+    //     gives the symlink's own inode, a different key. Falling back
+    //     to the stat path under `-L` preserves previous behavior.
+    // Unix-gated: on Windows there's no cheap `d_ino`-equivalent in
+    // `DirEntry`, so the existing stat path keeps running there.
+    #[cfg(target_family = "unix")]
+    if prefetched.is_none() && walk_data.by_filecount && !walk_data.follow_links {
+        use std::os::unix::fs::DirEntryExt;
+        let parent_dev = pending
+            .cached_metadata
+            .get()
+            .copied()
+            .flatten()
+            .and_then(|t| t.1.map(|(_, dev)| dev))
+            .unwrap_or(0);
+        prefetched = Some((0, Some((entry.ino(), parent_dev)), (0, 0, 0)));
+    }
+
     let node = build_node(
         entry.path(),
         vec![],
+        prefetched,
         is_symlink,
         data.is_file(),
         pending.depth,
@@ -437,9 +585,11 @@ fn finalize_chain(mut pending: Arc<PendingDir>, walk_data: &WalkData) {
             };
             (parent, std::mem::take(&mut *children_guard))
         };
+        let cached = pending.cached_metadata.get().copied().flatten();
         node_to_push = build_node(
             pending.dir.clone(),
             children,
+            cached,
             pending.is_symlink,
             false,
             pending.depth,
@@ -516,13 +666,14 @@ mod tests {
             follow_links: false,
             progress_data: indicator.data.clone(),
             errors: Arc::new(Mutex::new(RuntimeErrors::default())),
+            has_any_filter: true,
         }
     }
 
     #[test]
     #[allow(clippy::redundant_clone)]
     fn test_should_ignore_file() {
-        let mut inodes = HashSet::new();
+        let mut inodes = FxHashSet::default();
         let n = create_node();
         let walkdata = create_walker(false);
 
@@ -539,7 +690,7 @@ mod tests {
     #[test]
     #[allow(clippy::redundant_clone)]
     fn test_should_not_ignore_files_if_using_apparent_size() {
-        let mut inodes = HashSet::new();
+        let mut inodes = FxHashSet::default();
         let n = create_node();
         let walkdata = create_walker(true);
 
