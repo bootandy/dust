@@ -339,7 +339,7 @@ mod tests {
     #[cfg(test)]
     fn create_walker<'a>(use_apparent_size: bool) -> WalkData<'a> {
         use crate::PIndicator;
-        let indicator = PIndicator::build_me();
+        let indictor = PIndicator::build_me();
         WalkData {
             ignore_directories: HashSet::new(),
             filter_regex: &[],
@@ -353,7 +353,7 @@ mod tests {
             by_filetime: &None,
             ignore_hidden: false,
             follow_links: false,
-            progress_data: indicator.data.clone(),
+            progress_data: indictor.data.clone(),
             errors: Arc::new(Mutex::new(RuntimeErrors::default())),
         }
     }
