@@ -73,6 +73,14 @@ pub fn tuple_from_metadata(
 }
 
 #[cfg(target_family = "windows")]
+fn filetime_to_unix_seconds(filetime: u64) -> i64 {
+    const TICKS_PER_SECOND: i128 = 10_000_000;
+    const UNIX_EPOCH_FILETIME: i128 = 116_444_736_000_000_000;
+
+    ((i128::from(filetime) - UNIX_EPOCH_FILETIME).div_euclid(TICKS_PER_SECOND)) as i64
+}
+
+#[cfg(target_family = "windows")]
 pub fn get_metadata<P: AsRef<Path>>(
     path: P,
     use_apparent_size: bool,
