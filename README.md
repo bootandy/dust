@@ -145,7 +145,7 @@ Usage: dust --dim Displays dimmer bars
 
 ## Config file
 
-Dust has a config file where the above options can be set.
+Dust has a config file for persistent options.
 Either: `$XDG_CONFIG_HOME/dust/config.toml` (falling back to
 `~/.config/dust/config.toml`) or `~/.dust.toml`
 ```
@@ -153,7 +153,17 @@ $ cat ~/.config/dust/config.toml
 reverse=true
 limit-filesystem=true
 ```
-Keys use the long flag name in kebab-case. See [config/config.toml](config/config.toml) for a fuller sample.
+Keys use kebab-case. Most match the long flag name, but the following options
+use different names in the config file:
+
+| Command-line flag | Config key |
+| --- | --- |
+| `--full-paths` | `display-full-paths` |
+| `--apparent-size` | `display-apparent-size` |
+| `--no-percent-bars` | `no-bars` |
+| `--no-progress` | `disable-progress` |
+
+See [config/config.toml](config/config.toml) for a fuller sample.
 
 ## Alternatives
 
