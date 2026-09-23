@@ -227,7 +227,7 @@ fn get_filter_time_operator(
 }
 
 fn convert_min_size(input: &str) -> Option<usize> {
-    let re = Regex::new(r"([0-9]+)(\w*)").unwrap();
+    let re = Regex::new(r"^([0-9]+)(\w*)$").unwrap();
 
     if let Some(cap) = re.captures(input) {
         let (_, [digits, letters]) = cap.extract();
@@ -253,6 +253,7 @@ fn convert_min_size(input: &str) -> Option<usize> {
             None => None,
         }
     } else {
+        eprintln!("Ignoring invalid min-size: {input}");
         None
     }
 }
@@ -352,6 +353,9 @@ mod tests {
         assert_eq!(convert_min_size("10M"), Some(10 * 1024usize.pow(2)));
         assert_eq!(convert_min_size("10Mb"), Some(10 * 1000usize.pow(2)));
         assert_eq!(convert_min_size("2Gi"), Some(2 * 1024usize.pow(3)));
+        assert_eq!(convert_min_size("1.5M"), None);
+        assert_eq!(convert_min_size("1 M"), None);
+        assert_eq!(convert_min_size("-5"), None);
     }
 
     #[test]
