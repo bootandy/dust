@@ -12,6 +12,7 @@ use chrono::{DateTime, Local, TimeZone, Utc};
 use std::cmp::max;
 use std::cmp::min;
 use std::fs;
+use std::io::{self, Write};
 use std::iter::repeat_n;
 use std::path::Path;
 use thousands::Separable;
@@ -131,7 +132,8 @@ pub fn draw_it(
     no_percent_bars: bool,
     terminal_width: usize,
     skip_total: bool,
-) {
+    out: &mut impl Write,
+) -> io::Result<()> {
     let num_chars_needed_on_left_most = if idd.by_filecount {
         let max_size = root_node.size;
         max_size.separate_with_commas().chars().count()
@@ -173,7 +175,7 @@ pub fn draw_it(
     };
 
     if !skip_total {
-        display_node(root_node, &draw_data, true, true);
+        display_node(root_node, &draw_data, true, true, out)
     } else {
         for (count, c) in root_node
             .get_children_from_node(draw_data.display_data.initial.is_reversed)
@@ -181,8 +183,9 @@ pub fn draw_it(
         {
             let is_biggest = display_data.is_biggest(count, root_node.num_siblings());
             let was_i_last = display_data.is_last(count, root_node.num_siblings());
-            display_node(c, &draw_data, is_biggest, was_i_last);
+            display_node(c, &draw_data, is_biggest, was_i_last, out)?;
         }
+        Ok(())
     }
 }
 
@@ -220,7 +223,13 @@ fn find_longest_dir_name(
         .fold(longest, max)
 }
 
-fn display_node(node: &DisplayNode, draw_data: &DrawData, is_biggest: bool, is_last: bool) {
+fn display_node(
+    node: &DisplayNode,
+    draw_data: &DrawData,
+    is_biggest: bool,
+    is_last: bool,
+    out: &mut impl Write,
+) -> io::Result<()> {
     // hacky way of working out how deep we are in the tree
     let indent = draw_data.get_new_indent(!node.children.is_empty(), is_last);
     let level = ((indent.chars().count() - 1) / 2) - 1;
@@ -229,7 +238,7 @@ fn display_node(node: &DisplayNode, draw_data: &DrawData, is_biggest: bool, is_l
     let to_print = format_string(node, &indent, &bar_text, is_biggest, draw_data.display_data);
 
     if !draw_data.display_data.initial.is_reversed {
-        println!("{to_print}")
+        writeln!(out, "{to_print}")?
     }
 
     let dd = DrawData {
@@ -246,12 +255,13 @@ fn display_node(node: &DisplayNode, draw_data: &DrawData, is_biggest: bool, is_l
     {
         let is_biggest = dd.display_data.is_biggest(count, num_siblings);
         let was_i_last = dd.display_data.is_last(count, num_siblings);
-        display_node(c, &dd, is_biggest, was_i_last);
+        display_node(c, &dd, is_biggest, was_i_last, out)?;
     }
 
     if draw_data.display_data.initial.is_reversed {
-        println!("{to_print}")
+        writeln!(out, "{to_print}")?
     }
+    Ok(())
 }
 
 fn clean_indentation_string(s: &str) -> String {

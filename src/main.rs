@@ -25,6 +25,7 @@ use std::env;
 use std::fs::{read, read_to_string};
 use std::io;
 use std::io::Read;
+use std::io::Write;
 use std::panic;
 use std::process;
 use std::sync::Arc;
@@ -325,8 +326,9 @@ fn print_output(
     terminal_width: usize,
 ) {
     let output_format = config.get_output_format(&options);
+    let mut out = io::stdout().lock();
 
-    if config.get_output_json(&options) {
+    let result = if config.get_output_json(&options) {
         OUTPUT_TYPE.with(|wrapped| {
             if by_filecount {
                 wrapped.replace("count".to_string());
@@ -334,7 +336,7 @@ fn print_output(
                 wrapped.replace(output_format);
             }
         });
-        println!("{}", serde_json::to_string(&tree).unwrap());
+        writeln!(out, "{}", serde_json::to_string(&tree).unwrap())
     } else {
         let idd = InitialDisplayData {
             short_paths: !config.get_full_paths(&options),
@@ -354,7 +356,19 @@ fn print_output(
             config.get_no_bars(&options),
             terminal_width,
             config.get_skip_total(&options),
+            &mut out,
         )
+    };
+
+    if let Err(err) = result.and_then(|()| out.flush()) {
+        // The consumer can close the pipe before we finish printing
+        // (e.g. `dust | head`). Exit quietly instead of panicking on a
+        // rayon worker thread. On Windows, ERROR_NO_DATA (os error 232)
+        // also maps to ErrorKind::BrokenPipe.
+        if err.kind() == io::ErrorKind::BrokenPipe {
+            process::exit(0);
+        }
+        panic!("failed printing to stdout: {err}");
     }
 }
 
