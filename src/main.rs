@@ -145,7 +145,7 @@ fn main() {
     let summarize_file_types = options.file_types;
 
     let filter_regexs = get_regex_value(options.filter.as_ref());
-    let invert_filter_regexs = get_regex_value(options.invert_filter.as_ref());
+    let invert_filter_regexs = get_regex_value(config.get_invert_filter(&options).as_ref());
 
     let terminal_width: usize = match options.terminal_width {
         Some(val) => val,
@@ -174,7 +174,7 @@ fn main() {
         config.get_force_colors(&options),
     );
 
-    let ignore_directories = match options.ignore_directory {
+    let ignore_directories = match config.get_ignore_directory(&options) {
         Some(ref values) => values
             .iter()
             .map(PathBuf::from)
