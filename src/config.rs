@@ -41,6 +41,8 @@ pub struct Config {
     pub number_of_lines: Option<usize>,
     pub files_from: Option<String>,
     pub collapse: Option<Vec<String>>,
+    pub ignore_directory: Option<Vec<String>>,
+    pub invert_filter: Option<Vec<String>>,
 }
 
 impl Config {
@@ -185,6 +187,22 @@ impl Config {
             self.collapse.clone()
         } else {
             options.collapse.clone()
+        }
+    }
+
+    pub fn get_ignore_directory(&self, options: &Cli) -> Option<Vec<String>> {
+        if options.ignore_directory.is_none() {
+            self.ignore_directory.clone()
+        } else {
+            options.ignore_directory.clone()
+        }
+    }
+
+    pub fn get_invert_filter(&self, options: &Cli) -> Option<Vec<String>> {
+        if options.invert_filter.is_none() {
+            self.invert_filter.clone()
+        } else {
+            options.invert_filter.clone()
         }
     }
 }
