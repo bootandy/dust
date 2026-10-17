@@ -28,6 +28,7 @@ Study the above demo
 
 * We demo the -n 5 flag - Show only 5 items (by default we show terminal height items)
 
+[![Live demo by Demoshell](https://build.demoshell.com/v1/embed/badge.svg)](https://build.demoshell.com/launch?snapshot=demoshell%2Ftui%3Adust&utm_source=badge)
 
 ## Install
 
