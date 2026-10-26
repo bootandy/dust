@@ -8,7 +8,7 @@ use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
 use stfu8::encode_u8;
 
-use chrono::{DateTime, Local, TimeZone, Utc};
+use chrono::{Local, MappedLocalTime, TimeZone, Utc};
 use std::cmp::max;
 use std::cmp::min;
 use std::fs;
@@ -413,8 +413,14 @@ fn get_pretty_size(node: &DisplayNode, is_biggest: bool, display_data: &DisplayD
 }
 
 fn get_pretty_file_modified_time(timestamp: i64) -> String {
-    let datetime: DateTime<Utc> = Utc.timestamp_opt(timestamp, 0).unwrap();
-
+    let datetime = match Utc.timestamp_opt(timestamp, 0) {
+        MappedLocalTime::Single(dt) => dt,
+        MappedLocalTime::Ambiguous(dt, _) => dt,
+        MappedLocalTime::None => {
+            // Fallback gracefully instead of panicking
+            Utc.timestamp_opt(0, 0).unwrap()
+        }
+    };
     let local_datetime = datetime.with_timezone(&Local);
 
     local_datetime.format("%Y-%m-%dT%H:%M:%S").to_string()

@@ -232,9 +232,9 @@ pub fn tuple_from_metadata(
             md.len(),
             None,
             (
-                md.last_write_time() as i64,
-                md.last_access_time() as i64,
-                md.creation_time() as i64,
+                filetime_to_unix_seconds(md.last_write_time()),
+                filetime_to_unix_seconds(md.last_access_time()),
+                filetime_to_unix_seconds(md.creation_time()),
             ),
         ))
     } else {
