@@ -48,11 +48,12 @@ rustc-hash = "2"
 portable-atomic = "1.4"
 
 [features]
-# Experimental: make --shared-blocks map the physical extents of files that
-# may share blocks, so partly rewritten clones are deduplicated too.
+# Experimental, macOS: make --shared-blocks map the physical extents of files
+# that may share blocks, so partly rewritten clones are deduplicated too.
+# Linux always works this way.
 exact-shared-blocks = []
 
-[target.'cfg(target_os = "macos")'.dependencies]
+[target.'cfg(any(target_os = "macos", target_os = "linux"))'.dependencies]
 libc = "0.2"
 
 [target.'cfg(windows)'.dependencies]

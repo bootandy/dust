@@ -38,6 +38,33 @@ jobs:
         if: success() || failure() # run regardless of fmt outcome
         run: cargo clippy --locked -- -D warnings
 
+  shared-blocks:
+    name: Shared blocks (${{ matrix.fs }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { fs: btrfs, mkfs: mkfs.btrfs }
+          - { fs: xfs, mkfs: mkfs.xfs -m reflink=1 }
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+      - name: Mount a ${{ matrix.fs }} image
+        run: |
+          sudo apt-get -y update
+          sudo apt-get -y install btrfs-progs xfsprogs
+          truncate -s 1G "$RUNNER_TEMP/fs.img"
+          sudo ${{ matrix.mkfs }} "$RUNNER_TEMP/fs.img"
+          sudo mkdir /mnt/reflink
+          sudo mount -o loop "$RUNNER_TEMP/fs.img" /mnt/reflink
+          sudo chown "$(id -u):$(id -g)" /mnt/reflink
+      - name: Test --shared-blocks on reflinks
+        env:
+          DUST_REFLINK_DIR: /mnt/reflink
+        run: cargo test --locked --test test_flags -- --ignored shared_blocks
+
   build:
     name: Build
     runs-on: ${{ matrix.job.os }}

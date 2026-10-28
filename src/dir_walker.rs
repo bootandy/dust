@@ -22,9 +22,9 @@ use std::path::PathBuf;
 use std::collections::HashSet;
 
 use rustc_hash::{FxHashMap, FxHashSet};
-#[cfg(feature = "exact-shared-blocks")]
+#[cfg(shared_extents)]
 use std::collections::BTreeMap;
-#[cfg(not(feature = "exact-shared-blocks"))]
+#[cfg(not(shared_extents))]
 use std::num::NonZeroU64;
 
 use crate::node::build_node;
@@ -75,10 +75,10 @@ pub struct WalkData<'a> {
 pub type SharedMap = FxHashMap<(u64, u64), SharedBlocks>;
 
 // Shared blocks already counted: (device, clone id) pairs.
-#[cfg(not(feature = "exact-shared-blocks"))]
+#[cfg(not(shared_extents))]
 type CountedShared = FxHashSet<(u64, NonZeroU64)>;
 // Device byte ranges already counted, per device: start -> end, disjoint.
-#[cfg(feature = "exact-shared-blocks")]
+#[cfg(shared_extents)]
 type CountedShared = FxHashMap<u64, BTreeMap<u64, u64>>;
 
 // Per-directory bookkeeping used during the parallel walk. Each directory gets
@@ -232,7 +232,7 @@ fn clean_inodes(
 
 // How many bytes of `x` another file has already been charged for.
 // A full clone of a file already counted shares all of its blocks.
-#[cfg(not(feature = "exact-shared-blocks"))]
+#[cfg(not(shared_extents))]
 fn already_counted(blocks: &SharedBlocks, size: u64, dev: u64, counted: &mut CountedShared) -> u64 {
     match *blocks {
         Some(clone_id) if !counted.insert((dev, clone_id)) => size,
@@ -240,7 +240,7 @@ fn already_counted(blocks: &SharedBlocks, size: u64, dev: u64, counted: &mut Cou
     }
 }
 
-#[cfg(feature = "exact-shared-blocks")]
+#[cfg(shared_extents)]
 fn already_counted(
     blocks: &SharedBlocks,
     _size: u64,
@@ -255,7 +255,7 @@ fn already_counted(
 // of its bytes had been counted already. Works on byte ranges rather than
 // whole extents because two clones can split the same blocks into
 // differently sized extents once either of them is partly rewritten.
-#[cfg(feature = "exact-shared-blocks")]
+#[cfg(shared_extents)]
 fn count_range(ranges: &mut BTreeMap<u64, u64>, start: u64, end: u64) -> u64 {
     // The first range that can touch ours is the last one starting at or
     // before `start`, if it reaches `start`; the rest start inside ours.
@@ -633,7 +633,7 @@ fn process_entry<'scope>(
         && n.size > 0
         && let Some(id) = n.inode_device
     {
-        let blocks = get_shared_blocks(&path);
+        let blocks = get_shared_blocks(&path, id.1);
         if blocks != SharedBlocks::default() {
             shared.lock().unwrap().insert(id, blocks);
         }
@@ -819,7 +819,7 @@ mod tests {
         );
     }
 
-    #[cfg(not(feature = "exact-shared-blocks"))]
+    #[cfg(not(shared_extents))]
     #[test]
     fn test_full_clones_counted_once() {
         let file = |name: &str, ino| Node {
@@ -859,7 +859,7 @@ mod tests {
         assert_eq!(cleaned.size, 4096 * 2);
     }
 
-    #[cfg(feature = "exact-shared-blocks")]
+    #[cfg(shared_extents)]
     #[test]
     fn test_count_range() {
         let mut ranges = BTreeMap::new();
@@ -879,7 +879,7 @@ mod tests {
         assert_eq!(ranges, BTreeMap::from([(0, 500)]));
     }
 
-    #[cfg(feature = "exact-shared-blocks")]
+    #[cfg(shared_extents)]
     #[test]
     fn test_shared_extents_counted_once() {
         let file = |name: &str, ino| Node {

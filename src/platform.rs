@@ -243,19 +243,20 @@ pub fn tuple_from_metadata(
 }
 
 /// What `--shared-blocks` records per file so blocks shared between files
-/// (APFS clones) are counted once. By default: the clone id of a file that
-/// shares all its blocks, which every member of a clone family has in common.
-/// With the `exact-shared-blocks` feature: the file's physical extents, which
-/// also catches partly rewritten clones.
-#[cfg(not(feature = "exact-shared-blocks"))]
+/// (APFS clones, btrfs/XFS reflinks) are counted once. On macOS by default:
+/// the clone id of a file that shares all its blocks, which every member of a
+/// clone family has in common. On Linux, and on macOS with the
+/// `exact-shared-blocks` feature (`cfg(shared_extents)`, set in build.rs): the
+/// file's shared physical extents, which also catches partly rewritten clones.
+#[cfg(not(shared_extents))]
 pub type SharedBlocks = Option<std::num::NonZeroU64>;
-#[cfg(feature = "exact-shared-blocks")]
+#[cfg(shared_extents)]
 pub type SharedBlocks = Box<[(u64, u64)]>;
 
 // From <sys/stat.h>; the libc crate doesn't define them.
-#[cfg(all(target_os = "macos", feature = "exact-shared-blocks"))]
+#[cfg(all(target_os = "macos", shared_extents))]
 const EF_MAY_SHARE_BLOCKS: u64 = 0x1;
-#[cfg(all(target_os = "macos", not(feature = "exact-shared-blocks")))]
+#[cfg(all(target_os = "macos", not(shared_extents)))]
 const EF_SHARES_ALL_BLOCKS: u64 = 0x40;
 
 /// The file's APFS clone id and extended flags (`EF_*`), from one getattrlist
@@ -300,8 +301,9 @@ fn get_clone_attributes(path: &Path) -> Option<(u64, u64)> {
         .then_some((reply.clone_id, reply.ext_flags))
 }
 
-#[cfg(all(target_os = "macos", not(feature = "exact-shared-blocks")))]
-pub fn get_shared_blocks(path: &Path) -> SharedBlocks {
+/// `dev` is the file's device; Linux uses it to check each filesystem once.
+#[cfg(all(target_os = "macos", not(shared_extents)))]
+pub fn get_shared_blocks(path: &Path, _dev: u64) -> SharedBlocks {
     let (clone_id, ext_flags) = get_clone_attributes(path)?;
     if ext_flags & EF_SHARES_ALL_BLOCKS == 0 {
         return None;
@@ -311,24 +313,149 @@ pub fn get_shared_blocks(path: &Path) -> SharedBlocks {
 
 // Only files the kernel flags as possibly sharing blocks pay for the open
 // and extent mapping; for the rest there's nothing to deduplicate.
-#[cfg(all(target_os = "macos", feature = "exact-shared-blocks"))]
-pub fn get_shared_blocks(path: &Path) -> SharedBlocks {
+#[cfg(all(target_os = "macos", shared_extents))]
+pub fn get_shared_blocks(path: &Path, _dev: u64) -> SharedBlocks {
     match get_clone_attributes(path) {
         Some((_, ext_flags)) if ext_flags & EF_MAY_SHARE_BLOCKS != 0 => get_extents(path),
         _ => Box::default(),
     }
 }
 
-#[cfg(not(target_os = "macos"))]
-pub fn get_shared_blocks(_path: &Path) -> SharedBlocks {
+// Linux can't tell whether a file shares blocks without opening it, so the
+// one cheap filter is the filesystem: only these can share extents.
+#[cfg(target_os = "linux")]
+pub fn get_shared_blocks(path: &Path, dev: u64) -> SharedBlocks {
+    use rustc_hash::FxHashMap;
+    use std::sync::{Mutex, OnceLock};
+
+    static CAN_SHARE: OnceLock<Mutex<FxHashMap<u64, bool>>> = OnceLock::new();
+    let cache = CAN_SHARE.get_or_init(Default::default);
+    let cached = cache.lock().unwrap().get(&dev).copied();
+    let can_share = cached.unwrap_or_else(|| {
+        let can_share = filesystem_can_share_extents(path);
+        cache.lock().unwrap().insert(dev, can_share);
+        can_share
+    });
+    if can_share {
+        get_extents(path)
+    } else {
+        Box::default()
+    }
+}
+
+#[cfg(not(any(target_os = "macos", target_os = "linux")))]
+pub fn get_shared_blocks(_path: &Path, _dev: u64) -> SharedBlocks {
     SharedBlocks::default()
+}
+
+// Filesystems whose FIEMAP reports FIEMAP_EXTENT_SHARED. ZFS has block
+// cloning but no FIEMAP, so its clones can't be detected.
+#[cfg(target_os = "linux")]
+fn filesystem_can_share_extents(path: &Path) -> bool {
+    use std::os::unix::ffi::OsStrExt;
+    const BTRFS_SUPER_MAGIC: u32 = 0x9123683e;
+    const XFS_SUPER_MAGIC: u32 = 0x58465342;
+    const OCFS2_SUPER_MAGIC: u32 = 0x7461636f;
+    const BCACHEFS_SUPER_MAGIC: u32 = 0xca451a4e;
+
+    let Ok(path) = std::ffi::CString::new(path.as_os_str().as_bytes()) else {
+        return false;
+    };
+    let mut fs: libc::statfs = unsafe { std::mem::zeroed() };
+    if unsafe { libc::statfs(path.as_ptr(), &mut fs) } != 0 {
+        return false;
+    }
+    // f_type is signed on some targets; the magic numbers are all 32 bits.
+    matches!(
+        fs.f_type as u32,
+        BTRFS_SUPER_MAGIC | XFS_SUPER_MAGIC | OCFS2_SUPER_MAGIC | BCACHEFS_SUPER_MAGIC
+    )
+}
+
+/// A file's shared physical extents as `[start, end)` byte ranges on its
+/// device, from FIEMAP. Only extents flagged FIEMAP_EXTENT_SHARED are kept:
+/// the rest can't overlap another file. Extents without a real address
+/// (inline data, delayed allocation) or not stored byte for byte (btrfs
+/// compression) are left out, so they're counted in full.
+#[cfg(target_os = "linux")]
+fn get_extents(path: &Path) -> Box<[(u64, u64)]> {
+    use std::os::fd::AsRawFd;
+
+    // <linux/fiemap.h>; the libc crate doesn't define these.
+    #[repr(C)]
+    #[derive(Default)]
+    struct Fiemap {
+        fm_start: u64,
+        fm_length: u64,
+        fm_flags: u32,
+        fm_mapped_extents: u32,
+        fm_extent_count: u32,
+        fm_reserved: u32,
+    }
+    #[repr(C)]
+    #[derive(Clone, Copy, Default)]
+    struct FiemapExtent {
+        fe_logical: u64,
+        fe_physical: u64,
+        fe_length: u64,
+        fe_reserved64: [u64; 2],
+        fe_flags: u32,
+        fe_reserved: [u32; 3],
+    }
+    #[repr(C)]
+    struct FiemapBuffer {
+        header: Fiemap,
+        extents: [FiemapExtent; 32],
+    }
+    const FS_IOC_FIEMAP: libc::Ioctl = libc::_IOWR::<Fiemap>(b'f' as u32, 11);
+    const FIEMAP_EXTENT_LAST: u32 = 0x1;
+    const FIEMAP_EXTENT_UNKNOWN: u32 = 0x2;
+    const FIEMAP_EXTENT_DELALLOC: u32 = 0x4;
+    const FIEMAP_EXTENT_ENCODED: u32 = 0x8;
+    const FIEMAP_EXTENT_DATA_INLINE: u32 = 0x200;
+    const FIEMAP_EXTENT_SHARED: u32 = 0x2000;
+    const NO_BYTE_RANGE: u32 = FIEMAP_EXTENT_UNKNOWN
+        | FIEMAP_EXTENT_DELALLOC
+        | FIEMAP_EXTENT_ENCODED
+        | FIEMAP_EXTENT_DATA_INLINE;
+
+    let Ok(file) = fs::File::open(path) else {
+        return Box::default();
+    };
+    let mut buffer = FiemapBuffer {
+        header: Fiemap {
+            fm_length: u64::MAX,
+            fm_extent_count: 32,
+            ..Default::default()
+        },
+        extents: [FiemapExtent::default(); 32],
+    };
+    let mut extents = Vec::new();
+    loop {
+        if unsafe { libc::ioctl(file.as_raw_fd(), FS_IOC_FIEMAP, &raw mut buffer) } != 0 {
+            return Box::default();
+        }
+        let mapped = &buffer.extents[..buffer.header.fm_mapped_extents as usize];
+        for e in mapped {
+            if e.fe_flags & FIEMAP_EXTENT_SHARED != 0 && e.fe_flags & NO_BYTE_RANGE == 0 {
+                extents.push((e.fe_physical, e.fe_physical + e.fe_length));
+            }
+        }
+        match mapped.last() {
+            Some(last) if last.fe_flags & FIEMAP_EXTENT_LAST == 0 => {
+                buffer.header.fm_start = last.fe_logical + last.fe_length;
+            }
+            _ => break,
+        }
+    }
+    extents.into_boxed_slice()
 }
 
 /// A file's physical extents as `[start, end)` byte ranges on its device,
 /// with each end rounded up to the filesystem's allocation block. Clones
 /// report overlapping ranges. Returns an empty list when the file can't be
 /// opened or fully mapped, so the caller counts it at its full size.
-#[cfg(all(target_os = "macos", feature = "exact-shared-blocks"))]
+#[cfg(all(target_os = "macos", shared_extents))]
 fn get_extents(path: &Path) -> Box<[(u64, u64)]> {
     use std::os::fd::AsRawFd;
 

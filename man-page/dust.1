@@ -40,7 +40,7 @@ Only count the files and directories on the same filesystem as the supplied dire
 Use file length instead of blocks
 .TP
 \fB\-\-shared\-blocks\fR
-Count files that are full clones of each other (APFS, e.g. from `cp \-c`) only once. macOS 14+ only
+Count blocks shared between copy\-on\-write clones only once: full APFS clones on macOS 14+ (`cp \-c`), reflinks on Linux (`cp \-\-reflink`)
 .TP
 \fB\-r\fR, \fB\-\-reverse\fR
 Print tree upside down (biggest highest)

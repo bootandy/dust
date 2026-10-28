@@ -525,3 +525,56 @@ pub fn test_shared_blocks_cloned_sparse_file() {
 
     assert_eq!(counted_twice - counted_once, file_size);
 }
+
+// Needs a btrfs or XFS mount: run with
+// `DUST_REFLINK_DIR=<dir on that mount> cargo test -- --ignored shared_blocks`
+#[cfg(target_os = "linux")]
+#[test]
+#[ignore = "needs a reflink-capable filesystem in DUST_REFLINK_DIR"]
+pub fn test_shared_blocks_counts_reflinks_once() {
+    use std::io::{Seek, SeekFrom, Write};
+    use std::process::Command;
+
+    let root = std::env::var("DUST_REFLINK_DIR").expect("DUST_REFLINK_DIR is not set");
+    let dir = tempfile::Builder::new().tempdir_in(root).unwrap();
+    let original = dir.path().join("original");
+    let mut file = std::fs::File::create(&original).unwrap();
+    file.write_all(&[7u8; 1024 * 1024]).unwrap();
+    // Unwritten data has no physical address yet (delayed allocation)
+    file.sync_all().unwrap();
+    for clone in ["clone", "partial"] {
+        let status = Command::new("cp")
+            .arg("--reflink=always")
+            .arg(&original)
+            .arg(dir.path().join(clone))
+            .status()
+            .unwrap();
+        assert!(status.success());
+    }
+    // Rewrite one 4 KiB block of `partial`, which unshares just that block
+    let mut partial = std::fs::OpenOptions::new()
+        .write(true)
+        .open(dir.path().join("partial"))
+        .unwrap();
+    partial.seek(SeekFrom::Start(64 * 1024)).unwrap();
+    partial.write_all(&[9u8; 4096]).unwrap();
+    partial.sync_all().unwrap();
+
+    let total = |args: Vec<&str>| -> u64 {
+        let output = build_command([vec!["-c", "-b", "-o", "b", "-d", "0"], args].concat());
+        output
+            .split_whitespace()
+            .next()
+            .unwrap()
+            .trim_end_matches('B')
+            .parse()
+            .unwrap()
+    };
+    let path = dir.path().to_str().unwrap();
+    let file_size = total(vec![original.to_str().unwrap()]);
+    let counted_thrice = total(vec![path]);
+    let counted_once = total(vec!["--shared-blocks", path]);
+
+    // The clone is free; the partial clone costs only its rewritten block
+    assert_eq!(counted_thrice - counted_once, 2 * file_size - 4096);
+}
