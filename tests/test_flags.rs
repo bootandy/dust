@@ -485,3 +485,43 @@ pub fn test_shared_blocks_counts_clones_once() {
 
     assert_eq!(counted_twice - counted_once, file_size);
 }
+
+// A hole maps to device offset -1; reading it as a real extent overflowed.
+// Only files that may share blocks get their extents read, so clone it.
+#[cfg(all(target_os = "macos", feature = "exact-shared-blocks"))]
+#[test]
+pub fn test_shared_blocks_cloned_sparse_file() {
+    use std::io::{Seek, SeekFrom, Write};
+    use std::process::Command;
+
+    let dir = tempfile::Builder::new().tempdir().unwrap();
+    let sparse = dir.path().join("sparse");
+    let mut file = std::fs::File::create(&sparse).unwrap();
+    file.seek(SeekFrom::Start(50 * 1024 * 1024)).unwrap();
+    file.write_all(&[7u8; 4096]).unwrap();
+    drop(file);
+    let status = Command::new("cp")
+        .arg("-c")
+        .arg(&sparse)
+        .arg(dir.path().join("clone"))
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let total = |args: Vec<&str>| -> u64 {
+        let output = build_command([vec!["-c", "-b", "-o", "b", "-d", "0"], args].concat());
+        output
+            .split_whitespace()
+            .next()
+            .unwrap()
+            .trim_end_matches('B')
+            .parse()
+            .unwrap()
+    };
+    let path = dir.path().to_str().unwrap();
+    let file_size = total(vec![sparse.to_str().unwrap()]);
+    let counted_twice = total(vec![path]);
+    let counted_once = total(vec!["--shared-blocks", path]);
+
+    assert_eq!(counted_twice - counted_once, file_size);
+}

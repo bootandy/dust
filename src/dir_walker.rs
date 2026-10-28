@@ -22,6 +22,9 @@ use std::path::PathBuf;
 use std::collections::HashSet;
 
 use rustc_hash::{FxHashMap, FxHashSet};
+#[cfg(feature = "exact-shared-blocks")]
+use std::collections::BTreeMap;
+#[cfg(not(feature = "exact-shared-blocks"))]
 use std::num::NonZeroU64;
 
 use crate::node::build_node;
@@ -72,7 +75,11 @@ pub struct WalkData<'a> {
 pub type SharedMap = FxHashMap<(u64, u64), SharedBlocks>;
 
 // Shared blocks already counted: (device, clone id) pairs.
+#[cfg(not(feature = "exact-shared-blocks"))]
 type CountedShared = FxHashSet<(u64, NonZeroU64)>;
+// Device byte ranges already counted, per device: start -> end, disjoint.
+#[cfg(feature = "exact-shared-blocks")]
+type CountedShared = FxHashMap<u64, BTreeMap<u64, u64>>;
 
 // Per-directory bookkeeping used during the parallel walk. Each directory gets
 // one `PendingDir`. Subdirectory tasks hold an `Arc` back to their parent so
@@ -225,11 +232,51 @@ fn clean_inodes(
 
 // How many bytes of `x` another file has already been charged for.
 // A full clone of a file already counted shares all of its blocks.
+#[cfg(not(feature = "exact-shared-blocks"))]
 fn already_counted(blocks: &SharedBlocks, size: u64, dev: u64, counted: &mut CountedShared) -> u64 {
     match *blocks {
         Some(clone_id) if !counted.insert((dev, clone_id)) => size,
         _ => 0,
     }
+}
+
+#[cfg(feature = "exact-shared-blocks")]
+fn already_counted(
+    blocks: &SharedBlocks,
+    _size: u64,
+    dev: u64,
+    counted: &mut CountedShared,
+) -> u64 {
+    let ranges = counted.entry(dev).or_default();
+    blocks.iter().map(|&(s, e)| count_range(ranges, s, e)).sum()
+}
+
+// Marks the device byte range `[start, end)` as counted and returns how many
+// of its bytes had been counted already. Works on byte ranges rather than
+// whole extents because two clones can split the same blocks into
+// differently sized extents once either of them is partly rewritten.
+#[cfg(feature = "exact-shared-blocks")]
+fn count_range(ranges: &mut BTreeMap<u64, u64>, start: u64, end: u64) -> u64 {
+    // The first range that can touch ours is the last one starting at or
+    // before `start`, if it reaches `start`; the rest start inside ours.
+    let from = ranges
+        .range(..=start)
+        .next_back()
+        .filter(|&(_, &e)| e >= start)
+        .map_or(start, |(&s, _)| s);
+    let touching: Vec<(u64, u64)> = ranges.range(from..=end).map(|(&s, &e)| (s, e)).collect();
+
+    // Merge everything touching into one range so the map stays small.
+    let (mut merged_start, mut merged_end) = (start, end);
+    let mut already_counted = 0;
+    for (s, e) in touching {
+        already_counted += e.min(end).saturating_sub(s.max(start));
+        merged_start = merged_start.min(s);
+        merged_end = merged_end.max(e);
+        ranges.remove(&s);
+    }
+    ranges.insert(merged_start, merged_end);
+    already_counted
 }
 
 fn sort_by_inode(a: &Node, b: &Node) -> std::cmp::Ordering {
@@ -772,6 +819,7 @@ mod tests {
         );
     }
 
+    #[cfg(not(feature = "exact-shared-blocks"))]
     #[test]
     fn test_full_clones_counted_once() {
         let file = |name: &str, ino| Node {
@@ -809,6 +857,66 @@ mod tests {
         let sizes: Vec<u64> = cleaned.children.iter().map(|c| c.size).collect();
         assert_eq!(sizes, vec![4096, 0, 4096]);
         assert_eq!(cleaned.size, 4096 * 2);
+    }
+
+    #[cfg(feature = "exact-shared-blocks")]
+    #[test]
+    fn test_count_range() {
+        let mut ranges = BTreeMap::new();
+        assert_eq!(count_range(&mut ranges, 100, 200), 0);
+        // Same range again: all of it was counted.
+        assert_eq!(count_range(&mut ranges, 100, 200), 100);
+        // Split differently from the first: still all counted.
+        assert_eq!(count_range(&mut ranges, 100, 140), 40);
+        assert_eq!(count_range(&mut ranges, 140, 200), 60);
+        // Partial overlap at either end.
+        assert_eq!(count_range(&mut ranges, 50, 120), 20);
+        assert_eq!(count_range(&mut ranges, 180, 260), 20);
+        // Disjoint, then a range spanning it and the gap before it.
+        assert_eq!(count_range(&mut ranges, 300, 400), 0);
+        assert_eq!(count_range(&mut ranges, 0, 500), 310);
+        // Everything collapsed into one range.
+        assert_eq!(ranges, BTreeMap::from([(0, 500)]));
+    }
+
+    #[cfg(feature = "exact-shared-blocks")]
+    #[test]
+    fn test_shared_extents_counted_once() {
+        let file = |name: &str, ino| Node {
+            name: PathBuf::from(name),
+            size: 4096 * 4,
+            children: vec![],
+            inode_device: Some((ino, 1)),
+            depth: 1,
+        };
+        let dir = Node {
+            name: PathBuf::from("dir"),
+            size: 0,
+            children: vec![file("original", 1), file("clone", 2), file("partial", 3)],
+            inode_device: Some((10, 1)),
+            depth: 0,
+        };
+        let shared = SharedMap::from_iter([
+            ((1, 1), [(0, 4096 * 4)].into()),
+            // Full clone of original, mapped as two extents.
+            ((2, 1), [(0, 4096 * 2), (4096 * 2, 4096 * 4)].into()),
+            // Clone with its last block rewritten elsewhere on disk.
+            ((3, 1), [(0, 4096 * 3), (4096 * 100, 4096 * 101)].into()),
+        ]);
+
+        let walkdata = create_walker(false);
+        let cleaned = clean_inodes(
+            dir,
+            &mut FxHashSet::default(),
+            &mut CountedShared::default(),
+            &shared,
+            &walkdata,
+        )
+        .unwrap();
+
+        let sizes: Vec<u64> = cleaned.children.iter().map(|c| c.size).collect();
+        assert_eq!(sizes, vec![4096 * 4, 0, 4096]);
+        assert_eq!(cleaned.size, 4096 * 5);
     }
 
     #[test]

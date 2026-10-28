@@ -243,12 +243,19 @@ pub fn tuple_from_metadata(
 }
 
 /// What `--shared-blocks` records per file so blocks shared between files
-/// (APFS clones) are counted once: the clone id of a file that shares all its
-/// blocks, which every member of a clone family has in common.
+/// (APFS clones) are counted once. By default: the clone id of a file that
+/// shares all its blocks, which every member of a clone family has in common.
+/// With the `exact-shared-blocks` feature: the file's physical extents, which
+/// also catches partly rewritten clones.
+#[cfg(not(feature = "exact-shared-blocks"))]
 pub type SharedBlocks = Option<std::num::NonZeroU64>;
+#[cfg(feature = "exact-shared-blocks")]
+pub type SharedBlocks = Box<[(u64, u64)]>;
 
-// From <sys/stat.h>; the libc crate doesn't define it.
-#[cfg(target_os = "macos")]
+// From <sys/stat.h>; the libc crate doesn't define them.
+#[cfg(all(target_os = "macos", feature = "exact-shared-blocks"))]
+const EF_MAY_SHARE_BLOCKS: u64 = 0x1;
+#[cfg(all(target_os = "macos", not(feature = "exact-shared-blocks")))]
 const EF_SHARES_ALL_BLOCKS: u64 = 0x40;
 
 /// The file's APFS clone id and extended flags (`EF_*`), from one getattrlist
@@ -293,7 +300,7 @@ fn get_clone_attributes(path: &Path) -> Option<(u64, u64)> {
         .then_some((reply.clone_id, reply.ext_flags))
 }
 
-#[cfg(target_os = "macos")]
+#[cfg(all(target_os = "macos", not(feature = "exact-shared-blocks")))]
 pub fn get_shared_blocks(path: &Path) -> SharedBlocks {
     let (clone_id, ext_flags) = get_clone_attributes(path)?;
     if ext_flags & EF_SHARES_ALL_BLOCKS == 0 {
@@ -302,7 +309,67 @@ pub fn get_shared_blocks(path: &Path) -> SharedBlocks {
     std::num::NonZeroU64::new(clone_id)
 }
 
+// Only files the kernel flags as possibly sharing blocks pay for the open
+// and extent mapping; for the rest there's nothing to deduplicate.
+#[cfg(all(target_os = "macos", feature = "exact-shared-blocks"))]
+pub fn get_shared_blocks(path: &Path) -> SharedBlocks {
+    match get_clone_attributes(path) {
+        Some((_, ext_flags)) if ext_flags & EF_MAY_SHARE_BLOCKS != 0 => get_extents(path),
+        _ => Box::default(),
+    }
+}
+
 #[cfg(not(target_os = "macos"))]
 pub fn get_shared_blocks(_path: &Path) -> SharedBlocks {
     SharedBlocks::default()
+}
+
+/// A file's physical extents as `[start, end)` byte ranges on its device,
+/// with each end rounded up to the filesystem's allocation block. Clones
+/// report overlapping ranges. Returns an empty list when the file can't be
+/// opened or fully mapped, so the caller counts it at its full size.
+#[cfg(all(target_os = "macos", feature = "exact-shared-blocks"))]
+fn get_extents(path: &Path) -> Box<[(u64, u64)]> {
+    use std::os::fd::AsRawFd;
+
+    let Ok(file) = fs::File::open(path) else {
+        return Box::default();
+    };
+    let fd = file.as_raw_fd();
+    let Ok(len) = file.metadata().map(|md| md.len()) else {
+        return Box::default();
+    };
+    // f_frsize is the allocation block; f_bsize is only the preferred I/O size
+    // and can be far larger (1 MiB on APFS).
+    let mut vfs: libc::statvfs = unsafe { std::mem::zeroed() };
+    if unsafe { libc::fstatvfs(fd, &mut vfs) } != 0 || vfs.f_frsize == 0 {
+        return Box::default();
+    }
+    let block = vfs.f_frsize as u64;
+
+    let mut extents = Vec::new();
+    let mut offset = 0;
+    while offset < len {
+        // In: file offset and bytes wanted. Out: device offset and how many
+        // bytes from there are contiguous.
+        let mut l2p = libc::log2phys {
+            l2p_flags: 0,
+            l2p_contigbytes: (len - offset) as libc::off_t,
+            l2p_devoffset: offset as libc::off_t,
+        };
+        // Fails with ENOTSUP on compressed files.
+        if unsafe { libc::fcntl(fd, libc::F_LOG2PHYS_EXT, &mut l2p) } == -1
+            || l2p.l2p_contigbytes <= 0
+        {
+            return Box::default();
+        }
+        let contig = l2p.l2p_contigbytes as u64;
+        // A hole (sparse file) maps to device offset -1 and has no blocks.
+        if l2p.l2p_devoffset >= 0 {
+            let start = l2p.l2p_devoffset as u64;
+            extents.push((start, (start + contig).div_ceil(block) * block));
+        }
+        offset += contig;
+    }
+    extents.into_boxed_slice()
 }
