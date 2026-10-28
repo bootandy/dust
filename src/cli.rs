@@ -52,8 +52,8 @@ pub struct Cli {
     #[arg(short('s'), long)]
     pub apparent_size: bool,
 
-    /// Count files that are full clones of each other (APFS, e.g. from
-    /// `cp -c`) only once. macOS 14+ only
+    /// Count blocks shared between copy-on-write clones only once: full APFS
+    /// clones on macOS 14+ (`cp -c`), reflinks on Linux (`cp --reflink`)
     #[arg(long)]
     pub shared_blocks: bool,
 

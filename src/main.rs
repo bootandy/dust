@@ -211,8 +211,10 @@ fn main() {
         && !use_apparent_size
         && !by_filecount
         && by_filetime.is_none();
-    if shared_blocks && !cfg!(target_os = "macos") {
-        eprintln!("warning: --shared-blocks is only supported on macOS and will be ignored");
+    if shared_blocks && !cfg!(any(target_os = "macos", target_os = "linux")) {
+        eprintln!(
+            "warning: --shared-blocks is only supported on macOS and Linux and will be ignored"
+        );
     }
 
     let allowed_filesystems = if limit_filesystem {

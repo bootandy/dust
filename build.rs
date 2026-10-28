@@ -8,6 +8,15 @@ use std::path::Path;
 include!("src/cli.rs");
 
 fn main() -> Result<(), Error> {
+    // `shared_extents`: --shared-blocks counts physical extents in a byte-range
+    // map instead of APFS clone ids. Linux has no clone ids, so it always does.
+    println!("cargo::rustc-check-cfg=cfg(shared_extents)");
+    if std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("linux")
+        || std::env::var_os("CARGO_FEATURE_EXACT_SHARED_BLOCKS").is_some()
+    {
+        println!("cargo::rustc-cfg=shared_extents");
+    }
+
     let outdir = "completions";
     let app_name = "dust";
     let mut cmd = Cli::command();
