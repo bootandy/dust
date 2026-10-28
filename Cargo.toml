@@ -47,6 +47,9 @@ rustc-hash = "2"
 [target.'cfg(not(target_has_atomic = "64"))'.dependencies]
 portable-atomic = "1.4"
 
+[target.'cfg(target_os = "macos")'.dependencies]
+libc = "0.2"
+
 [target.'cfg(windows)'.dependencies]
 winapi-util = "0.1"
 filesize = "0.2.0"

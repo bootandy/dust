@@ -241,3 +241,68 @@ pub fn tuple_from_metadata(
         None
     }
 }
+
+/// What `--shared-blocks` records per file so blocks shared between files
+/// (APFS clones) are counted once: the clone id of a file that shares all its
+/// blocks, which every member of a clone family has in common.
+pub type SharedBlocks = Option<std::num::NonZeroU64>;
+
+// From <sys/stat.h>; the libc crate doesn't define it.
+#[cfg(target_os = "macos")]
+const EF_SHARES_ALL_BLOCKS: u64 = 0x40;
+
+/// The file's APFS clone id and extended flags (`EF_*`), from one getattrlist
+/// call: no open, and it works on files we can't read. `None` when the
+/// filesystem doesn't report them (EF_SHARES_ALL_BLOCKS needs macOS 14).
+#[cfg(target_os = "macos")]
+fn get_clone_attributes(path: &Path) -> Option<(u64, u64)> {
+    use std::os::unix::ffi::OsStrExt;
+
+    #[repr(C)]
+    struct Reply {
+        length: u32,
+        returned: libc::attribute_set_t,
+        // The kernel packs attributes in bit order, not request order:
+        // ATTR_CMNEXT_CLONEID (0x100) comes before ATTR_CMNEXT_EXT_FLAGS (0x200).
+        clone_id: u64,
+        ext_flags: u64,
+    }
+
+    let path = std::ffi::CString::new(path.as_os_str().as_bytes()).ok()?;
+    let mut request = libc::attrlist {
+        bitmapcount: libc::ATTR_BIT_MAP_COUNT,
+        reserved: 0,
+        commonattr: libc::ATTR_CMN_RETURNED_ATTRS,
+        volattr: 0,
+        dirattr: 0,
+        fileattr: 0,
+        forkattr: libc::ATTR_CMNEXT_CLONEID | libc::ATTR_CMNEXT_EXT_FLAGS,
+    };
+    let mut reply: Reply = unsafe { std::mem::zeroed() };
+    let result = unsafe {
+        libc::getattrlist(
+            path.as_ptr(),
+            (&raw mut request).cast(),
+            (&raw mut reply).cast(),
+            size_of::<Reply>(),
+            libc::FSOPT_NOFOLLOW | libc::FSOPT_ATTR_CMN_EXTENDED,
+        )
+    };
+    let wanted = request.forkattr;
+    (result == 0 && reply.returned.forkattr & wanted == wanted)
+        .then_some((reply.clone_id, reply.ext_flags))
+}
+
+#[cfg(target_os = "macos")]
+pub fn get_shared_blocks(path: &Path) -> SharedBlocks {
+    let (clone_id, ext_flags) = get_clone_attributes(path)?;
+    if ext_flags & EF_SHARES_ALL_BLOCKS == 0 {
+        return None;
+    }
+    std::num::NonZeroU64::new(clone_id)
+}
+
+#[cfg(not(target_os = "macos"))]
+pub fn get_shared_blocks(_path: &Path) -> SharedBlocks {
+    SharedBlocks::default()
+}

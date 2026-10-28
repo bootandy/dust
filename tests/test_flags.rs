@@ -449,3 +449,39 @@ pub fn test_handle_duplicate_names() {
     assert!(output.contains("dup_name"));
     assert!(!output.contains("test_dir_matching"));
 }
+
+#[cfg(target_os = "macos")]
+#[test]
+pub fn test_shared_blocks_counts_clones_once() {
+    use std::process::Command;
+
+    let dir = tempfile::Builder::new().tempdir().unwrap();
+    let original = dir.path().join("original");
+    std::fs::write(&original, vec![7u8; 100_000]).unwrap();
+    // `cp -c` makes an APFS clone that shares the original's blocks
+    let status = Command::new("cp")
+        .arg("-c")
+        .arg(&original)
+        .arg(dir.path().join("clone"))
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    // With -d 0 the only line is the total, and its first word the size
+    let total = |args: Vec<&str>| -> u64 {
+        let output = build_command([vec!["-c", "-b", "-o", "b", "-d", "0"], args].concat());
+        output
+            .split_whitespace()
+            .next()
+            .unwrap()
+            .trim_end_matches('B')
+            .parse()
+            .unwrap()
+    };
+    let path = dir.path().to_str().unwrap();
+    let file_size = total(vec![original.to_str().unwrap()]);
+    let counted_twice = total(vec![path]);
+    let counted_once = total(vec!["--shared-blocks", path]);
+
+    assert_eq!(counted_twice - counted_once, file_size);
+}

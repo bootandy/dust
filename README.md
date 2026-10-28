@@ -111,6 +111,7 @@ Usage: dust <dir>
 Usage: dust <dir>  <another_dir> <and_more>
 Usage: dust -p (full-path - Show fullpath of the subdirectories)
 Usage: dust -s (apparent-size - shows the length of the file as opposed to the amount of disk space it uses)
+Usage: dust --shared-blocks (macOS 14+: count files that are full APFS clones of each other, e.g. from `cp -c`, only once. A clone that has since been partly rewritten is still counted in full)
 Usage: dust -n 30  (Shows 30 directories instead of the default [default is terminal height])
 Usage: dust -d 3  (Shows 3 levels of subdirectories)
 Usage: dust -D (Show only directories (eg dust -D))
