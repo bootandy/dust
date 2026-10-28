@@ -27,6 +27,7 @@ pub struct Config {
     pub screen_reader: Option<bool>,
     pub ignore_hidden: Option<bool>,
     pub limit_filesystem: Option<bool>,
+    pub shared_blocks: Option<bool>,
     pub output_format: Option<String>,
     pub min_size: Option<String>,
     pub only_dir: Option<bool>,
@@ -78,6 +79,9 @@ impl Config {
     }
     pub fn get_limit_filesystem(&self, options: &Cli) -> bool {
         Some(true) == self.limit_filesystem || options.limit_filesystem
+    }
+    pub fn get_shared_blocks(&self, options: &Cli) -> bool {
+        Some(true) == self.shared_blocks || options.shared_blocks
     }
     pub fn get_full_paths(&self, options: &Cli) -> bool {
         Some(true) == self.display_full_paths || options.full_paths

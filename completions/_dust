@@ -79,6 +79,7 @@ m\:"last modified time"))' \
 '--limit-filesystem[Only count the files and directories on the same filesystem as the supplied directory]' \
 '-s[Use file length instead of blocks]' \
 '--apparent-size[Use file length instead of blocks]' \
+'--shared-blocks[Count files that are full clones of each other (APFS, e.g. from \`cp -c\`) only once. macOS 14+ only]' \
 '-r[Print tree upside down (biggest highest)]' \
 '--reverse[Print tree upside down (biggest highest)]' \
 '-c[No colors will be printed (Useful for commands like\: watch)]' \

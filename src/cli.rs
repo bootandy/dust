@@ -52,6 +52,11 @@ pub struct Cli {
     #[arg(short('s'), long)]
     pub apparent_size: bool,
 
+    /// Count files that are full clones of each other (APFS, e.g. from
+    /// `cp -c`) only once. macOS 14+ only
+    #[arg(long)]
+    pub shared_blocks: bool,
+
     /// Print tree upside down (biggest highest)
     #[arg(short, long)]
     pub reverse: bool,

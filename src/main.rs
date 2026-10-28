@@ -205,6 +205,15 @@ fn main() {
     let by_filetime = config.get_filetime(&options);
     let limit_filesystem = config.get_limit_filesystem(&options);
     let follow_links = options.dereference_links;
+    let use_apparent_size = config.get_apparent_size(&options);
+    // Shared blocks only change disk usage, so other measures ignore the flag.
+    let shared_blocks = config.get_shared_blocks(&options)
+        && !use_apparent_size
+        && !by_filecount
+        && by_filetime.is_none();
+    if shared_blocks && !cfg!(target_os = "macos") {
+        eprintln!("warning: --shared-blocks is only supported on macOS and will be ignored");
+    }
 
     let allowed_filesystems = if limit_filesystem {
         get_filesystem_devices(&target_dirs, follow_links)
@@ -263,7 +272,7 @@ fn main() {
         filter_modified_time,
         filter_accessed_time,
         filter_changed_time,
-        use_apparent_size: config.get_apparent_size(&options),
+        use_apparent_size,
         by_filecount,
         by_filetime: &by_filetime,
         ignore_hidden,
@@ -271,6 +280,7 @@ fn main() {
         progress_data: indicator.data.clone(),
         errors: errors_for_rayon,
         has_any_filter,
+        shared_blocks: shared_blocks.then(Default::default),
     };
 
     let threads_to_use = config.get_threads(&options);
