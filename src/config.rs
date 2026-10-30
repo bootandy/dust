@@ -215,6 +215,7 @@ fn get_current_date_epoch_seconds() -> i64 {
     let current_date_time = current_date.and_hms_opt(0, 0, 0).unwrap();
     Local
         .from_local_datetime(&current_date_time)
+        .earliest()
         .unwrap()
         .timestamp()
 }
