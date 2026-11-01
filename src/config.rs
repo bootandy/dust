@@ -1,5 +1,5 @@
 use crate::node::FileTime;
-use chrono::{Local, TimeZone};
+use chrono::{Local, TimeDelta, TimeZone};
 use config_file::FromConfigFile;
 use regex::Regex;
 use serde::Deserialize;
@@ -210,13 +210,17 @@ impl Config {
 fn get_current_date_epoch_seconds() -> i64 {
     // calculate current date epoch seconds
     let now = Local::now();
-    let current_date = now.date_naive();
+    let midnight = now.date_naive().and_hms_opt(0, 0, 0).unwrap();
 
-    let current_date_time = current_date.and_hms_opt(0, 0, 0).unwrap();
-    Local
-        .from_local_datetime(&current_date_time)
-        .unwrap()
-        .timestamp()
+    // On DST changes local midnight can be ambiguous (pick the earliest) or
+    // skipped entirely (pick the first minute of the day that exists).
+    (0..24 * 60)
+        .find_map(|m| {
+            Local
+                .from_local_datetime(&(midnight + TimeDelta::minutes(m)))
+                .earliest()
+        })
+        .map_or(now.timestamp(), |dt| dt.timestamp())
 }
 
 fn get_filter_time_operator(
@@ -324,7 +328,6 @@ pub fn get_config(conf_path: Option<&String>) -> Config {
 mod tests {
     #[allow(unused_imports)]
     use super::*;
-    use chrono::{Datelike, Timelike};
     use clap::Parser;
 
     #[test]
@@ -352,13 +355,12 @@ mod tests {
     fn test_get_current_date_epoch_seconds() {
         let epoch_seconds = get_current_date_epoch_seconds();
         let dt = Local.timestamp_opt(epoch_seconds, 0).unwrap();
+        let before = Local.timestamp_opt(epoch_seconds - 1, 0).unwrap();
 
-        assert_eq!(dt.hour(), 0);
-        assert_eq!(dt.minute(), 0);
-        assert_eq!(dt.second(), 0);
-        assert_eq!(dt.date_naive().day(), Local::now().date_naive().day());
-        assert_eq!(dt.date_naive().month(), Local::now().date_naive().month());
-        assert_eq!(dt.date_naive().year(), Local::now().date_naive().year());
+        // It is the first second of today: one second earlier is yesterday.
+        // (Not always 00:00:00, local midnight may not exist on DST days.)
+        assert_eq!(dt.date_naive(), Local::now().date_naive());
+        assert!(before.date_naive() < dt.date_naive());
     }
 
     #[test]
