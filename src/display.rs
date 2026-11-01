@@ -497,7 +497,13 @@ pub fn human_readable_number(size: u64, output_str: &str) -> String {
                 let marker = thousand.pow((units.len() - i) as u32);
                 if size >= marker {
                     if size / marker < 10 {
-                        return format!("{:.1}{}", (size as f32 / marker as f32), u);
+                        let value = format!("{:.1}", (size as f32 / marker as f32));
+                        // {:.1} rounds 9.95 to 9.99 up to "10.0": show that as a
+                        // two-digit size like the branch below.
+                        if value == "10.0" {
+                            return format!("10{u}");
+                        }
+                        return format!("{value}{u}");
                     } else {
                         return format!("{}{}", (size / marker), u);
                     }
@@ -647,6 +653,11 @@ mod tests {
     fn test_human_readable_number_si() {
         assert_eq!(human_readable_number(1024 * 100, ""), "100Ki");
         assert_eq!(human_readable_number(1024 * 100, "si"), "102K");
+        // 9.95Ki to 9.99Ki round up to ten: no decimal place, like 10Ki.
+        assert_eq!(human_readable_number(1024 * 10 - 1, ""), "10Ki");
+        assert_eq!(human_readable_number(10189, ""), "10Ki");
+        assert_eq!(human_readable_number(10188, ""), "9.9Ki");
+        assert_eq!(human_readable_number(9999, "si"), "10K");
     }
 
     // Refer to https://en.wikipedia.org/wiki/Byte#Multiple-byte_units
