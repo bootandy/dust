@@ -47,7 +47,7 @@ jobs:
         job:
           # { os, target, cargo-options, features, use-cross, toolchain }
           - { os: ubuntu-latest, target: aarch64-unknown-linux-gnu, use-cross: use-cross }
-          - { os: ubuntu-24.04-riscv, target: riscv64gc-unknown-linux-gnu }
+          - { os: ubuntu-latest, target: riscv64gc-unknown-linux-gnu, use-cross: use-cross }
           - { os: ubuntu-latest, target: aarch64-unknown-linux-musl, use-cross: use-cross }
           - { os: ubuntu-latest, target: arm-unknown-linux-gnueabihf, use-cross: use-cross }
           - { os: ubuntu-latest, target: arm-unknown-linux-musleabi, use-cross: use-cross }
@@ -120,11 +120,11 @@ jobs:
           CARGO_USE_CROSS="true"
           case '${{ matrix.job.use-cross }}' in ''|0|f|false|n|no) CARGO_USE_CROSS="" ;; esac
 
-          # Cross-compiled Linux arm/aarch64 binaries can't be executed on the x86_64 build hosts.
+          # Cross-compiled Linux arm/aarch64/riscv64gc binaries can't be executed on the x86_64 build hosts.
           JOB_DO_TESTING="true"
           CARGO_TEST_OPTIONS=""
           case ${{ matrix.job.target }} in
-            arm-unknown-linux-*|aarch64-unknown-linux-*) JOB_DO_TESTING="" ; CARGO_TEST_OPTIONS="--bin ${PROJECT_NAME}" ;;
+            arm-unknown-linux-*|aarch64-unknown-linux-*|riscv64gc-unknown-linux-*) JOB_DO_TESTING="" ; CARGO_TEST_OPTIONS="--bin ${PROJECT_NAME}" ;;
           esac
 
           # strip executable?
@@ -132,7 +132,7 @@ jobs:
           case ${{ matrix.job.target }} in
             arm-unknown-linux-gnueabihf) STRIP="arm-linux-gnueabihf-strip" ;;
             aarch64-unknown-linux-gnu) STRIP="aarch64-linux-gnu-strip" ;;
-            *-pc-windows-msvc|*-pc-windows-gnullvm|aarch64-unknown-linux-musl|arm-unknown-linux-musleabi) STRIP="" ;;
+            *-pc-windows-msvc|*-pc-windows-gnullvm|aarch64-unknown-linux-musl|arm-unknown-linux-musleabi|riscv64gc-unknown-linux-gnu) STRIP="" ;;
           esac
 
           {
