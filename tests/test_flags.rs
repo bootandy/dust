@@ -449,3 +449,16 @@ pub fn test_handle_duplicate_names() {
     assert!(output.contains("dup_name"));
     assert!(!output.contains("test_dir_matching"));
 }
+
+#[test]
+pub fn test_handle_duplicate_names_only_dir() {
+    // Duplicate top level names are renamed to e.g. "dup_name(dave)", which is
+    // not a real path, so --only-dir must not check those names on disk
+    let output = build_command(vec![
+        "-D",
+        "tests/test_dir_matching/dave/dup_name",
+        "tests/test_dir_matching/andy/dup_name",
+    ]);
+    assert!(output.contains("andy"), "{output}");
+    assert!(output.contains("dave"), "{output}");
+}
