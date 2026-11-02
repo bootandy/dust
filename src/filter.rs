@@ -122,11 +122,9 @@ fn always_add_children<'a>(
                 None => !display_data.using_a_filter || c.name.is_file() || c.size > 0,
             })
             .filter(|c| {
-                if display_data.only_dir {
-                    c.name.is_dir()
-                } else {
-                    true
-                }
+                // Top level nodes may have been renamed by
+                // handle_duplicate_top_level_names, so their name is not a real path
+                !display_data.only_dir || c.depth == 0 || c.name.is_dir()
             }),
     );
     heap
