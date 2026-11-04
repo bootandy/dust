@@ -251,25 +251,25 @@ fn convert_min_size(input: &str) -> Option<usize> {
     if let Some(cap) = re.captures(input) {
         let (_, [digits, letters]) = cap.extract();
 
-        // Failure to parse should be impossible due to regex match
-        let digits_as_usize: Option<usize> = digits.parse().ok();
-
-        match digits_as_usize {
-            Some(parsed_digits) => {
-                let number_format = get_number_format(&letters.to_lowercase());
-                match number_format {
-                    Some((multiple, _)) => Some(parsed_digits * (multiple as usize)),
-                    None => {
-                        if letters.is_empty() {
-                            Some(parsed_digits)
-                        } else {
-                            eprintln!("Ignoring invalid min-size: {input}");
-                            None
-                        }
-                    }
+        let parsed = digits.parse::<usize>().ok().and_then(|parsed_digits| {
+            if letters.is_empty() {
+                Some(parsed_digits)
+            } else {
+                match get_number_format(&letters.to_lowercase()) {
+                    Some((multiple, _)) => usize::try_from(multiple)
+                        .ok()
+                        .and_then(|multiple| parsed_digits.checked_mul(multiple)),
+                    None => None,
                 }
             }
-            None => None,
+        });
+
+        match parsed {
+            Some(min_size) => Some(min_size),
+            None => {
+                eprintln!("Ignoring invalid min-size: {input}");
+                None
+            }
         }
     } else {
         eprintln!("Ignoring invalid min-size: {input}");
@@ -375,6 +375,16 @@ mod tests {
         assert_eq!(convert_min_size("1.5M"), None);
         assert_eq!(convert_min_size("1 M"), None);
         assert_eq!(convert_min_size("-5"), None);
+
+        // Values too large to represent must not panic or silently wrap:
+        // they are rejected like any other invalid value.
+        // ("99999999T" overflows the u64 multiplication on 64-bit targets, and
+        // its multiplier does not fit a 32-bit usize; "18446744073709551616"
+        // is 2^64, which fits no usize.)
+        assert_eq!(convert_min_size("99999999T"), None);
+        assert_eq!(convert_min_size("18446744073709551616"), None);
+        // The largest representable value is accepted on any target.
+        assert_eq!(convert_min_size(&usize::MAX.to_string()), Some(usize::MAX));
     }
 
     #[test]
