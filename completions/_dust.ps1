@@ -63,6 +63,7 @@ Register-ArgumentCompleter -Native -CommandName 'dust' -ScriptBlock {
             [CompletionResult]::new('--limit-filesystem', '--limit-filesystem', [CompletionResultType]::ParameterName, 'Only count the files and directories on the same filesystem as the supplied directory')
             [CompletionResult]::new('-s', '-s', [CompletionResultType]::ParameterName, 'Use file length instead of blocks')
             [CompletionResult]::new('--apparent-size', '--apparent-size', [CompletionResultType]::ParameterName, 'Use file length instead of blocks')
+            [CompletionResult]::new('--shared-blocks', '--shared-blocks', [CompletionResultType]::ParameterName, 'Count blocks shared between copy-on-write clones only once: full APFS clones on macOS 14+ (`cp -c`), reflinks on Linux (`cp --reflink`)')
             [CompletionResult]::new('-r', '-r', [CompletionResultType]::ParameterName, 'Print tree upside down (biggest highest)')
             [CompletionResult]::new('--reverse', '--reverse', [CompletionResultType]::ParameterName, 'Print tree upside down (biggest highest)')
             [CompletionResult]::new('-c', '-c', [CompletionResultType]::ParameterName, 'No colors will be printed (Useful for commands like: watch)')

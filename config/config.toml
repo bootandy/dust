@@ -27,6 +27,10 @@ ignore-hidden=true
 # Only count files and directories on the same filesystem as the supplied directory
 limit-filesystem=true
 
+# Count blocks shared between copy-on-write clones only once (APFS clones on
+# macOS 14+, btrfs/XFS reflinks on Linux)
+shared-blocks=true
+
 # print sizes in powers of 1000 (e.g., 1.1G)
 output-format="si"
 

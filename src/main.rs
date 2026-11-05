@@ -205,6 +205,17 @@ fn main() {
     let by_filetime = config.get_filetime(&options);
     let limit_filesystem = config.get_limit_filesystem(&options);
     let follow_links = options.dereference_links;
+    let use_apparent_size = config.get_apparent_size(&options);
+    // Shared blocks only change disk usage, so other measures ignore the flag.
+    let shared_blocks = config.get_shared_blocks(&options)
+        && !use_apparent_size
+        && !by_filecount
+        && by_filetime.is_none();
+    if shared_blocks && !cfg!(any(target_os = "macos", target_os = "linux")) {
+        eprintln!(
+            "warning: --shared-blocks is only supported on macOS and Linux and will be ignored"
+        );
+    }
 
     let allowed_filesystems = if limit_filesystem {
         get_filesystem_devices(&target_dirs, follow_links)
@@ -263,7 +274,7 @@ fn main() {
         filter_modified_time,
         filter_accessed_time,
         filter_changed_time,
-        use_apparent_size: config.get_apparent_size(&options),
+        use_apparent_size,
         by_filecount,
         by_filetime: &by_filetime,
         ignore_hidden,
@@ -271,6 +282,7 @@ fn main() {
         progress_data: indicator.data.clone(),
         errors: errors_for_rayon,
         has_any_filter,
+        shared_blocks: shared_blocks.then(Default::default),
     };
 
     let threads_to_use = config.get_threads(&options);
@@ -282,7 +294,7 @@ fn main() {
         );
     }
 
-    init_rayon(&threads_to_use).install(|| {
+    init_rayon(&threads_to_use, shared_blocks).install(|| {
         let top_level_nodes = walk_it(simplified_dirs, &walk_data);
 
         let tree = match summarize_file_types {
@@ -466,11 +478,32 @@ fn read_paths_from_source(path: &str, null_terminated: bool) -> Vec<String> {
     }
 }
 
-fn init_rayon(threads: &Option<usize>) -> rayon::ThreadPool {
+fn init_rayon(threads: &Option<usize>, private_fd_tables: bool) -> rayon::ThreadPool {
     let mut builder = rayon::ThreadPoolBuilder::new();
     if let Some(t) = threads {
         builder = builder.num_threads(*t);
     }
+    // --shared-blocks opens and closes every file to FIEMAP it. All threads
+    // of a process share one fd table, and open() and close() both take its
+    // spinlock (files->file_lock), so past a few threads they queue on it.
+    // Giving each worker its own copy of the table removes that lock from
+    // the hot path. Safe only because every fd is opened and closed on one
+    // thread: get_shared_blocks opens and closes its file in one call, and
+    // walk_dir keeps each directory's ReadDir and DirEntry values on the
+    // thread that opened it. If unshare fails the worker keeps the shared
+    // table, which is slower but still correct.
+    #[cfg(target_os = "linux")]
+    if private_fd_tables {
+        builder = builder.start_handler(|_| {
+            // SAFETY: unshare(CLONE_FILES) only replaces this thread's
+            // fd table with a private copy; no memory is shared or freed.
+            unsafe {
+                libc::unshare(libc::CLONE_FILES);
+            }
+        });
+    }
+    #[cfg(not(target_os = "linux"))]
+    let _ = private_fd_tables;
     builder.build().unwrap_or_else(|err| {
         eprintln!("Problem initializing rayon, try: export RAYON_NUM_THREADS=1");
         panic!("{err}");

@@ -21,13 +21,19 @@ use std::path::PathBuf;
 
 use std::collections::HashSet;
 
-use rustc_hash::FxHashSet;
+use rustc_hash::{FxHashMap, FxHashSet};
+#[cfg(shared_extents)]
+use std::collections::BTreeMap;
+#[cfg(not(shared_extents))]
+use std::num::NonZeroU64;
 
 use crate::node::build_node;
 use std::fs::DirEntry;
 
 use crate::node::FileTime;
-use crate::platform::{MetadataTuple, get_metadata, tuple_from_metadata};
+use crate::platform::{
+    MetadataTuple, SharedBlocks, get_metadata, get_shared_blocks, tuple_from_metadata,
+};
 
 #[derive(Debug)]
 pub enum Operator {
@@ -57,7 +63,23 @@ pub struct WalkData<'a> {
     // path in `process_entry` can skip the function call entirely when no
     // filter flags are set.
     pub has_any_filter: bool,
+    // `--shared-blocks`: collects the `SharedBlocks` of each file that shares
+    // blocks so `clean_inodes` can count blocks shared between files (clones)
+    // only once. Kept out of `Node` so it costs nothing when the flag is off.
+    // main.rs leaves it `None` for modes where it means nothing (apparent
+    // size, counts, times).
+    pub shared_blocks: Option<Mutex<SharedMap>>,
 }
+
+// The `SharedBlocks` of files that share blocks, by (inode, device).
+pub type SharedMap = FxHashMap<(u64, u64), SharedBlocks>;
+
+// Shared blocks already counted: (device, clone id) pairs.
+#[cfg(not(shared_extents))]
+type CountedShared = FxHashSet<(u64, NonZeroU64)>;
+// Device byte ranges already counted, per device: start -> end, disjoint.
+#[cfg(shared_extents)]
+type CountedShared = FxHashMap<u64, BTreeMap<u64, u64>>;
 
 // Per-directory bookkeeping used during the parallel walk. Each directory gets
 // one `PendingDir`. Subdirectory tasks hold an `Arc` back to their parent so
@@ -88,6 +110,7 @@ pub fn walk_it(dirs: HashSet<PathBuf>, walk_data: &WalkData) -> Vec<Node> {
     // primitive keys. DoS resistance is irrelevant here; the keys are
     // (inode, device) pairs from the filesystem, not user input.
     let mut inodes: FxHashSet<(u64, u64)> = FxHashSet::default();
+    let mut counted = CountedShared::default();
     let mut top_level_nodes: Vec<Node> = Vec::new();
 
     for d in dirs {
@@ -138,9 +161,14 @@ pub fn walk_it(dirs: HashSet<PathBuf>, walk_data: &WalkData) -> Vec<Node> {
             .state
             .store(Operation::PREPARING, ORDERING);
 
+        let shared = walk_data
+            .shared_blocks
+            .as_ref()
+            .map(|m| std::mem::take(&mut *m.lock().unwrap()))
+            .unwrap_or_default();
         let mut outer_children = std::mem::take(&mut *outer.children.lock().unwrap());
         if let Some(node) = outer_children.pop()
-            && let Some(cleaned) = clean_inodes(node, &mut inodes, walk_data)
+            && let Some(cleaned) = clean_inodes(node, &mut inodes, &mut counted, &shared, walk_data)
         {
             top_level_nodes.push(cleaned);
         }
@@ -149,7 +177,15 @@ pub fn walk_it(dirs: HashSet<PathBuf>, walk_data: &WalkData) -> Vec<Node> {
 }
 
 // Remove files which have the same inode, we don't want to double count them.
-fn clean_inodes(x: Node, inodes: &mut FxHashSet<(u64, u64)>, walk_data: &WalkData) -> Option<Node> {
+// Likewise, under `--shared-blocks`, subtract the blocks a file shares with a
+// file already counted (clones); the first file visited owns them.
+fn clean_inodes(
+    x: Node,
+    inodes: &mut FxHashSet<(u64, u64)>,
+    counted: &mut CountedShared,
+    shared: &SharedMap,
+    walk_data: &WalkData,
+) -> Option<Node> {
     if !walk_data.use_apparent_size
         && let Some(id) = x.inode_device
         && !inodes.insert(id)
@@ -157,12 +193,19 @@ fn clean_inodes(x: Node, inodes: &mut FxHashSet<(u64, u64)>, walk_data: &WalkDat
         return None;
     }
 
+    let own_size = match x.inode_device.and_then(|id| Some((id.1, shared.get(&id)?))) {
+        Some((dev, blocks)) => x
+            .size
+            .saturating_sub(already_counted(blocks, x.size, dev, counted)),
+        None => x.size,
+    };
+
     // Sort Nodes so iteration order is predictable
     let mut tmp: Vec<_> = x.children;
     tmp.sort_by(sort_by_inode);
     let new_children: Vec<_> = tmp
         .into_iter()
-        .filter_map(|c| clean_inodes(c, inodes, walk_data))
+        .filter_map(|c| clean_inodes(c, inodes, counted, shared, walk_data))
         .collect();
 
     let actual_size = if walk_data.by_filetime.is_some() {
@@ -175,7 +218,7 @@ fn clean_inodes(x: Node, inodes: &mut FxHashSet<(u64, u64)>, walk_data: &WalkDat
             .unwrap_or(0)
     } else {
         // If by_filetime is None, directory 'size' is the sum of disk sizes or file counts of child files
-        x.size + new_children.iter().map(|c| c.size).sum::<u64>()
+        own_size + new_children.iter().map(|c| c.size).sum::<u64>()
     };
 
     Some(Node {
@@ -185,6 +228,55 @@ fn clean_inodes(x: Node, inodes: &mut FxHashSet<(u64, u64)>, walk_data: &WalkDat
         inode_device: x.inode_device,
         depth: x.depth,
     })
+}
+
+// How many bytes of `x` another file has already been charged for.
+// A full clone of a file already counted shares all of its blocks.
+#[cfg(not(shared_extents))]
+fn already_counted(blocks: &SharedBlocks, size: u64, dev: u64, counted: &mut CountedShared) -> u64 {
+    match *blocks {
+        Some(clone_id) if !counted.insert((dev, clone_id)) => size,
+        _ => 0,
+    }
+}
+
+#[cfg(shared_extents)]
+fn already_counted(
+    blocks: &SharedBlocks,
+    _size: u64,
+    dev: u64,
+    counted: &mut CountedShared,
+) -> u64 {
+    let ranges = counted.entry(dev).or_default();
+    blocks.iter().map(|&(s, e)| count_range(ranges, s, e)).sum()
+}
+
+// Marks the device byte range `[start, end)` as counted and returns how many
+// of its bytes had been counted already. Works on byte ranges rather than
+// whole extents because two clones can split the same blocks into
+// differently sized extents once either of them is partly rewritten.
+#[cfg(shared_extents)]
+fn count_range(ranges: &mut BTreeMap<u64, u64>, start: u64, end: u64) -> u64 {
+    // The first range that can touch ours is the last one starting at or
+    // before `start`, if it reaches `start`; the rest start inside ours.
+    let from = ranges
+        .range(..=start)
+        .next_back()
+        .filter(|&(_, &e)| e >= start)
+        .map_or(start, |(&s, _)| s);
+    let touching: Vec<(u64, u64)> = ranges.range(from..=end).map(|(&s, &e)| (s, e)).collect();
+
+    // Merge everything touching into one range so the map stays small.
+    let (mut merged_start, mut merged_end) = (start, end);
+    let mut already_counted = 0;
+    for (s, e) in touching {
+        already_counted += e.min(end).saturating_sub(s.max(start));
+        merged_start = merged_start.min(s);
+        merged_end = merged_end.max(e);
+        ranges.remove(&s);
+    }
+    ranges.insert(merged_start, merged_end);
+    already_counted
 }
 
 fn sort_by_inode(a: &Node, b: &Node) -> std::cmp::Ordering {
@@ -335,7 +427,7 @@ fn walk_dir<'scope>(
         // EINTR is the only retryable error. Looping iteratively (rather than
         // recursing on retry, like the old code) keeps stack depth O(1).
         loop {
-            let entries = match fs::read_dir(&pending.dir) {
+            let mut entries = match fs::read_dir(&pending.dir) {
                 Ok(entries) => entries,
                 Err(ref failed) => {
                     record_error(failed, &pending.dir, walk_data);
@@ -350,7 +442,10 @@ fn walk_dir<'scope>(
             // This is the load-bearing structural choice for retry safety: if
             // we decide to retry, we throw the Vec away and re-list, with no
             // spawned subdir tasks or pushed file nodes to roll back.
-            let collected: Vec<_> = entries.collect();
+            //
+            // `by_ref` keeps `entries` (the ReadDir) alive until the end of
+            // this iteration; see the closedir note below.
+            let collected: Vec<_> = entries.by_ref().collect();
 
             // If any entry yielded a retryable error, throw the Vec away and
             // re-list. We record only that one error (which bumps the EINTR
@@ -383,10 +478,34 @@ fn walk_dir<'scope>(
                 children.reserve(collected.len());
             }
 
-            let file_nodes: Vec<Node> = collected
+            // The directory's fd must only be used on this thread. With
+            // --shared-blocks on Linux each worker thread has its own fd
+            // table (see init_rayon), where that fd number is absent or
+            // names another file. Two DirEntry paths touch it:
+            //   * file_type() falls back to a statx relative to the
+            //     directory fd when d_type is DT_UNKNOWN, so the types are
+            //     resolved here, before the entries reach the workers.
+            //   * every DirEntry holds the directory stream, and the last
+            //     holder to drop calls closedir(). `entries` holds it too
+            //     and outlives the collect below (by_ref above), so the
+            //     workers drop entries without ever being the last holder,
+            //     and closedir() runs here when `entries` goes out of scope.
+            let typed: Vec<_> = collected
+                .into_iter()
+                .map(|r| {
+                    r.map(|entry| {
+                        let file_type = entry.file_type();
+                        (entry, file_type)
+                    })
+                })
+                .collect();
+            let file_nodes: Vec<Node> = typed
                 .into_par_iter()
                 .filter_map(|r| match r {
-                    Ok(entry) => process_entry(scope, &pending, &entry, walk_data),
+                    Ok((entry, Ok(file_type))) => {
+                        process_entry(scope, &pending, &entry, file_type, walk_data)
+                    }
+                    Ok((_, Err(_))) => None,
                     Err(failed) => {
                         record_error(&failed, &pending.dir, walk_data);
                         None
@@ -416,14 +535,13 @@ fn process_entry<'scope>(
     scope: &rayon::Scope<'scope>,
     pending: &Arc<PendingDir>,
     entry: &DirEntry,
+    file_type: std::fs::FileType,
     walk_data: &'scope WalkData<'scope>,
 ) -> Option<Node> {
-    // Compute path + file_type once per entry and thread them through.
-    // `entry.path()` allocates a PathBuf; `entry.file_type()` can require a
-    // stat on filesystems without d_type support. Previously each was called
-    // up to 3 times per entry.
+    // Compute path once per entry and thread it through; `entry.path()`
+    // allocates a PathBuf. `file_type` was resolved by the caller on the
+    // thread that read the directory (see walk_dir).
     let path = entry.path();
-    let file_type = entry.file_type().ok()?;
     // Fetch metadata at most once per entry. Without filters, the
     // per-file stat lives inside `build_node` as before. With filters,
     // we used to stat twice — once in `ignore_file` for the filter
@@ -450,7 +568,7 @@ fn process_entry<'scope>(
     } else if walk_data.ignore_hidden && entry.file_name().to_str().unwrap_or("").starts_with('.') {
         return None;
     }
-    let data = entry.file_type().ok()?;
+    let data = file_type;
     let is_symlink = data.is_symlink();
 
     // If the entry is a directory we'll spawn off a new task to walk it.
@@ -532,6 +650,20 @@ fn process_entry<'scope>(
         pending.depth,
         walk_data,
     );
+
+    // Skip files a filter zeroed out: their blocks must stay unclaimed so a
+    // clone that is shown gets charged for them.
+    if let Some(shared) = &walk_data.shared_blocks
+        && data.is_file()
+        && let Some(n) = &node
+        && n.size > 0
+        && let Some(id) = n.inode_device
+    {
+        let blocks = get_shared_blocks(&path, id.1);
+        if blocks != SharedBlocks::default() {
+            shared.lock().unwrap().insert(id, blocks);
+        }
+    }
 
     let prog_data = &walk_data.progress_data;
     prog_data.num_files.fetch_add(1, ORDERING);
@@ -667,6 +799,7 @@ mod tests {
             progress_data: indicator.data.clone(),
             errors: Arc::new(Mutex::new(RuntimeErrors::default())),
             has_any_filter: true,
+            shared_blocks: None,
         }
     }
 
@@ -674,35 +807,142 @@ mod tests {
     #[allow(clippy::redundant_clone)]
     fn test_should_ignore_file() {
         let mut inodes = FxHashSet::default();
+        let mut counted = CountedShared::default();
+        let shared = SharedMap::default();
         let n = create_node();
         let walkdata = create_walker(false);
 
         // First time we insert the node
         assert_eq!(
-            clean_inodes(n.clone(), &mut inodes, &walkdata),
+            clean_inodes(n.clone(), &mut inodes, &mut counted, &shared, &walkdata),
             Some(n.clone())
         );
 
         // Second time is a duplicate - we ignore it
-        assert_eq!(clean_inodes(n.clone(), &mut inodes, &walkdata), None);
+        assert_eq!(
+            clean_inodes(n.clone(), &mut inodes, &mut counted, &shared, &walkdata),
+            None
+        );
     }
 
     #[test]
     #[allow(clippy::redundant_clone)]
     fn test_should_not_ignore_files_if_using_apparent_size() {
         let mut inodes = FxHashSet::default();
+        let mut counted = CountedShared::default();
+        let shared = SharedMap::default();
         let n = create_node();
         let walkdata = create_walker(true);
 
         // If using apparent size we include Nodes, even if duplicate inodes
         assert_eq!(
-            clean_inodes(n.clone(), &mut inodes, &walkdata),
+            clean_inodes(n.clone(), &mut inodes, &mut counted, &shared, &walkdata),
             Some(n.clone())
         );
         assert_eq!(
-            clean_inodes(n.clone(), &mut inodes, &walkdata),
+            clean_inodes(n.clone(), &mut inodes, &mut counted, &shared, &walkdata),
             Some(n.clone())
         );
+    }
+
+    #[cfg(not(shared_extents))]
+    #[test]
+    fn test_full_clones_counted_once() {
+        let file = |name: &str, ino| Node {
+            name: PathBuf::from(name),
+            size: 4096,
+            children: vec![],
+            inode_device: Some((ino, 1)),
+            depth: 1,
+        };
+        let dir = Node {
+            name: PathBuf::from("dir"),
+            size: 0,
+            children: vec![
+                file("original", 1),
+                file("clone", 2),
+                // Not a full clone of anything: no clone id recorded.
+                file("other", 3),
+            ],
+            inode_device: Some((10, 1)),
+            depth: 0,
+        };
+        let shared =
+            SharedMap::from_iter([((1, 1), NonZeroU64::new(1)), ((2, 1), NonZeroU64::new(1))]);
+
+        let walkdata = create_walker(false);
+        let cleaned = clean_inodes(
+            dir,
+            &mut FxHashSet::default(),
+            &mut CountedShared::default(),
+            &shared,
+            &walkdata,
+        )
+        .unwrap();
+
+        let sizes: Vec<u64> = cleaned.children.iter().map(|c| c.size).collect();
+        assert_eq!(sizes, vec![4096, 0, 4096]);
+        assert_eq!(cleaned.size, 4096 * 2);
+    }
+
+    #[cfg(shared_extents)]
+    #[test]
+    fn test_count_range() {
+        let mut ranges = BTreeMap::new();
+        assert_eq!(count_range(&mut ranges, 100, 200), 0);
+        // Same range again: all of it was counted.
+        assert_eq!(count_range(&mut ranges, 100, 200), 100);
+        // Split differently from the first: still all counted.
+        assert_eq!(count_range(&mut ranges, 100, 140), 40);
+        assert_eq!(count_range(&mut ranges, 140, 200), 60);
+        // Partial overlap at either end.
+        assert_eq!(count_range(&mut ranges, 50, 120), 20);
+        assert_eq!(count_range(&mut ranges, 180, 260), 20);
+        // Disjoint, then a range spanning it and the gap before it.
+        assert_eq!(count_range(&mut ranges, 300, 400), 0);
+        assert_eq!(count_range(&mut ranges, 0, 500), 310);
+        // Everything collapsed into one range.
+        assert_eq!(ranges, BTreeMap::from([(0, 500)]));
+    }
+
+    #[cfg(shared_extents)]
+    #[test]
+    fn test_shared_extents_counted_once() {
+        let file = |name: &str, ino| Node {
+            name: PathBuf::from(name),
+            size: 4096 * 4,
+            children: vec![],
+            inode_device: Some((ino, 1)),
+            depth: 1,
+        };
+        let dir = Node {
+            name: PathBuf::from("dir"),
+            size: 0,
+            children: vec![file("original", 1), file("clone", 2), file("partial", 3)],
+            inode_device: Some((10, 1)),
+            depth: 0,
+        };
+        let shared = SharedMap::from_iter([
+            ((1, 1), [(0, 4096 * 4)].into()),
+            // Full clone of original, mapped as two extents.
+            ((2, 1), [(0, 4096 * 2), (4096 * 2, 4096 * 4)].into()),
+            // Clone with its last block rewritten elsewhere on disk.
+            ((3, 1), [(0, 4096 * 3), (4096 * 100, 4096 * 101)].into()),
+        ]);
+
+        let walkdata = create_walker(false);
+        let cleaned = clean_inodes(
+            dir,
+            &mut FxHashSet::default(),
+            &mut CountedShared::default(),
+            &shared,
+            &walkdata,
+        )
+        .unwrap();
+
+        let sizes: Vec<u64> = cleaned.children.iter().map(|c| c.size).collect();
+        assert_eq!(sizes, vec![4096 * 4, 0, 4096]);
+        assert_eq!(cleaned.size, 4096 * 5);
     }
 
     #[test]

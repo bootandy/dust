@@ -60,6 +60,7 @@ set edit:completion:arg-completer[dust] = {|@words|
             cand --limit-filesystem 'Only count the files and directories on the same filesystem as the supplied directory'
             cand -s 'Use file length instead of blocks'
             cand --apparent-size 'Use file length instead of blocks'
+            cand --shared-blocks 'Count blocks shared between copy-on-write clones only once: full APFS clones on macOS 14+ (`cp -c`), reflinks on Linux (`cp --reflink`)'
             cand -r 'Print tree upside down (biggest highest)'
             cand --reverse 'Print tree upside down (biggest highest)'
             cand -c 'No colors will be printed (Useful for commands like: watch)'
