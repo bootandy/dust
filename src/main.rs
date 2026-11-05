@@ -294,7 +294,7 @@ fn main() {
         );
     }
 
-    init_rayon(&threads_to_use).install(|| {
+    init_rayon(&threads_to_use, shared_blocks).install(|| {
         let top_level_nodes = walk_it(simplified_dirs, &walk_data);
 
         let tree = match summarize_file_types {
@@ -478,11 +478,32 @@ fn read_paths_from_source(path: &str, null_terminated: bool) -> Vec<String> {
     }
 }
 
-fn init_rayon(threads: &Option<usize>) -> rayon::ThreadPool {
+fn init_rayon(threads: &Option<usize>, private_fd_tables: bool) -> rayon::ThreadPool {
     let mut builder = rayon::ThreadPoolBuilder::new();
     if let Some(t) = threads {
         builder = builder.num_threads(*t);
     }
+    // --shared-blocks opens and closes every file to FIEMAP it. All threads
+    // of a process share one fd table, and open() and close() both take its
+    // spinlock (files->file_lock), so past a few threads they queue on it.
+    // Giving each worker its own copy of the table removes that lock from
+    // the hot path. Safe only because every fd is opened and closed on one
+    // thread: get_shared_blocks opens and closes its file in one call, and
+    // walk_dir keeps each directory's ReadDir and DirEntry values on the
+    // thread that opened it. If unshare fails the worker keeps the shared
+    // table, which is slower but still correct.
+    #[cfg(target_os = "linux")]
+    if private_fd_tables {
+        builder = builder.start_handler(|_| {
+            // SAFETY: unshare(CLONE_FILES) only replaces this thread's
+            // fd table with a private copy; no memory is shared or freed.
+            unsafe {
+                libc::unshare(libc::CLONE_FILES);
+            }
+        });
+    }
+    #[cfg(not(target_os = "linux"))]
+    let _ = private_fd_tables;
     builder.build().unwrap_or_else(|err| {
         eprintln!("Problem initializing rayon, try: export RAYON_NUM_THREADS=1");
         panic!("{err}");

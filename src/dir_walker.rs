@@ -427,7 +427,7 @@ fn walk_dir<'scope>(
         // EINTR is the only retryable error. Looping iteratively (rather than
         // recursing on retry, like the old code) keeps stack depth O(1).
         loop {
-            let entries = match fs::read_dir(&pending.dir) {
+            let mut entries = match fs::read_dir(&pending.dir) {
                 Ok(entries) => entries,
                 Err(ref failed) => {
                     record_error(failed, &pending.dir, walk_data);
@@ -442,7 +442,10 @@ fn walk_dir<'scope>(
             // This is the load-bearing structural choice for retry safety: if
             // we decide to retry, we throw the Vec away and re-list, with no
             // spawned subdir tasks or pushed file nodes to roll back.
-            let collected: Vec<_> = entries.collect();
+            //
+            // `by_ref` keeps `entries` (the ReadDir) alive until the end of
+            // this iteration; see the closedir note below.
+            let collected: Vec<_> = entries.by_ref().collect();
 
             // If any entry yielded a retryable error, throw the Vec away and
             // re-list. We record only that one error (which bumps the EINTR
@@ -475,10 +478,34 @@ fn walk_dir<'scope>(
                 children.reserve(collected.len());
             }
 
-            let file_nodes: Vec<Node> = collected
+            // The directory's fd must only be used on this thread. With
+            // --shared-blocks on Linux each worker thread has its own fd
+            // table (see init_rayon), where that fd number is absent or
+            // names another file. Two DirEntry paths touch it:
+            //   * file_type() falls back to a statx relative to the
+            //     directory fd when d_type is DT_UNKNOWN, so the types are
+            //     resolved here, before the entries reach the workers.
+            //   * every DirEntry holds the directory stream, and the last
+            //     holder to drop calls closedir(). `entries` holds it too
+            //     and outlives the collect below (by_ref above), so the
+            //     workers drop entries without ever being the last holder,
+            //     and closedir() runs here when `entries` goes out of scope.
+            let typed: Vec<_> = collected
+                .into_iter()
+                .map(|r| {
+                    r.map(|entry| {
+                        let file_type = entry.file_type();
+                        (entry, file_type)
+                    })
+                })
+                .collect();
+            let file_nodes: Vec<Node> = typed
                 .into_par_iter()
                 .filter_map(|r| match r {
-                    Ok(entry) => process_entry(scope, &pending, &entry, walk_data),
+                    Ok((entry, Ok(file_type))) => {
+                        process_entry(scope, &pending, &entry, file_type, walk_data)
+                    }
+                    Ok((_, Err(_))) => None,
                     Err(failed) => {
                         record_error(&failed, &pending.dir, walk_data);
                         None
@@ -508,14 +535,13 @@ fn process_entry<'scope>(
     scope: &rayon::Scope<'scope>,
     pending: &Arc<PendingDir>,
     entry: &DirEntry,
+    file_type: std::fs::FileType,
     walk_data: &'scope WalkData<'scope>,
 ) -> Option<Node> {
-    // Compute path + file_type once per entry and thread them through.
-    // `entry.path()` allocates a PathBuf; `entry.file_type()` can require a
-    // stat on filesystems without d_type support. Previously each was called
-    // up to 3 times per entry.
+    // Compute path once per entry and thread it through; `entry.path()`
+    // allocates a PathBuf. `file_type` was resolved by the caller on the
+    // thread that read the directory (see walk_dir).
     let path = entry.path();
-    let file_type = entry.file_type().ok()?;
     // Fetch metadata at most once per entry. Without filters, the
     // per-file stat lives inside `build_node` as before. With filters,
     // we used to stat twice — once in `ignore_file` for the filter
@@ -542,7 +568,7 @@ fn process_entry<'scope>(
     } else if walk_data.ignore_hidden && entry.file_name().to_str().unwrap_or("").starts_with('.') {
         return None;
     }
-    let data = entry.file_type().ok()?;
+    let data = file_type;
     let is_symlink = data.is_symlink();
 
     // If the entry is a directory we'll spawn off a new task to walk it.
