@@ -1,5 +1,7 @@
 use std::cmp::Ordering;
+use std::ffi::OsString;
 use std::fs;
+use std::io;
 use std::io::Error;
 use std::sync::Arc;
 use std::sync::Mutex;
@@ -25,8 +27,14 @@ use rustc_hash::FxHashSet;
 
 use crate::node::build_node;
 use std::fs::DirEntry;
+#[cfg(target_os = "macos")]
+use std::os::unix::fs::MetadataExt;
 
+#[cfg(target_os = "macos")]
+use crate::macos_listing;
 use crate::node::FileTime;
+#[cfg(target_os = "macos")]
+use crate::platform::tuple_from_stat;
 use crate::platform::{MetadataTuple, get_metadata, tuple_from_metadata};
 
 #[derive(Debug)]
@@ -81,6 +89,153 @@ struct PendingDir {
     // Just the info we need, ~120 B/dir smaller, and `Copy`.
     // `None` means the stat failed (broken symlink, raced deletion, ...).
     cached_metadata: OnceLock<Option<MetadataTuple>>,
+}
+
+// One folder's entries. On macOS a folder is listed with `getattrlistbulk`,
+// which also returns each regular file's stat fields, so those files are not
+// stat'ed again. Other platforms, and any folder the macOS listing leaves to
+// it, use `fs::read_dir`. Two Vecs, so a `read_dir` listing keeps its size
+// per entry.
+enum Listing {
+    Std(Vec<io::Result<DirEntry>>),
+    #[cfg(target_os = "macos")]
+    Bulk(Vec<macos_listing::Entry>),
+}
+
+impl Listing {
+    fn len(&self) -> usize {
+        match self {
+            Listing::Std(entries) => entries.len(),
+            #[cfg(target_os = "macos")]
+            Listing::Bulk(entries) => entries.len(),
+        }
+    }
+
+    // The first retryable error an entry yielded. A bulk listing that hit
+    // an error was left to `read_dir`, so it has none.
+    fn retryable_error(&self) -> Option<&Error> {
+        match self {
+            Listing::Std(entries) => entries
+                .iter()
+                .filter_map(|r| r.as_ref().err())
+                .find(|e| is_retryable(e)),
+            #[cfg(target_os = "macos")]
+            Listing::Bulk(_) => None,
+        }
+    }
+}
+
+// One entry of a `Listing`.
+enum Entry {
+    Std(DirEntry),
+    #[cfg(target_os = "macos")]
+    Bulk(macos_listing::Entry),
+}
+
+// The parts of `std::fs::FileType` the walker reads.
+#[derive(Clone, Copy)]
+struct EntryType {
+    is_dir: bool,
+    is_file: bool,
+    is_symlink: bool,
+}
+
+impl EntryType {
+    fn is_dir(self) -> bool {
+        self.is_dir
+    }
+
+    fn is_file(self) -> bool {
+        self.is_file
+    }
+
+    fn is_symlink(self) -> bool {
+        self.is_symlink
+    }
+}
+
+impl From<fs::FileType> for EntryType {
+    fn from(file_type: fs::FileType) -> Self {
+        EntryType {
+            is_dir: file_type.is_dir(),
+            is_file: file_type.is_file(),
+            is_symlink: file_type.is_symlink(),
+        }
+    }
+}
+
+#[cfg(target_os = "macos")]
+impl From<macos_listing::Kind> for EntryType {
+    fn from(kind: macos_listing::Kind) -> Self {
+        use macos_listing::Kind;
+        EntryType {
+            is_dir: matches!(kind, Kind::Dir),
+            is_file: matches!(kind, Kind::File),
+            is_symlink: matches!(kind, Kind::Symlink),
+        }
+    }
+}
+
+impl Entry {
+    // `dir` is the folder that was listed.
+    #[cfg_attr(not(target_os = "macos"), allow(unused_variables))]
+    fn path(&self, dir: &Path) -> PathBuf {
+        match self {
+            Entry::Std(entry) => entry.path(),
+            #[cfg(target_os = "macos")]
+            Entry::Bulk(entry) => {
+                // Sized exactly, since a file's path lives on in its Node.
+                let len = dir.as_os_str().len() + 1 + entry.name.len();
+                let mut path = PathBuf::with_capacity(len);
+                path.push(dir);
+                path.push(&*entry.name);
+                path
+            }
+        }
+    }
+
+    fn file_name(&self) -> OsString {
+        match self {
+            Entry::Std(entry) => entry.file_name(),
+            #[cfg(target_os = "macos")]
+            Entry::Bulk(entry) => entry.name.clone().into_os_string(),
+        }
+    }
+
+    fn file_type(&self) -> io::Result<EntryType> {
+        match self {
+            Entry::Std(entry) => entry.file_type().map(EntryType::from),
+            #[cfg(target_os = "macos")]
+            Entry::Bulk(entry) => Ok(entry.kind.into()),
+        }
+    }
+
+    #[cfg(target_family = "unix")]
+    fn ino(&self) -> u64 {
+        match self {
+            Entry::Std(entry) => {
+                use std::os::unix::fs::DirEntryExt;
+                entry.ino()
+            }
+            #[cfg(target_os = "macos")]
+            Entry::Bulk(entry) => entry.ino,
+        }
+    }
+}
+
+// Lists `dir`, whose metadata is `dir_md`. The error is the folder's, as
+// from `fs::read_dir`.
+#[cfg_attr(not(target_os = "macos"), allow(unused_variables))]
+fn list_dir(dir: &Path, dir_md: &fs::Metadata, walk_data: &WalkData) -> io::Result<Listing> {
+    // `-f` without `-L` or a metadata filter stats no file (see
+    // `process_entry`), and `read_dir` lists names more cheaply.
+    #[cfg(target_os = "macos")]
+    if (!walk_data.by_filecount || walk_data.follow_links || filter_needs_metadata(walk_data))
+        && let Some(entries) = macos_listing::read_dir(dir, dir_md.nlink())
+    {
+        return Ok(Listing::Bulk(entries));
+    }
+    Ok(Listing::Std(fs::read_dir(dir)?.collect()))
 }
 
 pub fn walk_it(dirs: HashSet<PathBuf>, walk_data: &WalkData) -> Vec<Node> {
@@ -246,9 +401,9 @@ fn filter_needs_metadata(walk_data: &WalkData) -> bool {
 // through to `build_node` afterwards, so we never stat the same file
 // twice on a filter-active walk.
 fn ignore_file(
-    entry: &DirEntry,
+    entry: &Entry,
     path: &Path,
-    file_type: std::fs::FileType,
+    file_type: EntryType,
     metadata: Option<&MetadataTuple>,
     walk_data: &WalkData,
 ) -> bool {
@@ -331,12 +486,16 @@ fn walk_dir<'scope>(
     };
     let _ = pending.cached_metadata.set(tuple);
 
-    if is_dir_path {
+    if is_dir_path && let Ok(dir_md) = &md_result {
         // EINTR is the only retryable error. Looping iteratively (rather than
         // recursing on retry, like the old code) keeps stack depth O(1).
         loop {
-            let entries = match fs::read_dir(&pending.dir) {
-                Ok(entries) => entries,
+            // Drain into a Vec before doing anything observable on `pending`.
+            // This is the load-bearing structural choice for retry safety: if
+            // we decide to retry, we throw the Vec away and re-list, with no
+            // spawned subdir tasks or pushed file nodes to roll back.
+            let collected = match list_dir(&pending.dir, dir_md, walk_data) {
+                Ok(collected) => collected,
                 Err(ref failed) => {
                     record_error(failed, &pending.dir, walk_data);
                     if is_retryable(failed) {
@@ -346,23 +505,13 @@ fn walk_dir<'scope>(
                 }
             };
 
-            // Drain into a Vec before doing anything observable on `pending`.
-            // This is the load-bearing structural choice for retry safety: if
-            // we decide to retry, we throw the Vec away and re-list, with no
-            // spawned subdir tasks or pushed file nodes to roll back.
-            let collected: Vec<_> = entries.collect();
-
             // If any entry yielded a retryable error, throw the Vec away and
             // re-list. We record only that one error (which bumps the EINTR
             // counter and trips a panic threshold if retries are runaway);
             // other errors aren't recorded yet because they'll resurface on
             // retry if they're real, and recording them now would log
             // phantoms when the retry succeeds cleanly.
-            if let Some(failed) = collected
-                .iter()
-                .filter_map(|r| r.as_ref().err())
-                .find(|e| is_retryable(e))
-            {
+            if let Some(failed) = collected.retryable_error() {
                 record_error(failed, &pending.dir, walk_data);
                 continue;
             }
@@ -383,16 +532,25 @@ fn walk_dir<'scope>(
                 children.reserve(collected.len());
             }
 
-            let file_nodes: Vec<Node> = collected
-                .into_par_iter()
-                .filter_map(|r| match r {
-                    Ok(entry) => process_entry(scope, &pending, &entry, walk_data),
-                    Err(failed) => {
-                        record_error(&failed, &pending.dir, walk_data);
-                        None
-                    }
-                })
-                .collect();
+            let file_nodes: Vec<Node> = match collected {
+                Listing::Std(entries) => entries
+                    .into_par_iter()
+                    .filter_map(|r| match r {
+                        Ok(entry) => process_entry(scope, &pending, &Entry::Std(entry), walk_data),
+                        Err(failed) => {
+                            record_error(&failed, &pending.dir, walk_data);
+                            None
+                        }
+                    })
+                    .collect(),
+                #[cfg(target_os = "macos")]
+                Listing::Bulk(entries) => entries
+                    .into_par_iter()
+                    .filter_map(|entry| {
+                        process_entry(scope, &pending, &Entry::Bulk(entry), walk_data)
+                    })
+                    .collect(),
+            };
 
             if !file_nodes.is_empty() {
                 pending.children.lock().unwrap().extend(file_nodes);
@@ -415,14 +573,14 @@ fn walk_dir<'scope>(
 fn process_entry<'scope>(
     scope: &rayon::Scope<'scope>,
     pending: &Arc<PendingDir>,
-    entry: &DirEntry,
+    entry: &Entry,
     walk_data: &'scope WalkData<'scope>,
 ) -> Option<Node> {
     // Compute path + file_type once per entry and thread them through.
     // `entry.path()` allocates a PathBuf; `entry.file_type()` can require a
     // stat on filesystems without d_type support. Previously each was called
     // up to 3 times per entry.
-    let path = entry.path();
+    let path = entry.path(&pending.dir);
     let file_type = entry.file_type().ok()?;
     // Fetch metadata at most once per entry. Without filters, the
     // per-file stat lives inside `build_node` as before. With filters,
@@ -435,12 +593,19 @@ fn process_entry<'scope>(
     // discards the size field, so this is harmless for the filter
     // logic but means the tuple can be reused unchanged below.
     let mut prefetched: Option<MetadataTuple> = None;
+    // On macOS the listing may already hold a regular file's stat fields.
+    #[cfg(target_os = "macos")]
+    if let Entry::Bulk(listed) = entry {
+        prefetched = listed
+            .stat
+            .map(|st| tuple_from_stat(&st, walk_data.use_apparent_size));
+    }
     // Fast path: no filters means `ignore_file` has nothing to do. On a
     // default walk this avoids a function call, a HashSet probe, and an
     // OsString allocation for `file_name` per entry. We still need to honour
     // `ignore_hidden` separately when no other filters are set.
     if walk_data.has_any_filter {
-        if filter_needs_metadata(walk_data) {
+        if prefetched.is_none() && filter_needs_metadata(walk_data) {
             let follow_links = walk_data.follow_links && file_type.is_symlink();
             prefetched = get_metadata(&path, walk_data.use_apparent_size, follow_links);
         }
@@ -462,7 +627,7 @@ fn process_entry<'scope>(
         pending.pending.fetch_add(1, AtomicOrdering::Relaxed);
 
         let child = Arc::new(PendingDir {
-            dir: entry.path(),
+            dir: entry.path(&pending.dir),
             depth: pending.depth + 1,
             is_symlink,
             parent: Some(pending.clone()),
@@ -512,7 +677,6 @@ fn process_entry<'scope>(
     // `DirEntry`, so the existing stat path keeps running there.
     #[cfg(target_family = "unix")]
     if prefetched.is_none() && walk_data.by_filecount && !walk_data.follow_links {
-        use std::os::unix::fs::DirEntryExt;
         let parent_dev = pending
             .cached_metadata
             .get()
@@ -524,7 +688,7 @@ fn process_entry<'scope>(
     }
 
     let node = build_node(
-        entry.path(),
+        entry.path(&pending.dir),
         vec![],
         prefetched,
         is_symlink,

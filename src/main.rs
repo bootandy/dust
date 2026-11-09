@@ -5,6 +5,8 @@ mod display;
 mod display_node;
 mod filter;
 mod filter_type;
+#[cfg(target_os = "macos")]
+mod macos_listing;
 mod node;
 mod platform;
 mod progress;
