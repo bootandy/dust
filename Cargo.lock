@@ -306,6 +306,7 @@ dependencies = [
  "config-file",
  "ctrlc",
  "filesize",
+ "libc",
  "lscolors",
  "nu-ansi-term",
  "portable-atomic",

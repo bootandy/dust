@@ -33,6 +33,21 @@ pub fn get_metadata<P: AsRef<Path>>(
     }
 }
 
+/// The `stat` fields the walker reads, as `std::os::unix::fs::MetadataExt`
+/// returns them.
+#[cfg(target_family = "unix")]
+#[derive(Clone, Copy)]
+pub struct StatFields {
+    pub len: u64,
+    pub blocks: u64,
+    pub blksize: u64,
+    pub ino: u64,
+    pub dev: u64,
+    pub mtime: i64,
+    pub atime: i64,
+    pub ctime: i64,
+}
+
 /// Extract the data tuple from an already-fetched `Metadata`, no syscall.
 #[cfg(target_family = "unix")]
 pub fn tuple_from_metadata(
@@ -40,21 +55,39 @@ pub fn tuple_from_metadata(
     use_apparent_size: bool,
 ) -> Option<MetadataTuple> {
     use std::os::unix::fs::MetadataExt;
-    let file_size = md.len();
+    Some(tuple_from_stat(
+        &StatFields {
+            len: md.len(),
+            blocks: md.blocks(),
+            blksize: md.blksize(),
+            ino: md.ino(),
+            dev: md.dev(),
+            mtime: md.mtime(),
+            atime: md.atime(),
+            ctime: md.ctime(),
+        },
+        use_apparent_size,
+    ))
+}
+
+/// Extract the data tuple from `stat` fields, however they were read.
+#[cfg(target_family = "unix")]
+pub fn tuple_from_stat(st: &StatFields, use_apparent_size: bool) -> MetadataTuple {
+    let file_size = st.len;
     if use_apparent_size {
-        Some((
+        (
             file_size,
-            Some((md.ino(), md.dev())),
-            (md.mtime(), md.atime(), md.ctime()),
-        ))
+            Some((st.ino, st.dev)),
+            (st.mtime, st.atime, st.ctime),
+        )
     } else {
         // On NTFS mounts, the reported block count can be unexpectedly large.
         // To avoid overestimating disk usage, cap the allocated size to what the
         // file should occupy based on the file system I/O block size (blksize).
         // Related: https://github.com/bootandy/dust/issues/295
-        let blksize = md.blksize();
+        let blksize = st.blksize;
         let target_size = file_size.div_ceil(blksize) * blksize;
-        let reported_size = md.blocks() * get_block_size();
+        let reported_size = st.blocks * get_block_size();
 
         // File systems can pre-allocate more space for a file than what would be necessary
         let pre_allocation_buffer = blksize * 65536;
@@ -64,11 +97,11 @@ pub fn tuple_from_metadata(
         } else {
             reported_size
         };
-        Some((
+        (
             allocated_size,
-            Some((md.ino(), md.dev())),
-            (md.mtime(), md.atime(), md.ctime()),
-        ))
+            Some((st.ino, st.dev)),
+            (st.mtime, st.atime, st.ctime),
+        )
     }
 }
 
