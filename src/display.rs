@@ -379,7 +379,7 @@ fn get_name_percent(
     } else if !bar_chart.is_empty() {
         let percent = display_data.percent_size(node) * 100.0;
         let percent_size_str = format!("{percent:.0}%");
-        let colored_bar = if display_data.initial.dim {
+        let colored_bar = if display_data.initial.dim && display_data.initial.colors_on {
             format!("{}", DarkGray.paint(bar_chart))
         } else {
             bar_chart.to_string()
@@ -615,6 +615,27 @@ mod tests {
 
         let s = format_string(&n, indent, percent_bar, is_biggest, &data);
         assert_eq!(s, "short               3 4.0Ki 100%");
+    }
+
+    #[test]
+    fn test_dim_bars_respect_color_setting() {
+        let node = DisplayNode {
+            name: PathBuf::from("short"),
+            size: 2_u64.pow(12),
+            children: vec![],
+        };
+        let mut data = get_fake_display_data(20);
+        for (colors_on, dim, expected) in [
+            (false, true, "│████ │ 100%"),
+            (true, true, "│\x1b[90m████\x1b[0m │ 100%"),
+            (false, false, "│████ │ 100%"),
+            (true, false, "│████ │ 100%"),
+        ] {
+            data.initial.colors_on = colors_on;
+            data.initial.dim = dim;
+            let (percent, _) = get_name_percent(&node, "┌──", "████", &data);
+            assert_eq!(percent, expected);
+        }
     }
 
     #[test]
