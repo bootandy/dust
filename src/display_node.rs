@@ -51,8 +51,28 @@ impl Serialize for DisplayNode {
             .with(|output_type| human_readable_number(self.size, output_type.borrow().as_str()));
         let mut state = serializer.serialize_struct("DisplayNode", 2)?;
         state.serialize_field("size", &(readable_size))?;
-        state.serialize_field("name", &self.name)?;
+        state.serialize_field("name", &self.name.to_string_lossy())?;
         state.serialize_field("children", &self.children)?;
         state.end()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[cfg(unix)]
+    #[test]
+    fn test_serialize_non_utf8_name() {
+        use std::ffi::OsStr;
+        use std::os::unix::ffi::OsStrExt;
+
+        let node = DisplayNode {
+            size: 0,
+            name: PathBuf::from(OsStr::from_bytes(b"bad\xffname")),
+            children: vec![],
+        };
+        let json = serde_json::to_string(&node).unwrap();
+        assert!(json.contains("bad\u{FFFD}name"));
     }
 }

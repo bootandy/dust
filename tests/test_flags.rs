@@ -77,6 +77,22 @@ fn test_mtime_filter_uses_unix_timestamp() {
     );
 }
 
+#[cfg(unix)]
+#[test]
+fn test_json_output_with_non_utf8_file_name() {
+    use std::os::unix::ffi::OsStrExt;
+
+    let temp_dir = tempfile::tempdir().unwrap();
+    let bad_name = temp_dir.path().join(OsStr::from_bytes(b"bad\xffname"));
+    if std::fs::write(bad_name, b"x").is_err() {
+        return;
+    }
+
+    let output = build_command(vec![OsStr::new("-j"), temp_dir.path().as_os_str()]);
+    serde_json::from_str::<serde_json::Value>(&output).unwrap();
+    assert!(output.contains("bad\u{FFFD}name"));
+}
+
 // We can at least test the file names are there
 #[test]
 pub fn test_basic_output() {
