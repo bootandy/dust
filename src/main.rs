@@ -347,7 +347,9 @@ fn print_output(
                 wrapped.replace(output_format);
             }
         });
-        writeln!(out, "{}", serde_json::to_string(&tree).unwrap())
+        serde_json::to_writer(&mut out, &tree)
+            .map_err(io::Error::from)
+            .and_then(|()| writeln!(out))
     } else {
         let idd = InitialDisplayData {
             short_paths: !config.get_full_paths(&options),
