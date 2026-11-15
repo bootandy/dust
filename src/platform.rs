@@ -80,6 +80,24 @@ fn filetime_to_unix_seconds(filetime: u64) -> i64 {
     ((i128::from(filetime) - UNIX_EPOCH_FILETIME).div_euclid(TICKS_PER_SECOND)) as i64
 }
 
+/// Volume serial number of `path`, following links. `get_metadata` usually
+/// skips opening a handle, so its tuple carries no device on Windows.
+#[cfg(target_family = "windows")]
+pub fn get_volume_serial(path: &Path) -> Option<u64> {
+    use std::os::windows::fs::OpenOptionsExt;
+    const FILE_READ_ATTRIBUTES: u32 = 0x0080;
+    // Needed to open a handle to a directory.
+    const FILE_FLAG_BACKUP_SEMANTICS: u32 = 0x0200_0000;
+
+    let file = fs::OpenOptions::new()
+        .access_mode(FILE_READ_ATTRIBUTES)
+        .custom_flags(FILE_FLAG_BACKUP_SEMANTICS)
+        .open(path)
+        .ok()?;
+    let info = winapi_util::file::information(winapi_util::Handle::from_file(file)).ok()?;
+    Some(info.volume_serial_number())
+}
+
 #[cfg(target_family = "windows")]
 pub fn get_metadata<P: AsRef<Path>>(
     path: P,

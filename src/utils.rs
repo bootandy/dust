@@ -1,4 +1,3 @@
-use platform::get_metadata;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
@@ -34,6 +33,15 @@ pub fn simplify_dir_names<P: AsRef<Path>>(dirs: &[P]) -> HashSet<PathBuf> {
     top_level_names
 }
 
+#[cfg(target_family = "windows")]
+pub fn get_filesystem_devices<P: AsRef<Path>>(paths: &[P], _follow_links: bool) -> HashSet<u64> {
+    paths
+        .iter()
+        .filter_map(|p| platform::get_volume_serial(p.as_ref()))
+        .collect()
+}
+
+#[cfg(not(target_family = "windows"))]
 pub fn get_filesystem_devices<P: AsRef<Path>>(paths: &[P], follow_links: bool) -> HashSet<u64> {
     use std::fs;
     // Gets the device ids for the filesystems which are used by the argument paths
@@ -49,7 +57,7 @@ pub fn get_filesystem_devices<P: AsRef<Path>>(paths: &[P], follow_links: bool) -
             } else {
                 false
             };
-            match get_metadata(p, false, follow_links) {
+            match platform::get_metadata(p, false, follow_links) {
                 Some((_size, Some((_id, dev)), _time)) => Some(dev),
                 _ => None,
             }
