@@ -267,6 +267,19 @@ fn ignore_file(
         return true;
     }
 
+    // The cheap Windows metadata path has no volume serial. Only a followed
+    // link (symlink, junction, mounted folder) can lead to another volume, so
+    // look the serial up for those.
+    #[cfg(target_family = "windows")]
+    if !walk_data.allowed_filesystems.is_empty()
+        && walk_data.follow_links
+        && file_type.is_symlink()
+        && crate::platform::get_volume_serial(path)
+            .is_some_and(|dev| !walk_data.allowed_filesystems.contains(&dev))
+    {
+        return true;
+    }
+
     let has_time_filter = walk_data.filter_accessed_time.is_some()
         || walk_data.filter_modified_time.is_some()
         || walk_data.filter_changed_time.is_some();
