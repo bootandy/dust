@@ -235,7 +235,14 @@ fn display_node(
     let level = ((indent.chars().count() - 1) / 2) - 1;
     let bar_text = draw_data.generate_bar(node, level);
 
-    let to_print = format_string(node, &indent, &bar_text, is_biggest, draw_data.display_data);
+    let visible_indent = fit_tree_indent(node, &indent, draw_data.display_data);
+    let to_print = format_string(
+        node,
+        &visible_indent,
+        &bar_text,
+        is_biggest,
+        draw_data.display_data,
+    );
 
     if !draw_data.display_data.initial.is_reversed {
         writeln!(out, "{to_print}")?
@@ -262,6 +269,32 @@ fn display_node(
         writeln!(out, "{to_print}")?
     }
     Ok(())
+}
+
+fn fit_tree_indent(node: &DisplayNode, indent: &str, data: &DisplayData) -> String {
+    if data.initial.is_screen_reader {
+        return indent.to_string();
+    }
+
+    let indent_length = indent.chars().count();
+    if indent_length + 4 <= data.longest_string_length {
+        return indent.to_string();
+    }
+
+    let name = get_printable_name(&node.name, data.initial.short_paths);
+    let name_space = (UnicodeWidthStr::width(name.as_str()) + 1).max(4);
+    let max_indent = data.longest_string_length.saturating_sub(name_space);
+    if max_indent == 0 {
+        return String::new();
+    }
+
+    format!(
+        "…{}",
+        indent
+            .chars()
+            .skip(indent_length - max_indent + 1)
+            .collect::<String>()
+    )
 }
 
 fn clean_indentation_string(s: &str) -> String {
@@ -539,6 +572,38 @@ mod tests {
             base_size: 2_u64.pow(12), // 4.0K
             longest_string_length,
             ls_colors: LsColors::from_env().unwrap_or_default(),
+        }
+    }
+
+    #[test]
+    fn test_deep_tree_fits_terminal_width() {
+        let mut root = DisplayNode {
+            name: PathBuf::from("leaf.txt"),
+            size: 1,
+            children: vec![],
+        };
+        for _ in 0..40 {
+            root = DisplayNode {
+                name: PathBuf::from("0"),
+                size: 1,
+                children: vec![root],
+            };
+        }
+
+        for reversed in [false, true] {
+            let mut initial = get_fake_display_data(80).initial;
+            initial.is_reversed = reversed;
+            let mut output = Vec::new();
+            draw_it(initial, &root, true, 80, false, &mut output).unwrap();
+            let output = String::from_utf8(output).unwrap();
+            assert_eq!(output.lines().count(), 41);
+            assert!(output.contains("leaf.txt"));
+            assert!(output.contains('…'));
+            assert!(
+                output
+                    .lines()
+                    .all(|line| UnicodeWidthStr::width(line) <= 80)
+            );
         }
     }
 
