@@ -7,7 +7,6 @@ edition = "2024"
 readme = "README.md"
 
 documentation = "https://github.com/bootandy/dust"
-homepage = "https://github.com/bootandy/dust"
 repository = "https://github.com/bootandy/dust"
 
 keywords = ["du", "command-line", "disk", "disk-usage"]
