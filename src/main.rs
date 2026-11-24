@@ -185,7 +185,10 @@ fn main() {
 
     let ignore_from_file_result = match options.ignore_all_in_file {
         Some(ref val) => read_to_string(val)
-            .unwrap()
+            .unwrap_or_else(|err| {
+                eprintln!("Failed to read file {val}: {err}");
+                process::exit(1);
+            })
             .lines()
             .map(Regex::new)
             .collect::<Vec<Result<Regex, Error>>>(),
