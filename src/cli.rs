@@ -52,6 +52,11 @@ pub struct Cli {
     #[arg(short('s'), long)]
     pub apparent_size: bool,
 
+    /// Count blocks shared between copy-on-write clones only once: full APFS
+    /// clones on macOS 14+ (`cp -c`), reflinks on Linux (`cp --reflink`)
+    #[arg(long)]
+    pub shared_blocks: bool,
+
     /// Print tree upside down (biggest highest)
     #[arg(short, long)]
     pub reverse: bool,
