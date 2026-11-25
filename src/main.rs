@@ -281,6 +281,8 @@ fn main() {
         );
     }
 
+    let root_dirs = simplified_dirs.clone();
+
     init_rayon(&threads_to_use).install(|| {
         let top_level_nodes = walk_it(simplified_dirs, &walk_data);
 
@@ -312,7 +314,15 @@ fn main() {
         let final_errors = walk_data.errors.lock().unwrap();
         print_any_errors(print_errors, &final_errors);
 
-        if tree.children.is_empty() && !final_errors.file_not_found.is_empty() {
+        // With --depth 0 the tree has no children even if the walk succeeded, so
+        // check that the directories we were asked for are the missing ones.
+        let no_roots_found = root_dirs.iter().all(|dir| {
+            final_errors
+                .file_not_found
+                .contains(dir.to_string_lossy().as_ref())
+        });
+
+        if tree.children.is_empty() && no_roots_found {
             std::process::exit(1)
         } else {
             print_output(

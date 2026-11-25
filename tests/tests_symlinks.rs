@@ -166,3 +166,69 @@ pub fn test_recursive_sym_link() {
     assert!(output.contains(a.as_str()));
     assert!(output.contains(b.as_str()));
 }
+
+// A link back to a directory we are already inside must not be walked again.
+// '-s' because without it the repeats are hidden: they have the same inode.
+#[cfg_attr(target_os = "windows", ignore)]
+#[test]
+pub fn test_dereference_links_skips_loops() {
+    let dir = Builder::new().tempdir().unwrap();
+    let sub = dir.path().join("sub");
+    std::fs::create_dir(&sub).unwrap();
+    build_temp_file(&dir);
+    let dir_s = dir.path().to_str().unwrap();
+    link_it(dir.path().join("self_link"), dir_s, true);
+    link_it(sub.join("parent_link"), dir_s, true);
+
+    let mut cmd = cargo_bin_cmd!("dust");
+    let output = cmd
+        .args(["-P", "-p", "-c", "-s", "-L", "-b", "-w", "999", dir_s])
+        .unwrap();
+
+    assert_eq!(str::from_utf8(&output.stderr).unwrap(), "");
+    let stdout = str::from_utf8(&output.stdout).unwrap();
+    assert_eq!(stdout.matches("notes.txt").count(), 1, "{stdout}");
+    assert!(!stdout.contains("_link"), "{stdout}");
+}
+
+// Two links to the same directory are not a loop: both are followed
+#[cfg_attr(target_os = "windows", ignore)]
+#[test]
+pub fn test_dereference_links_follows_links_that_are_not_loops() {
+    let dir = Builder::new().tempdir().unwrap();
+    let target = Builder::new().tempdir().unwrap();
+    build_temp_file(&target);
+    let target_s = target.path().to_str().unwrap();
+    link_it(dir.path().join("link_a"), target_s, true);
+    link_it(dir.path().join("link_b"), target_s, true);
+
+    let mut cmd = cargo_bin_cmd!("dust");
+    let dir_s = dir.path().to_str().unwrap();
+    let output = cmd
+        .args(["-P", "-p", "-c", "-s", "-L", "-b", "-w", "999", dir_s])
+        .unwrap();
+
+    let stdout = str::from_utf8(&output.stdout).unwrap();
+    assert!(stdout.contains("link_a/notes.txt"), "{stdout}");
+    assert!(stdout.contains("link_b/notes.txt"), "{stdout}");
+}
+
+// A broken link inside the directory used to hide the total at depth 0
+#[cfg_attr(target_os = "windows", ignore)]
+#[test]
+pub fn test_depth_zero_with_broken_link() {
+    let dir = Builder::new().tempdir().unwrap();
+    build_temp_file(&dir);
+    let dir_s = dir.path().to_str().unwrap();
+    link_it(dir.path().join("broken_link"), "no_such_target", true);
+
+    let mut cmd = cargo_bin_cmd!("dust");
+    let output = cmd
+        .args(["-P", "-p", "-c", "-L", "-b", "-d", "0", "-w", "999", dir_s])
+        .unwrap();
+
+    let stdout = str::from_utf8(&output.stdout).unwrap();
+    assert!(stdout.contains(dir_s), "{stdout}");
+    let stderr = str::from_utf8(&output.stderr).unwrap();
+    assert!(stderr.contains("broken_link"), "{stderr}");
+}

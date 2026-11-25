@@ -324,6 +324,28 @@ fn ignore_file(
     is_dot_file && walk_data.ignore_hidden
 }
 
+// With `--dereference-links` a symlink can lead back to a directory we are
+// already inside. Only loops are detected: a directory reached by two separate
+// paths is still walked twice, and `clean_inodes` removes the duplicate.
+// Windows usually has no inode here, so loops are not detected there.
+fn is_own_ancestor(pending: &PendingDir) -> bool {
+    let Some(id) = inode_device(pending) else {
+        return false;
+    };
+    let mut ancestor = pending.parent.as_deref();
+    while let Some(dir) = ancestor {
+        if inode_device(dir) == Some(id) {
+            return true;
+        }
+        ancestor = dir.parent.as_deref();
+    }
+    false
+}
+
+fn inode_device(pending: &PendingDir) -> Option<(u64, u64)> {
+    pending.cached_metadata.get().copied().flatten()?.1
+}
+
 fn walk_dir<'scope>(
     scope: &rayon::Scope<'scope>,
     pending: Arc<PendingDir>,
@@ -343,6 +365,17 @@ fn walk_dir<'scope>(
         Err(_) => (false, false, None),
     };
     let _ = pending.cached_metadata.set(tuple);
+
+    // Already inside this directory: walking it again would repeat forever.
+    // Finalize the parent instead of `pending` so that no Node is built here.
+    if walk_data.follow_links
+        && is_dir_path
+        && is_own_ancestor(&pending)
+        && let Some(parent) = pending.parent.clone()
+    {
+        finalize_chain(parent, walk_data);
+        return;
+    }
 
     if is_dir_path {
         // EINTR is the only retryable error. Looping iteratively (rather than
