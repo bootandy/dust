@@ -19,7 +19,6 @@ use dir_walker::WalkData;
 use display::InitialDisplayData;
 use filter::AggregateData;
 use progress::PIndicator;
-use regex::Error;
 use std::collections::HashSet;
 use std::env;
 use std::fs::{read, read_to_string};
@@ -183,21 +182,18 @@ fn main() {
         None => vec![],
     };
 
-    let ignore_from_file_result = match options.ignore_all_in_file {
+    let ignore_from_file_lines = match options.ignore_all_in_file {
         Some(ref val) => read_to_string(val)
             .unwrap_or_else(|err| {
                 eprintln!("Failed to read file {val}: {err}");
                 process::exit(1);
             })
             .lines()
-            .map(Regex::new)
-            .collect::<Vec<Result<Regex, Error>>>(),
+            .map(String::from)
+            .collect::<Vec<String>>(),
         None => vec![],
     };
-    let ignore_from_file = ignore_from_file_result
-        .into_iter()
-        .filter_map(|x| x.ok())
-        .collect::<Vec<Regex>>();
+    let ignore_from_file = get_regex_value(Some(&ignore_from_file_lines));
 
     let invert_filter_regexs = invert_filter_regexs
         .into_iter()

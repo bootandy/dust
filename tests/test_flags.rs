@@ -175,6 +175,25 @@ pub fn test_ignore_all_in_file() {
 }
 
 #[test]
+pub fn test_ignore_all_in_file_rejects_invalid_regex() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let ignore_file = temp_dir.path().join("ignore");
+    std::fs::write(&ignore_file, "[secret\n^other$\n").unwrap();
+
+    let mut cmd = cargo_bin_cmd!("dust");
+    cmd.arg("-P")
+        .arg("-I")
+        .arg(&ignore_file)
+        .arg("tests/test_dir_hidden_entries/");
+    let finished = cmd.output().unwrap();
+
+    assert_eq!(finished.status.code(), Some(1));
+    let stderr = str::from_utf8(&finished.stderr).unwrap();
+    assert!(stderr.contains("Ignoring bad value for regex"), "{stderr}");
+    assert!(stderr.contains("[secret"), "{stderr}");
+}
+
+#[test]
 pub fn test_files_from_flag_file() {
     let output = build_command(vec![
         "--files-from",
