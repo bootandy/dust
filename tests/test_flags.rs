@@ -499,22 +499,15 @@ pub fn test_handle_duplicate_names_only_dir() {
 }
 
 #[test]
-pub fn test_time_filters_reject_out_of_range_values() {
-    for flag in ["--mtime", "--atime", "--ctime"] {
-        for val in [
-            "106751991167301",
-            "-106751991167301",
-            "-9223372036854775808",
-        ] {
-            let out = std::process::Command::new(env!("CARGO_BIN_EXE_dust"))
-                .arg(format!("{flag}={val}"))
-                .arg(".")
-                .output()
-                .unwrap();
-            assert_eq!(out.status.code(), Some(1), "{flag}={val}");
-            let err = String::from_utf8_lossy(&out.stderr);
-            assert!(err.contains("Invalid value for time filter"), "{err}");
-            assert!(!err.contains("panicked"), "{err}");
-        }
-    }
+pub fn test_time_filter_rejects_out_of_range_value() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let mut cmd = cargo_bin_cmd!("dust");
+    cmd.arg("-P")
+        .arg("--mtime=106751991167301")
+        .arg(temp_dir.path());
+    let output_error = cmd.unwrap_err();
+    let result = output_error.as_output().unwrap();
+    assert_eq!(result.status.code(), Some(1));
+    let stderr = str::from_utf8(&result.stderr).unwrap();
+    assert!(stderr.contains("Invalid value for time filter"), "{stderr}");
 }

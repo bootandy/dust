@@ -224,34 +224,27 @@ fn get_filter_time_operator(
     option_value: Option<&String>,
     current_date_epoch_seconds: i64,
 ) -> Option<(Operator, i64)> {
-    match option_value {
-        Some(val) => {
-            let invalid = || -> ! {
-                eprintln!("Invalid value for time filter: {val:?}");
-                process::exit(1)
-            };
-            let days = val.parse::<i64>().unwrap_or_else(|_| invalid());
-            let time = days
-                .checked_abs()
-                .and_then(|d| d.checked_mul(DAY_SECONDS))
-                .and_then(|secs| current_date_epoch_seconds.checked_sub(secs))
-                .unwrap_or_else(|| invalid());
-            // the parse above rejects an empty string, so there is a first char
-            let first = val.chars().next().unwrap_or_else(|| invalid());
-            match first {
-                '+' => Some((
-                    Operator::LessThan,
-                    time.checked_sub(DAY_SECONDS).unwrap_or_else(|| invalid()),
-                )),
-                '-' => Some((Operator::GreaterThan, time)),
-                _ => Some((
-                    Operator::Equal,
-                    time.checked_sub(DAY_SECONDS).unwrap_or_else(|| invalid()),
-                )),
-            }
-        }
-        None => None,
-    }
+    let val = option_value?;
+    parse_time_filter(val, current_date_epoch_seconds).or_else(|| {
+        eprintln!("Invalid value for time filter: {val:?}");
+        process::exit(1)
+    })
+}
+
+// None if `val` isn't a number of days, or is too large to be a valid time
+fn parse_time_filter(val: &str, current_date_epoch_seconds: i64) -> Option<(Operator, i64)> {
+    let seconds = val
+        .parse::<i64>()
+        .ok()?
+        .checked_abs()?
+        .checked_mul(DAY_SECONDS)?;
+    let time = current_date_epoch_seconds.checked_sub(seconds)?;
+    // the parse above rejects an empty string, so there is a first byte
+    Some(match val.as_bytes()[0] {
+        b'+' => (Operator::LessThan, time.checked_sub(DAY_SECONDS)?),
+        b'-' => (Operator::GreaterThan, time),
+        _ => (Operator::Equal, time.checked_sub(DAY_SECONDS)?),
+    })
 }
 
 fn convert_min_size(input: &str) -> Option<usize> {
@@ -440,6 +433,34 @@ mod tests {
 
     fn get_args(args: Vec<&str>) -> Cli {
         Cli::parse_from(args)
+    }
+
+    #[test]
+    fn test_parse_time_filter() {
+        let now = 1_000_000_000;
+        let parse = |v| parse_time_filter(v, now);
+        let five_days_ago = now - 5 * DAY_SECONDS;
+        let six_days_ago = now - 6 * DAY_SECONDS;
+        assert!(matches!(parse("5"), Some((Operator::Equal, t)) if t == six_days_ago));
+        assert!(matches!(parse("+5"), Some((Operator::LessThan, t)) if t == six_days_ago));
+        assert!(matches!(parse("-5"), Some((Operator::GreaterThan, t)) if t == five_days_ago));
+
+        // The largest number of days that doesn't overflow
+        for val in ["106751991167300", "+106751991167300", "-106751991167300"] {
+            assert!(parse(val).is_some(), "{val}");
+        }
+        for val in [
+            "",
+            "+",
+            "abc",
+            "106751991167301",
+            "+106751991167301",
+            "-106751991167301",
+            "-9223372036854775808",
+            "9223372036854775808",
+        ] {
+            assert!(parse(val).is_none(), "{val}");
+        }
     }
 
     #[test]
