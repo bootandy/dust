@@ -226,19 +226,28 @@ fn get_filter_time_operator(
 ) -> Option<(Operator, i64)> {
     match option_value {
         Some(val) => {
-            let days = val.parse::<i64>().unwrap_or_else(|_| {
+            let invalid = || -> ! {
                 eprintln!("Invalid value for time filter: {val:?}");
                 process::exit(1)
-            });
-            let time = current_date_epoch_seconds - days.abs() * DAY_SECONDS;
+            };
+            let days = val.parse::<i64>().unwrap_or_else(|_| invalid());
+            let time = days
+                .checked_abs()
+                .and_then(|d| d.checked_mul(DAY_SECONDS))
+                .and_then(|secs| current_date_epoch_seconds.checked_sub(secs))
+                .unwrap_or_else(|| invalid());
             // the parse above rejects an empty string, so there is a first char
-            match val.chars().next().unwrap_or_else(|| {
-                eprintln!("Invalid value for time filter: {val:?}");
-                process::exit(1)
-            }) {
-                '+' => Some((Operator::LessThan, time - DAY_SECONDS)),
+            let first = val.chars().next().unwrap_or_else(|| invalid());
+            match first {
+                '+' => Some((
+                    Operator::LessThan,
+                    time.checked_sub(DAY_SECONDS).unwrap_or_else(|| invalid()),
+                )),
                 '-' => Some((Operator::GreaterThan, time)),
-                _ => Some((Operator::Equal, time - DAY_SECONDS)),
+                _ => Some((
+                    Operator::Equal,
+                    time.checked_sub(DAY_SECONDS).unwrap_or_else(|| invalid()),
+                )),
             }
         }
         None => None,
