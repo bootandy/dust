@@ -497,3 +497,24 @@ pub fn test_handle_duplicate_names_only_dir() {
     assert!(output.contains("andy"), "{output}");
     assert!(output.contains("dave"), "{output}");
 }
+
+#[test]
+pub fn test_time_filters_reject_out_of_range_values() {
+    for flag in ["--mtime", "--atime", "--ctime"] {
+        for val in [
+            "106751991167301",
+            "-106751991167301",
+            "-9223372036854775808",
+        ] {
+            let out = std::process::Command::new(env!("CARGO_BIN_EXE_dust"))
+                .arg(format!("{flag}={val}"))
+                .arg(".")
+                .output()
+                .unwrap();
+            assert_eq!(out.status.code(), Some(1), "{flag}={val}");
+            let err = String::from_utf8_lossy(&out.stderr);
+            assert!(err.contains("Invalid value for time filter"), "{err}");
+            assert!(!err.contains("panicked"), "{err}");
+        }
+    }
+}
