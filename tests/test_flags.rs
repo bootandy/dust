@@ -214,6 +214,35 @@ pub fn test_files0_from_flag_file() {
 }
 
 #[test]
+fn test_files_from_overrides_configured_files0_from() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let config = temp_dir.path().join("dust.toml");
+    std::fs::write(&config, "files0-from = 'configured-list'").unwrap();
+    std::fs::write(
+        temp_dir.path().join("configured-list"),
+        b"configured-target\0",
+    )
+    .unwrap();
+    std::fs::write(temp_dir.path().join("cli-list"), b"cli-target\n").unwrap();
+    std::fs::write(temp_dir.path().join("configured-target"), b"configured").unwrap();
+    std::fs::write(temp_dir.path().join("cli-target"), b"cli").unwrap();
+
+    let mut cmd = cargo_bin_cmd!("dust");
+    cmd.current_dir(temp_dir.path())
+        .args(["-P", "--config"])
+        .arg(&config);
+    let output = cmd.assert().success();
+    let stdout = str::from_utf8(&output.get_output().stdout).unwrap();
+    assert!(stdout.contains("configured-target"), "{stdout}");
+
+    cmd.args(["--files-from", "cli-list"]);
+    let output = cmd.assert().success();
+    let stdout = str::from_utf8(&output.get_output().stdout).unwrap();
+    assert!(stdout.contains("cli-target"), "{stdout}");
+    assert!(!stdout.contains("configured-target"), "{stdout}");
+}
+
+#[test]
 pub fn test_files_from_flag_stdin() {
     let mut cmd = cargo_bin_cmd!("dust");
     cmd.arg("-P").arg("--files-from").arg("-");

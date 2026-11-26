@@ -46,21 +46,16 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn get_files0_from(&self, options: &Cli) -> Option<String> {
-        let from_file = &options.files0_from;
-        match from_file {
-            None => self.files0_from.as_ref().map(|x| x.to_string()),
-            Some(x) => Some(x.to_string()),
-        }
+    pub fn get_path_list<'a>(&'a self, options: &'a Cli) -> Option<(&'a str, bool)> {
+        options
+            .files0_from
+            .as_deref()
+            .map(|path| (path, true))
+            .or_else(|| options.files_from.as_deref().map(|path| (path, false)))
+            .or_else(|| self.files0_from.as_deref().map(|path| (path, true)))
+            .or_else(|| self.files_from.as_deref().map(|path| (path, false)))
     }
 
-    pub fn get_files_from(&self, options: &Cli) -> Option<String> {
-        let from_file = &options.files_from;
-        match from_file {
-            None => self.files_from.as_ref().map(|x| x.to_string()),
-            Some(x) => Some(x.to_string()),
-        }
-    }
     pub fn get_no_colors(&self, options: &Cli) -> bool {
         Some(true) == self.no_colors || options.no_colors
     }
