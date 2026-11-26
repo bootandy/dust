@@ -127,10 +127,8 @@ fn main() {
     })
     .expect("Error setting Ctrl-C handler");
 
-    let target_dirs = if let Some(path) = config.get_files0_from(&options) {
-        read_paths_from_source(&path, true)
-    } else if let Some(path) = config.get_files_from(&options) {
-        read_paths_from_source(&path, false)
+    let target_dirs = if let Some((path, nul_delimited)) = config.get_path_list(&options) {
+        read_paths_from_source(path, nul_delimited)
     } else {
         match options.params {
             Some(ref values) => values.clone(),
