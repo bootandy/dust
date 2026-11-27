@@ -342,6 +342,9 @@ fn print_output(
         OUTPUT_TYPE.with(|wrapped| {
             if by_filecount {
                 wrapped.replace("count".to_string());
+            } else if config.get_filetime(&options).is_some() {
+                // The node 'size' is a timestamp, not a number of bytes
+                wrapped.replace("filetime".to_string());
             } else {
                 wrapped.replace(output_format);
             }

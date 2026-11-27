@@ -469,6 +469,29 @@ pub fn test_show_files_by_type_with_filetime() {
     assert!(!output.contains("2021-07-0"), "{output}");
 }
 
+// Unix only: see test_show_files_by_type_with_filetime above.
+#[cfg(target_family = "unix")]
+#[test]
+pub fn test_json_output_with_filetime() {
+    // With -m the node 'size' is a timestamp, so -j must print it as a time
+    // like the tree output does, not as a number of bytes.
+    use std::fs::File;
+    use std::time::{Duration, UNIX_EPOCH};
+
+    let dir = tempfile::Builder::new().tempdir().unwrap();
+    let file = File::create(dir.path().join("a.log")).unwrap();
+    // Midday UTC, so the year and month are the same in every timezone
+    file.set_modified(UNIX_EPOCH + Duration::from_secs(1656676800))
+        .unwrap();
+
+    let output = build_command(vec!["-j", "-m", "m", dir.path().to_str().unwrap()]);
+    let json: serde_json::Value = serde_json::from_str(&output).unwrap();
+    let size = json["children"][0]["size"].as_str().unwrap();
+
+    // 1656676800 is 2022-07-01
+    assert!(size.starts_with("2022-07-0"), "{output}");
+}
+
 #[test]
 pub fn test_handle_duplicate_names() {
     // Check that even if we run on a multiple directories with the same name
