@@ -412,7 +412,7 @@ fn get_pretty_size(node: &DisplayNode, is_biggest: bool, display_data: &DisplayD
     }
 }
 
-fn get_pretty_file_modified_time(timestamp: i64) -> String {
+pub fn get_pretty_file_modified_time(timestamp: i64) -> String {
     let datetime = match Utc.timestamp_opt(timestamp, 0) {
         MappedLocalTime::Single(dt) => dt,
         MappedLocalTime::Ambiguous(dt, _) => dt,

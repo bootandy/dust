@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use serde::ser::SerializeStruct;
 use serde::{Serialize, Serializer};
 
-use crate::display::human_readable_number;
+use crate::display::{get_pretty_file_modified_time, human_readable_number};
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub struct DisplayNode {
@@ -47,8 +47,10 @@ impl Serialize for DisplayNode {
     where
         S: Serializer,
     {
-        let readable_size = OUTPUT_TYPE
-            .with(|output_type| human_readable_number(self.size, output_type.borrow().as_str()));
+        let readable_size = OUTPUT_TYPE.with(|output_type| match output_type.borrow().as_str() {
+            "filetime" => get_pretty_file_modified_time(self.size as i64),
+            output_type => human_readable_number(self.size, output_type),
+        });
         let mut state = serializer.serialize_struct("DisplayNode", 2)?;
         state.serialize_field("size", &(readable_size))?;
         state.serialize_field("name", &self.name.to_string_lossy())?;
